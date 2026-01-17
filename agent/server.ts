@@ -480,6 +480,68 @@ function buildApp() {
     }
   });
 
+  // Update management
+  app.get('/update/check', async (c) => {
+    try {
+      const { execSync } = await import('node:child_process');
+      const installDir = process.env.BRIDGE_INSTALL_DIR || `${process.env.HOME}/.bridge-agent`;
+
+      // Fetch latest
+      execSync('git fetch origin main --quiet 2>/dev/null || git fetch origin master --quiet 2>/dev/null', {
+        cwd: installDir,
+        stdio: 'pipe',
+      });
+
+      // Compare commits
+      const local = execSync('git rev-parse HEAD', { cwd: installDir, encoding: 'utf8' }).trim();
+      const remote = execSync('git rev-parse origin/main 2>/dev/null || git rev-parse origin/master 2>/dev/null', {
+        cwd: installDir,
+        encoding: 'utf8',
+      }).trim();
+
+      const updateAvailable = local !== remote;
+
+      let changes: string[] = [];
+      if (updateAvailable) {
+        const diff = execSync(`git log --oneline ${local}..${remote}`, {
+          cwd: installDir,
+          encoding: 'utf8',
+        }).trim();
+        changes = diff.split('\n').filter(Boolean);
+      }
+
+      return c.json({
+        updateAvailable,
+        currentVersion: local.slice(0, 7),
+        latestVersion: remote.slice(0, 7),
+        changes,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      return c.json({ error: message, updateAvailable: false }, 500);
+    }
+  });
+
+  app.post('/update/apply', async (c) => {
+    try {
+      const { spawn } = await import('node:child_process');
+      const installDir = process.env.BRIDGE_INSTALL_DIR || `${process.env.HOME}/.bridge-agent`;
+      const updateScript = `${installDir}/agent/update.sh`;
+
+      // Run update script in background (it will restart the service)
+      const child = spawn('bash', [updateScript, installDir], {
+        detached: true,
+        stdio: 'ignore',
+      });
+      child.unref();
+
+      return c.json({ success: true, message: 'Update started. Service will restart.' });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      return c.json({ error: message }, 500);
+    }
+  });
+
   return app;
 }
 

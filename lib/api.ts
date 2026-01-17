@@ -184,3 +184,19 @@ export async function uploadImage(
     body: JSON.stringify({ data: base64, mimeType }),
   }, 30000);
 }
+
+export type UpdateStatus = {
+  updateAvailable: boolean;
+  currentVersion: string;
+  latestVersion: string;
+  changes: string[];
+  error?: string;
+};
+
+export async function checkForUpdate(host: Host): Promise<UpdateStatus> {
+  return request(host, '/update/check', { method: 'GET' });
+}
+
+export async function applyUpdate(host: Host): Promise<{ success: boolean; message: string }> {
+  return request(host, '/update/apply', { method: 'POST' });
+}

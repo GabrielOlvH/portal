@@ -6,15 +6,15 @@ import { useLaunchSheet } from '@/lib/launch-sheet';
 import { PulsingDot } from '@/components/PulsingDot';
 import { Screen } from '@/components/Screen';
 import { SkeletonList } from '@/components/Skeleton';
-import { killSession } from '@/lib/api';
+import { killSession, checkForUpdate, applyUpdate, UpdateStatus } from '@/lib/api';
 import { systemColors } from '@/lib/colors';
 import { useHostsLive } from '@/lib/live';
 import { useStore } from '@/lib/store';
 import { hostAccents, palette, theme } from '@/lib/theme';
 import { Host, HostStatus, ProviderUsage, Session, SessionInsights } from '@/lib/types';
 import { useRouter } from 'expo-router';
-import { GitBranch, Pause, Play, Plus, StopCircle } from 'lucide-react-native';
-import React, { useCallback, useMemo, useState } from 'react';
+import { Download, GitBranch, Pause, Play, Plus, StopCircle } from 'lucide-react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 type UsageCardProps = {
   provider: string;
@@ -130,6 +130,8 @@ export default function SessionsScreen() {
   const router = useRouter();
   const { hosts, ready } = useStore();
   const [isManualRefresh, setIsManualRefresh] = useState(false);
+  const [updateInfo, setUpdateInfo] = useState<{ host: Host; status: UpdateStatus } | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
   const { open: openLaunchSheet } = useLaunchSheet();
 
   const { stateMap, refreshAll, refreshHost } = useHostsLive(hosts, {
@@ -160,6 +162,45 @@ export default function SessionsScreen() {
     !Object.values(stateMap).some(
       (state) => state.status === 'online' || state.status === 'offline'
     );
+
+  // Check for agent updates on any online host
+  useEffect(() => {
+    const onlineHosts = hosts.filter((h) => stateMap[h.id]?.status === 'online');
+    if (onlineHosts.length === 0) return;
+
+    const checkUpdates = async () => {
+      for (const host of onlineHosts) {
+        try {
+          const status = await checkForUpdate(host);
+          if (status.updateAvailable) {
+            setUpdateInfo({ host, status });
+            return;
+          }
+        } catch {
+          // Ignore errors, host might not support updates
+        }
+      }
+      setUpdateInfo(null);
+    };
+
+    checkUpdates();
+    const interval = setInterval(checkUpdates, 60000); // Check every minute
+    return () => clearInterval(interval);
+  }, [hosts, stateMap]);
+
+  const handleUpdate = useCallback(async () => {
+    if (!updateInfo || isUpdating) return;
+    setIsUpdating(true);
+    try {
+      await applyUpdate(updateInfo.host);
+      Alert.alert('Update Started', 'The agent is updating and will restart.');
+      setUpdateInfo(null);
+    } catch (err) {
+      Alert.alert('Update Failed', err instanceof Error ? err.message : 'Could not apply update');
+    } finally {
+      setIsUpdating(false);
+    }
+  }, [updateInfo, isUpdating]);
 
   // Aggregate usage from all sessions (take most recent per provider)
   const aggregatedUsage = useMemo(() => {
@@ -243,7 +284,21 @@ export default function SessionsScreen() {
       <Screen>
         {/* Header */}
         <View style={styles.header}>
-          <AppText variant="title">Bridge</AppText>
+          <View>
+            <AppText variant="title">Bridge</AppText>
+            {updateInfo && (
+              <Pressable
+                onPress={handleUpdate}
+                disabled={isUpdating}
+                style={styles.updateBanner}
+              >
+                <Download size={12} color={systemColors.blue as string} />
+                <AppText variant="mono" style={styles.updateText}>
+                  {isUpdating ? 'Updating...' : `Update available (${updateInfo.status.latestVersion})`}
+                </AppText>
+              </Pressable>
+            )}
+          </View>
           {hosts.length > 0 && (
             <Pressable
               style={styles.launchButton}
@@ -478,6 +533,16 @@ const styles = StyleSheet.create({
   launchButtonText: {
     color: '#FFFFFF',
     fontWeight: '600',
+  },
+  updateBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 4,
+  },
+  updateText: {
+    fontSize: 11,
+    color: systemColors.blue as string,
   },
   scrollContent: {
     paddingBottom: 40,
