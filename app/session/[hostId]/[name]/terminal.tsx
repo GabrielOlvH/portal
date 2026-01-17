@@ -25,7 +25,6 @@ import Animated, {
 
 import { Screen } from '@/components/Screen';
 import { AppText } from '@/components/AppText';
-import { TerminalHeaderButtonGroup } from '@/components/TerminalHeaderButtonGroup';
 import { useStore } from '@/lib/store';
 import { getSessionInsights, getSessions, uploadImage } from '@/lib/api';
 import { SessionInsights } from '@/lib/types';
@@ -427,16 +426,13 @@ export default function SessionTerminalScreen() {
   return (
     <Screen variant="terminal">
       <View style={styles.header}>
-        <TerminalHeaderButtonGroup side="left">
+        <View style={styles.headerFloating}>
           <Pressable
             onPress={() => router.back()}
             style={({ pressed }) => [styles.headerButton, pressed && styles.headerButtonPressed]}
           >
             <AppText variant="caps" style={styles.headerButtonText}>←</AppText>
           </Pressable>
-        </TerminalHeaderButtonGroup>
-        <View style={styles.headerCenter} />
-        <TerminalHeaderButtonGroup side="right">
           <Pressable
             style={({ pressed }) => [styles.headerButton, pressed && styles.headerButtonPressed]}
             onPress={() => {
@@ -444,7 +440,7 @@ export default function SessionTerminalScreen() {
               copyFromTerminal();
             }}
           >
-            <Copy size={18} color="#E6EDF3" />
+            <Copy size={16} color="#E6EDF3" />
           </Pressable>
           <Pressable
             style={({ pressed }) => [styles.headerButton, pressed && styles.headerButtonPressed]}
@@ -453,9 +449,9 @@ export default function SessionTerminalScreen() {
               sendToTerminal('\u0003');
             }}
           >
-            <OctagonX size={18} color="#F85149" />
+            <OctagonX size={16} color="#F85149" />
           </Pressable>
-        </TerminalHeaderButtonGroup>
+        </View>
       </View>
 
       <GestureDetector gesture={panGesture}>
@@ -576,18 +572,23 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     zIndex: 10,
   },
-  headerCenter: {
-    flex: 1,
-    borderTopWidth: 1,
+  headerFloating: {
+    flexDirection: 'row',
+    backgroundColor: '#0B0D0F',
+    borderBottomLeftRadius: 12,
+    borderBottomRightRadius: 12,
+    borderWidth: 1,
+    borderTopWidth: 0,
     borderColor: '#1E2226',
+    padding: 4,
+    gap: 4,
   },
   headerButton: {
-    padding: 8,
-    borderRadius: 8,
+    padding: 6,
+    borderRadius: 6,
   },
   headerButtonPressed: {
     backgroundColor: '#1E2226',

@@ -9,29 +9,6 @@ import { Screen } from '@/components/Screen';
 import { AppText } from '@/components/AppText';
 import { useStore } from '@/lib/store';
 
-const BORDER_COLOR = '#1E2226';
-const BG_COLOR = '#0B0D0F';
-
-function HeaderButtonGroup({ children, side }: { children: React.ReactNode; side: 'left' | 'right' }) {
-  const isLeft = side === 'left';
-
-  return (
-    <View
-      style={[
-        styles.headerGroup,
-        {
-          borderBottomColor: BORDER_COLOR,
-          borderRightColor: isLeft ? BORDER_COLOR : 'transparent',
-          borderLeftColor: isLeft ? 'transparent' : BORDER_COLOR,
-          backgroundColor: BG_COLOR,
-        },
-        isLeft ? styles.headerLeft : styles.headerRight,
-      ]}
-    >
-      <View style={styles.headerButtonsRow}>{children}</View>
-    </View>
-  );
-}
 
 function buildDockerWsUrl(host: { baseUrl: string; authToken?: string }, containerId: string): string {
   try {
@@ -233,16 +210,13 @@ export default function DockerTerminalScreen() {
   return (
     <Screen variant="terminal">
       <View style={styles.header}>
-        <HeaderButtonGroup side="left">
+        <View style={styles.headerFloating}>
           <Pressable
             onPress={() => router.back()}
             style={({ pressed }) => [styles.headerButton, pressed && styles.headerButtonPressed]}
           >
             <AppText variant="caps" style={styles.headerButtonText}>←</AppText>
           </Pressable>
-        </HeaderButtonGroup>
-        <View style={styles.headerCenter} />
-        <HeaderButtonGroup side="right">
           <Pressable
             style={({ pressed }) => [styles.headerButton, pressed && styles.headerButtonPressed]}
             onPress={() => {
@@ -250,7 +224,7 @@ export default function DockerTerminalScreen() {
               copyFromTerminal();
             }}
           >
-            <Copy size={18} color="#E6EDF3" />
+            <Copy size={16} color="#E6EDF3" />
           </Pressable>
           <Pressable
             style={({ pressed }) => [styles.headerButton, pressed && styles.headerButtonPressed]}
@@ -259,9 +233,9 @@ export default function DockerTerminalScreen() {
               webRef.current?.injectJavaScript('window.__sendCtrlC && window.__sendCtrlC(); true;');
             }}
           >
-            <OctagonX size={18} color="#F85149" />
+            <OctagonX size={16} color="#F85149" />
           </Pressable>
-        </HeaderButtonGroup>
+        </View>
       </View>
 
       <View style={styles.terminal}>
@@ -304,37 +278,23 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     zIndex: 10,
   },
-  headerGroup: {
-    paddingTop: 4,
-    paddingBottom: 4,
-    borderBottomWidth: 1,
-  },
-  headerLeft: {
-    paddingLeft: 4,
-    paddingRight: 8,
-    borderRightWidth: 1,
-  },
-  headerCenter: {
-    flex: 1,
-    borderTopWidth: 1,
-    borderColor: '#1E2226',
-  },
-  headerRight: {
-    paddingRight: 4,
-    paddingLeft: 8,
-    borderLeftWidth: 1,
-  },
-  headerButtonsRow: {
+  headerFloating: {
     flexDirection: 'row',
+    backgroundColor: '#0B0D0F',
+    borderBottomLeftRadius: 12,
+    borderBottomRightRadius: 12,
+    borderWidth: 1,
+    borderTopWidth: 0,
+    borderColor: '#1E2226',
+    padding: 4,
     gap: 4,
   },
   headerButton: {
-    padding: 8,
-    borderRadius: 8,
+    padding: 6,
+    borderRadius: 6,
   },
   headerButtonPressed: {
     backgroundColor: '#1E2226',
