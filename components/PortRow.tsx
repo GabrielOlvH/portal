@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, StyleSheet, Pressable } from 'react-native';
 import { AppText } from '@/components/AppText';
-import { GlassCard } from '@/components/GlassCard';
+import { Card } from '@/components/Card';
 import { palette, theme } from '@/lib/theme';
 import { PortInfo } from '@/lib/types';
 
@@ -21,7 +21,7 @@ export function PortRow({
   onKill,
 }: PortRowProps) {
   return (
-    <GlassCard style={styles.card}>
+    <Card style={styles.card}>
       <Pressable
         style={styles.content}
         onPress={selectionMode ? onToggleSelect : undefined}
@@ -52,7 +52,7 @@ export function PortRow({
           </Pressable>
         )}
       </Pressable>
-    </GlassCard>
+    </Card>
   );
 }
 

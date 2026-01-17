@@ -1,6 +1,6 @@
 import { AppText } from '@/components/AppText';
 import { FadeIn } from '@/components/FadeIn';
-import { GlassCard } from '@/components/GlassCard';
+import { Card } from '@/components/Card';
 import { Pill } from '@/components/Pill';
 import { Screen } from '@/components/Screen';
 import { SectionHeader } from '@/components/SectionHeader';
@@ -129,7 +129,7 @@ export default function HostDetailScreen() {
               pressed && styles.sessionCardPressed,
             ]}
           >
-            <GlassCard style={styles.sessionCard}>
+            <Card style={styles.sessionCard}>
             <View style={styles.sessionRow}>
               <View style={styles.sessionInfo}>
                 <AppText variant="subtitle">{session.name}</AppText>
@@ -170,7 +170,7 @@ export default function HostDetailScreen() {
                 </AppText>
               </Pressable>
             </View>
-            </GlassCard>
+            </Card>
           </Pressable>
         </FadeIn>
       )),
@@ -254,7 +254,7 @@ export default function HostDetailScreen() {
         ) : null}
 
         <SectionHeader title="Host info" />
-        <GlassCard style={styles.infoCard}>
+        <Card style={styles.infoCard}>
           {hostInfo ? (
             <>
               <View style={styles.infoHeader}>
@@ -317,10 +317,10 @@ export default function HostDetailScreen() {
               Waiting for telemetry...
             </AppText>
           )}
-        </GlassCard>
+        </Card>
 
         <SectionHeader title="Create session" />
-        <GlassCard style={styles.createCard}>
+        <Card style={styles.createCard}>
           <TextInput
             value={newSession}
             onChangeText={setNewSession}
@@ -333,7 +333,7 @@ export default function HostDetailScreen() {
               Launch
             </AppText>
           </Pressable>
-        </GlassCard>
+        </Card>
 
         <SectionHeader
           title={`Sessions (${sessions.length})`}
@@ -347,12 +347,12 @@ export default function HostDetailScreen() {
         />
 
         {sessions.length === 0 ? (
-          <GlassCard style={styles.emptyCard}>
+          <Card style={styles.emptyCard}>
             <AppText variant="subtitle">No sessions yet</AppText>
             <AppText variant="body" tone="muted" style={{ marginTop: theme.spacing.sm }}>
               Create a session or pull to refresh to get the latest state from tmux.
             </AppText>
-          </GlassCard>
+          </Card>
         ) : (
           sessionCards
         )}

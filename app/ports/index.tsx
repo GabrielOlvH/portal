@@ -13,7 +13,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Screen } from '@/components/Screen';
 import { AppText } from '@/components/AppText';
 import { FadeIn } from '@/components/FadeIn';
-import { GlassCard } from '@/components/GlassCard';
+import { Card } from '@/components/Card';
 import { PortRow } from '@/components/PortRow';
 import { useStore } from '@/lib/store';
 import { getPorts, killPorts } from '@/lib/api';

@@ -13,12 +13,12 @@ import BottomSheet, {
   BottomSheetBackdrop,
   BottomSheetTextInput,
 } from '@gorhom/bottom-sheet';
-import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
+import { useTheme } from '@/lib/useTheme';
 import SegmentedControl from '@react-native-segmented-control/segmented-control';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppText } from '@/components/AppText';
-import { GlassCard } from '@/components/GlassCard';
+import { Card } from '@/components/Card';
 import { providerIcons } from '@/components/icons/ProviderIcons';
 import { TerminalIcon } from '@/components/icons/HomeIcons';
 import { useStore } from '@/lib/store';
@@ -232,18 +232,13 @@ export function LaunchSheet({ isOpen, onClose }: LaunchSheetProps) {
     []
   );
 
+  const { colors } = useTheme();
+
   const renderBackground = useCallback(
     (props: any) => (
-      Platform.OS === 'ios' && isLiquidGlassAvailable() ? (
-        <GlassView
-          glassEffectStyle="clear"
-          style={[props.style, styles.glassBackground]}
-        />
-      ) : (
-        <View style={[props.style, styles.sheetBackground]} />
-      )
+      <View style={[props.style, styles.sheetBackground, { backgroundColor: colors.card }]} />
     ),
-    []
+    [colors.card]
   );
 
   return (
@@ -300,14 +295,14 @@ export function LaunchSheet({ isOpen, onClose }: LaunchSheetProps) {
                       onPress={() => handleRecentLaunch(launch)}
                       disabled={launching}
                     >
-                      <GlassCard style={styles.recentCard}>
+                      <Card style={styles.recentCard}>
                         <AppText variant="label" numberOfLines={1}>
                           {launch.command.label}
                         </AppText>
                         <AppText variant="caps" tone="muted" numberOfLines={1}>
                           {launch.projectName}
                         </AppText>
-                      </GlassCard>
+                      </Card>
                     </Pressable>
                   ))}
                 </ScrollView>
@@ -440,7 +435,7 @@ export function LaunchSheet({ isOpen, onClose }: LaunchSheetProps) {
                           onPress={() => handleLaunch(command)}
                           disabled={launching}
                         >
-                          <GlassCard style={styles.commandCard}>
+                          <Card style={styles.commandCard}>
                             <View style={styles.commandIcon}>
                               {icon || <TerminalIcon size={14} color={palette.muted} />}
                             </View>
@@ -452,7 +447,7 @@ export function LaunchSheet({ isOpen, onClose }: LaunchSheetProps) {
                                 {launching ? '...' : '>'}
                               </AppText>
                             </View>
-                          </GlassCard>
+                          </Card>
                         </Pressable>
                       );
                     })}
@@ -508,7 +503,7 @@ export function LaunchSheet({ isOpen, onClose }: LaunchSheetProps) {
                 <AppText variant="caps" tone="muted" style={styles.sectionLabel}>
                   Session Name (optional)
                 </AppText>
-                <GlassCard style={styles.inputCard}>
+                <Card style={styles.inputCard}>
                   <TerminalIcon size={18} color={palette.muted} />
                   <BottomSheetTextInput
                     style={styles.textInput}
@@ -519,7 +514,7 @@ export function LaunchSheet({ isOpen, onClose }: LaunchSheetProps) {
                     autoCapitalize="none"
                     autoCorrect={false}
                   />
-                </GlassCard>
+                </Card>
               </View>
             )}
 
@@ -560,13 +555,7 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 8,
   },
-  glassBackground: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    overflow: 'hidden',
-  },
   sheetBackground: {
-    backgroundColor: palette.surface,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
   },

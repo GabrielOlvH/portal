@@ -1,8 +1,8 @@
 import React from 'react';
-import { View, StyleSheet, ViewProps, useColorScheme, Platform } from 'react-native';
+import { View, StyleSheet, ViewProps } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { systemColors } from '@/lib/colors';
+import { useTheme } from '@/lib/useTheme';
 
 export function Screen({
   children,
@@ -10,14 +10,13 @@ export function Screen({
   variant = 'default',
   ...props
 }: ViewProps & { variant?: 'default' | 'terminal' }) {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
+  const { colors, isDark } = useTheme();
 
   return (
     <SafeAreaView
       style={[
         styles.root,
-        { backgroundColor: variant === 'terminal' ? '#0B0D0F' : systemColors.background },
+        { backgroundColor: variant === 'terminal' ? '#0B0D0F' : colors.background },
       ]}
       edges={variant === 'terminal' ? ['top', 'left', 'right'] : ['top', 'left', 'right', 'bottom']}
     >

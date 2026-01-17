@@ -14,7 +14,7 @@ import { Play, Square, Terminal } from 'lucide-react-native';
 import { Screen } from '@/components/Screen';
 import { AppText } from '@/components/AppText';
 import { FadeIn } from '@/components/FadeIn';
-import { GlassCard } from '@/components/GlassCard';
+import { Card } from '@/components/Card';
 import { PulsingDot } from '@/components/PulsingDot';
 import { SectionHeader } from '@/components/SectionHeader';
 import { SkeletonList } from '@/components/Skeleton';
@@ -152,7 +152,7 @@ export default function DockerTabScreen() {
     return (
       <FadeIn key={container.id} delay={index * 30}>
         <Pressable onPress={() => handleTerminal(container)}>
-          <GlassCard style={styles.containerCard}>
+          <Card style={styles.containerCard}>
             <View style={styles.containerHeader}>
               <PulsingDot
                 color={isRunning ? palette.accent : palette.muted}
@@ -258,7 +258,7 @@ export default function DockerTabScreen() {
                 </Pressable>
               )}
             </View>
-          </GlassCard>
+          </Card>
         </Pressable>
       </FadeIn>
     );
@@ -268,7 +268,7 @@ export default function DockerTabScreen() {
     return (
       <Screen>
         <FadeIn delay={100}>
-          <GlassCard style={styles.emptyCard}>
+          <Card style={styles.emptyCard}>
             <View style={styles.emptyIconContainer}>
               <AppText variant="title" style={styles.emptyIcon}>
                 {/* Container icon placeholder */}
@@ -283,7 +283,7 @@ export default function DockerTabScreen() {
                 Add Host
               </AppText>
             </Pressable>
-          </GlassCard>
+          </Card>
         </FadeIn>
       </Screen>
     );
@@ -303,7 +303,7 @@ export default function DockerTabScreen() {
     return (
       <Screen>
         <FadeIn delay={100}>
-          <GlassCard style={styles.emptyCard}>
+          <Card style={styles.emptyCard}>
             <AppText variant="subtitle">No Docker available</AppText>
             <AppText variant="body" tone="muted" style={styles.emptyBody}>
               Docker is not available on any of your connected hosts, or no containers exist.
@@ -313,7 +313,7 @@ export default function DockerTabScreen() {
                 Refresh
               </AppText>
             </Pressable>
-          </GlassCard>
+          </Card>
         </FadeIn>
       </Screen>
     );
@@ -406,7 +406,7 @@ export default function DockerTabScreen() {
 
         {filteredRunning.length === 0 && filteredStopped.length === 0 && hostFilter && (
           <FadeIn>
-            <GlassCard style={styles.emptyFiltered}>
+            <Card style={styles.emptyFiltered}>
               <AppText variant="body" tone="muted">
                 No containers on this host
               </AppText>
@@ -415,7 +415,7 @@ export default function DockerTabScreen() {
                   Show all
                 </AppText>
               </Pressable>
-            </GlassCard>
+            </Card>
           </FadeIn>
         )}
       </ScrollView>

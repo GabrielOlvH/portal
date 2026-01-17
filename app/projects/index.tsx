@@ -10,7 +10,7 @@ import { useRouter } from 'expo-router';
 import { Screen } from '@/components/Screen';
 import { AppText } from '@/components/AppText';
 import { FadeIn } from '@/components/FadeIn';
-import { GlassCard } from '@/components/GlassCard';
+import { Card } from '@/components/Card';
 import { useStore } from '@/lib/store';
 import { useProjects } from '@/lib/projects-store';
 import { palette, theme, hostAccents } from '@/lib/theme';
@@ -93,7 +93,7 @@ export default function ProjectsScreen() {
                         key={project.id}
                         onPress={() => router.push(`/projects/${project.id}/commands`)}
                       >
-                        <GlassCard style={styles.projectCard}>
+                        <Card style={styles.projectCard}>
                           <View style={styles.projectInfo}>
                             <AppText variant="subtitle">{project.name}</AppText>
                             <AppText variant="mono" tone="muted" numberOfLines={1}>
@@ -106,7 +106,7 @@ export default function ProjectsScreen() {
                               </AppText>
                             )}
                           </View>
-                        </GlassCard>
+                        </Card>
                       </Pressable>
                     ))}
                   </View>

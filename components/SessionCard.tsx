@@ -2,7 +2,7 @@ import React, { useCallback } from 'react';
 import { Alert, Pressable, StyleSheet, View, Platform } from 'react-native';
 import { GitBranch, Pause, Play, StopCircle } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
-import { GlassCard } from '@/components/GlassCard';
+import { Card } from '@/components/Card';
 import { AppText } from '@/components/AppText';
 import { theme, palette } from '@/lib/theme';
 import type { Host, Session } from '@/lib/types';
@@ -66,7 +66,7 @@ export function SessionCard({
         pressed && styles.pressed,
       ]}
     >
-      <GlassCard style={styles.card}>
+      <Card style={styles.card}>
         <View style={[styles.colorBar, { backgroundColor: hostColor }]} />
         <View style={styles.content}>
           <View style={styles.header}>
@@ -104,7 +104,7 @@ export function SessionCard({
             </View>
           )}
         </View>
-      </GlassCard>
+      </Card>
     </Pressable>
   );
 }

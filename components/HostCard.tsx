@@ -2,7 +2,7 @@ import React from 'react';
 import { View, StyleSheet, Pressable, Platform } from 'react-native';
 import { Terminal, Box } from 'lucide-react-native';
 import { AppText } from '@/components/AppText';
-import { GlassCard } from '@/components/GlassCard';
+import { Card } from '@/components/Card';
 import { PulsingDot } from '@/components/PulsingDot';
 import { palette, theme } from '@/lib/theme';
 import { Host } from '@/lib/types';
@@ -67,7 +67,7 @@ export function HostCard({
 
   return (
     <Pressable onPress={onPress}>
-      <GlassCard style={styles.card}>
+      <Card style={styles.card}>
         {/* Header Row: Color dot, name, status badge */}
         <View style={styles.header}>
           <View style={[styles.colorDot, { backgroundColor: hostColor }]} />
@@ -180,7 +180,7 @@ export function HostCard({
             </AppText>
           </Pressable>
         </View>
-      </GlassCard>
+      </Card>
     </Pressable>
   );
 }
