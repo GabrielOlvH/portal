@@ -71,9 +71,12 @@ export function HostCard({
   sessionCount,
   containerCount,
   metrics,
+  updateStatus,
+  isUpdating,
   onPress,
   onTerminal,
   onDocker,
+  onUpdate,
 }: HostCardProps) {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -309,6 +312,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   actions: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: theme.spacing.sm,
     marginTop: theme.spacing.xs,
   },

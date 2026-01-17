@@ -1,5 +1,0 @@
-
-> start
-> tsx index.ts
-
-tmux agent listening on http://localhost:4020

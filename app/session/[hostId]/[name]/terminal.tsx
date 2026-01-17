@@ -14,7 +14,6 @@ import { ChevronDown, ChevronUp, ChevronLeft, ChevronRight, OctagonX, ClipboardP
 import * as Haptics from 'expo-haptics';
 import * as Clipboard from 'expo-clipboard';
 import * as ImagePicker from 'expo-image-picker';
-import { useQuery } from '@tanstack/react-query';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   useSharedValue,
@@ -27,8 +26,8 @@ import { Screen } from '@/components/Screen';
 import { AppText } from '@/components/AppText';
 import { useStore } from '@/lib/store';
 import { ThemeColors, useTheme } from '@/lib/useTheme';
-import { getSessionInsights, getSessions, uploadImage } from '@/lib/api';
-import { SessionInsights } from '@/lib/types';
+import { useHostLive } from '@/lib/live';
+import { uploadImage } from '@/lib/api';
 
 const helperKeys: Array<{ label: string; data: string; icon?: React.ComponentType<{ size: number; color: string }> }> = [
   { label: 'Esc', data: '\u001b' },
@@ -299,12 +298,8 @@ export default function SessionTerminalScreen() {
   );
   const previousSessionRef = useRef<string | null>(null);
 
-  const { data: sessions = [] } = useQuery({
-    queryKey: ['sessions', params.hostId],
-    queryFn: async () => (host ? getSessions(host) : []),
-    enabled: !!host,
-    staleTime: 60_000,
-  });
+  const { state, refresh } = useHostLive(host, { sessions: true });
+  const sessions = state?.sessions ?? [];
 
   const initialIndex = sessions.findIndex((s) => s.name === initialSessionName);
 
@@ -361,6 +356,12 @@ export default function SessionTerminalScreen() {
       setCurrentSessionName(sessions[index].name);
     }
   }, [sessions]);
+
+  useEffect(() => {
+    if (sessions.length === 0) return;
+    if (currentSessionName && sessions.some((session) => session.name === currentSessionName)) return;
+    setCurrentSessionName(sessions[0].name);
+  }, [sessions, currentSessionName]);
 
   const panGesture = useMemo(() => {
     const sessionCount = sessions.length;
@@ -507,6 +508,10 @@ export default function SessionTerminalScreen() {
                           setIsSelecting(true);
                         } else if (payload?.type === 'selectionEnd') {
                           setIsSelecting(false);
+                        } else if (payload?.type === 'status') {
+                          if (payload.state === 'connected' || payload.state === 'disconnected') {
+                            refresh();
+                          }
                         }
                       } catch {}
                     }}
