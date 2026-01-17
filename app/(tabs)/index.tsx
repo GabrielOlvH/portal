@@ -1,6 +1,6 @@
 import { AppText } from '@/components/AppText';
 import { FadeIn } from '@/components/FadeIn';
-import { GlassCard } from '@/components/GlassCard';
+import { Card } from '@/components/Card';
 import { PlusIcon, ServerIcon, TerminalIcon } from '@/components/icons/HomeIcons';
 import { useLaunchSheet } from '@/lib/launch-sheet';
 import { PulsingDot } from '@/components/PulsingDot';
@@ -58,7 +58,7 @@ function UsageCard({ provider, usage, color }: UsageCardProps) {
   if (dailyLeft == null && weeklyLeft == null) return null;
 
   return (
-    <GlassCard style={styles.usageCard}>
+    <Card style={styles.usageCard}>
       <AppText variant="caps" style={[styles.usageProvider, { color }]}>
         {provider}
       </AppText>
@@ -112,7 +112,7 @@ function UsageCard({ provider, usage, color }: UsageCardProps) {
           </View>
         </View>
       )}
-    </GlassCard>
+    </Card>
   );
 }
 import {
@@ -206,8 +206,10 @@ export default function SessionsScreen() {
   const aggregatedUsage = useMemo(() => {
     let claude: ProviderUsage | null = null;
     let codex: ProviderUsage | null = null;
+    let copilot: ProviderUsage | null = null;
     let claudePolled = 0;
     let codexPolled = 0;
+    let copilotPolled = 0;
 
     sessions.forEach((session) => {
       const insights = session.insights;
@@ -222,9 +224,13 @@ export default function SessionsScreen() {
         codex = insights.codex;
         codexPolled = polled;
       }
+      if (insights.copilot && polled > copilotPolled) {
+        copilot = insights.copilot;
+        copilotPolled = polled;
+      }
     });
 
-    return { claude, codex };
+    return { claude, codex, copilot };
   }, [sessions]);
 
   const handleKillSession = useCallback(
@@ -328,7 +334,7 @@ export default function SessionsScreen() {
           }
         >
           {/* Usage Cards */}
-          {(aggregatedUsage.claude || aggregatedUsage.codex) && (
+          {(aggregatedUsage.claude || aggregatedUsage.codex || aggregatedUsage.copilot) && (
             <FadeIn>
               <View style={styles.usageCardsRow}>
                 {aggregatedUsage.claude && (
@@ -337,13 +343,16 @@ export default function SessionsScreen() {
                 {aggregatedUsage.codex && (
                   <UsageCard provider="Codex" usage={aggregatedUsage.codex} color="#10B981" />
                 )}
+                {aggregatedUsage.copilot && (
+                  <UsageCard provider="Copilot" usage={aggregatedUsage.copilot} color="#6366F1" />
+                )}
               </View>
             </FadeIn>
           )}
 
           {hosts.length === 0 ? (
             <FadeIn delay={100}>
-              <GlassCard style={styles.emptyCard}>
+              <Card style={styles.emptyCard}>
                 <View style={styles.emptyIconContainer}>
                   <View style={styles.emptyIconRing}>
                     <ServerIcon size={28} color={palette.accent} />
@@ -365,7 +374,7 @@ export default function SessionsScreen() {
                     Add your first host
                   </AppText>
                 </Pressable>
-              </GlassCard>
+              </Card>
             </FadeIn>
           ) : isPending ? (
             <FadeIn delay={100}>
@@ -373,12 +382,12 @@ export default function SessionsScreen() {
             </FadeIn>
           ) : sessions.length === 0 && !isManualRefresh ? (
             <FadeIn delay={100}>
-              <GlassCard style={styles.emptySmall}>
+              <Card style={styles.emptySmall}>
                 <TerminalIcon size={24} color={palette.muted} />
                 <AppText variant="label" tone="muted" style={styles.emptySmallText}>
                   No active sessions
                 </AppText>
-              </GlassCard>
+              </Card>
             </FadeIn>
           ) : (
             <View style={styles.sessionsList}>
@@ -443,7 +452,7 @@ export default function SessionsScreen() {
                               pressed && styles.sessionCardPressed,
                             ]}
                           >
-                            <GlassCard style={styles.sessionCard}>
+                            <Card style={styles.sessionCard}>
                               <View style={styles.sessionHeader}>
                                 <View
                                   style={[
@@ -498,7 +507,7 @@ export default function SessionsScreen() {
                                   )}
                                 </View>
                               </View>
-                            </GlassCard>
+                            </Card>
                           </Pressable>
                         );
                       })}
@@ -550,10 +559,12 @@ const styles = StyleSheet.create({
   },
   usageCardsRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 10,
   },
   usageCard: {
     flex: 1,
+    minWidth: 140,
     padding: 12,
     gap: 10,
   },

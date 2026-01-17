@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "start": "tsx index.ts",
-    "dev": "tsx watch index.ts"
+    "dev": "tsx watch index.ts",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@hono/node-server": "^1.13.2",
@@ -14,6 +15,9 @@
     "ws": "^8.18.0"
   },
   "devDependencies": {
-    "tsx": "^4.19.2"
+    "@types/node": "^22.10.0",
+    "@types/ws": "^8.5.13",
+    "tsx": "^4.19.2",
+    "typescript": "^5.9.2"
   }
 }

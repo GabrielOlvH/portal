@@ -200,3 +200,37 @@ export async function checkForUpdate(host: Host): Promise<UpdateStatus> {
 export async function applyUpdate(host: Host): Promise<{ success: boolean; message: string }> {
   return request(host, '/update/apply', { method: 'POST' });
 }
+
+export type CopilotAuthStartResponse = {
+  userCode: string;
+  verificationUri: string;
+  expiresIn: number;
+  interval: number;
+};
+
+export type CopilotAuthPollResponse = {
+  status: 'pending' | 'success' | 'expired';
+  token?: string;
+  error?: string;
+};
+
+export type CopilotAuthStatusResponse = {
+  authenticated: boolean;
+  error?: string;
+};
+
+export async function startCopilotAuth(host: Host): Promise<CopilotAuthStartResponse> {
+  return request(host, '/copilot/auth/start', { method: 'POST' });
+}
+
+export async function pollCopilotAuth(host: Host): Promise<CopilotAuthPollResponse> {
+  return request(host, '/copilot/auth/poll', { method: 'GET' });
+}
+
+export async function getCopilotAuthStatus(host: Host): Promise<CopilotAuthStatusResponse> {
+  return request(host, '/copilot/auth/status', { method: 'GET' });
+}
+
+export async function logoutCopilot(host: Host): Promise<{ ok: boolean }> {
+  return request(host, '/copilot/auth', { method: 'DELETE' });
+}

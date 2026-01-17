@@ -1,53 +1,32 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { execFileSync } from 'node:child_process';
 import { oauthCache } from './state';
 import { formatOAuthError } from './utils';
 
-type CopilotHostEntry = {
-  oauth_token?: string;
-};
+const TOKEN_DIR = path.join(os.homedir(), '.ter');
+const TOKEN_FILE = path.join(TOKEN_DIR, 'copilot-token');
 
 type CopilotAuthResult = { data: any } | { error: string };
 
-
-function resolveCopilotToken(): string | null {
-  const envToken = (process.env.COPILOT_API_TOKEN || '').trim();
-  if (envToken) return envToken;
-  const home = os.homedir();
-  const candidates = [
-    path.join(home, '.config', 'github-copilot', 'hosts.json'),
-    path.join(home, '.github-copilot', 'hosts.json'),
-    path.join(home, '.copilot', 'hosts.json'),
-    path.join(home, '.copilit', 'hosts.json'),
-  ];
-  for (const candidate of candidates) {
-    try {
-      const raw = fs.readFileSync(candidate, 'utf8');
-      const parsed = JSON.parse(raw) as Record<string, CopilotHostEntry> | null;
-      const values = Object.values(parsed || {});
-      for (const entry of values) {
-        if (entry && typeof entry.oauth_token === 'string' && entry.oauth_token.trim()) {
-          return entry.oauth_token.trim();
-        }
-      }
-    } catch {}
+export function getStoredToken(): string | null {
+  try {
+    const token = fs.readFileSync(TOKEN_FILE, 'utf8').trim();
+    return token || null;
+  } catch {
+    return null;
   }
+}
 
-  const ghHosts = path.join(home, '.config', 'gh', 'hosts.yml');
-  try {
-    const raw = fs.readFileSync(ghHosts, 'utf8');
-    const match = raw.match(/oauth_token:\s*([^\s]+)/);
-    if (match && match[1]) return match[1].trim();
-  } catch {}
+export async function storeToken(token: string): Promise<void> {
+  await fs.promises.mkdir(TOKEN_DIR, { recursive: true });
+  await fs.promises.writeFile(TOKEN_FILE, token, { mode: 0o600 });
+}
 
+export async function clearToken(): Promise<void> {
   try {
-    const raw = execFileSync('gh', ['auth', 'token'], { timeout: 3000 });
-    const token = raw.toString().trim();
-    if (token) return token;
+    await fs.promises.unlink(TOKEN_FILE);
   } catch {}
-  return null;
 }
 
 async function fetchCopilotUsage(token: string): Promise<CopilotAuthResult> {
@@ -107,7 +86,7 @@ export async function getCopilotStatus(): Promise<{ session?: { percentLeft?: nu
   if (oauthCache.copilot.error && now - oauthCache.copilot.ts < 60000) {
     return { error: oauthCache.copilot.error };
   }
-  const token = resolveCopilotToken();
+  const token = getStoredToken();
   if (!token) {
     oauthCache.copilot = { ts: now, value: null, error: 'copilot token missing' };
     return { error: 'copilot token missing' };
