@@ -48,7 +48,7 @@ export async function fetchSessions(options: SessionsOptions = {}) {
     return withPreview;
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    if (message.includes('no server running')) return [];
+    if (message.includes('no server running') || message.includes('No such file or directory')) return [];
     throw err;
   }
 }
