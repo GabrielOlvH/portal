@@ -132,6 +132,10 @@ function buildTerminalHtml(
 
       let socket = null;
       let reconnectTimer = null;
+      let hasFitted = false;
+      let fitScheduled = false;
+      let lastCols = 0;
+      let lastRows = 0;
 
       function sendToRN(payload) {
         if (window.ReactNativeWebView) {
@@ -139,11 +143,37 @@ function buildTerminalHtml(
         }
       }
 
+      function sendResize() {
+        if (socket?.readyState !== 1) return;
+        const cols = term.cols;
+        const rows = term.rows;
+        if (!cols || !rows) return;
+        if (cols === lastCols && rows === lastRows) return;
+        lastCols = cols;
+        lastRows = rows;
+        socket.send(JSON.stringify({ type: 'resize', cols, rows }));
+      }
+
+      function scheduleFit() {
+        if (fitScheduled) return;
+        fitScheduled = true;
+        requestAnimationFrame(() => {
+          fitScheduled = false;
+          fitAddon.fit();
+          hasFitted = true;
+          sendResize();
+        });
+      }
+
       function connect() {
         socket = new WebSocket('${wsUrl}');
         socket.onopen = () => {
           sendToRN({ type: 'status', state: 'connected' });
-          setTimeout(() => { fitAddon.fit(); sendResize(); }, 50);
+          if (hasFitted) {
+            sendResize();
+          } else {
+            setTimeout(scheduleFit, 50);
+          }
         };
         socket.onmessage = (event) => term.write(event.data);
         socket.onclose = () => {
@@ -152,12 +182,6 @@ function buildTerminalHtml(
           reconnectTimer = setTimeout(connect, 1000);
         };
         socket.onerror = () => sendToRN({ type: 'status', state: 'error' });
-      }
-
-      function sendResize() {
-        if (socket?.readyState === 1) {
-          socket.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }));
-        }
       }
 
       term.onData((data) => {
@@ -173,7 +197,7 @@ function buildTerminalHtml(
       };
       window.__focusTerminal = () => term.focus();
       window.__blurTerminal = () => term.blur();
-      window.__fitTerminal = () => { fitAddon.fit(); sendResize(); };
+      window.__fitTerminal = () => { scheduleFit(); };
       window.__copySelection = () => {
         const text = term.getSelection();
         if (text && text.trim().length > 0) {
@@ -309,7 +333,7 @@ function buildTerminalHtml(
         }
       }, { passive: true });
 
-      window.addEventListener('resize', () => { fitAddon.fit(); sendResize(); });
+      window.addEventListener('resize', () => { scheduleFit(); });
       connect();
     </script>
   </body>

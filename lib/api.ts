@@ -234,7 +234,7 @@ export async function sendTestPushNotification(
   return request(host, '/notifications/test', {
     method: 'POST',
     body: JSON.stringify(payload ?? {}),
-  });
+  }, 15000);
 }
 
 export type CopilotAuthStartResponse = {

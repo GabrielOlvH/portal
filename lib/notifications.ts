@@ -108,12 +108,34 @@ export async function setupNotifications(): Promise<NotificationSetup> {
 
 export async function registerNotificationsForHosts(hosts: Host[]): Promise<void> {
   if (hosts.length === 0) return;
+  await registerNotificationsForHostsWithResult(hosts);
+}
+
+export type RegistrationOutcome = {
+  hostId: string;
+  ok: boolean;
+  error?: string;
+};
+
+export async function registerNotificationsForHostsWithResult(
+  hosts: Host[]
+): Promise<RegistrationOutcome[]> {
+  if (hosts.length === 0) return [];
   const { status, deviceId, expoPushToken } = await setupNotifications();
-  if (status !== 'granted' || !deviceId || !expoPushToken) return;
+  if (status !== 'granted') {
+    return hosts.map((host) => ({ hostId: host.id, ok: false, error: 'permissions-not-granted' }));
+  }
+  if (!Device.isDevice) {
+    return hosts.map((host) => ({ hostId: host.id, ok: false, error: 'physical-device-required' }));
+  }
+  if (!deviceId || !expoPushToken) {
+    return hosts.map((host) => ({ hostId: host.id, ok: false, error: 'push-token-unavailable' }));
+  }
 
   const registry = await loadRegistry();
   const hostIds = new Set(hosts.map((host) => host.id));
   const nextRegistry: RegistrationRegistry = {};
+  const outcomes: RegistrationOutcome[] = [];
 
   for (const [id, token] of Object.entries(registry)) {
     if (hostIds.has(id)) nextRegistry[id] = token;
@@ -121,7 +143,10 @@ export async function registerNotificationsForHosts(hosts: Host[]): Promise<void
 
   await Promise.all(
     hosts.map(async (host) => {
-      if (nextRegistry[host.id] === expoPushToken) return;
+      if (nextRegistry[host.id] === expoPushToken) {
+        outcomes.push({ hostId: host.id, ok: true });
+        return;
+      }
       try {
         await registerNotificationDevice(host, {
           deviceId,
@@ -129,11 +154,19 @@ export async function registerNotificationsForHosts(hosts: Host[]): Promise<void
           platform: Platform.OS === 'ios' ? 'ios' : 'android',
         });
         nextRegistry[host.id] = expoPushToken;
-      } catch {}
+        outcomes.push({ hostId: host.id, ok: true });
+      } catch (err) {
+        outcomes.push({
+          hostId: host.id,
+          ok: false,
+          error: err instanceof Error ? err.message : 'registration-failed',
+        });
+      }
     })
   );
 
   await saveRegistry(nextRegistry);
+  return outcomes;
 }
 
 export async function unregisterNotificationsForHosts(hosts: Host[]): Promise<void> {

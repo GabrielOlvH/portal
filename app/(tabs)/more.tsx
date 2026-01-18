@@ -6,7 +6,7 @@ import { ChevronRight } from 'lucide-react-native';
 
 import { useStore } from '@/lib/store';
 import { getCopilotAuthStatus, logoutCopilot, getUsage, sendTestPushNotification } from '@/lib/api';
-import { sendTestNotification } from '@/lib/notifications';
+import { registerNotificationsForHostsWithResult, sendTestNotification } from '@/lib/notifications';
 import type { ProviderUsage, ThemeSetting } from '@/lib/types';
 
 import { Screen } from '@/components/Screen';
@@ -364,6 +364,29 @@ export default function MoreTabScreen() {
               }
               setTestPushLoading(true);
               try {
+                const outcomes = await registerNotificationsForHostsWithResult(hosts);
+                const failed = outcomes.find((item) => !item.ok);
+                if (failed?.error === 'physical-device-required') {
+                  Alert.alert('Physical device required', 'Expo push tokens are not available on simulators.');
+                  setTestPushLoading(false);
+                  return;
+                }
+                if (failed?.error === 'permissions-not-granted') {
+                  Alert.alert('Permission not granted', 'Enable notifications in system settings and try again.');
+                  setTestPushLoading(false);
+                  return;
+                }
+                if (failed?.error === 'push-token-unavailable') {
+                  Alert.alert('Push token unavailable', 'Try restarting the app or ensure this is an Expo Go project.');
+                  setTestPushLoading(false);
+                  return;
+                }
+                if (failed?.error && failed?.error !== 'registration-failed') {
+                  Alert.alert('Registration failed', failed.error);
+                  setTestPushLoading(false);
+                  return;
+                }
+
                 const result = await sendTestPushNotification(host, {
                   title: 'Bridge',
                   body: 'Test push notification',

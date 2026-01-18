@@ -68,6 +68,10 @@ function buildTerminalHtml(
       term.open(document.getElementById('terminal'));
 
       let socket = null;
+      let hasFitted = false;
+      let fitScheduled = false;
+      let lastCols = 0;
+      let lastRows = 0;
 
       function sendToRN(payload) {
         if (window.ReactNativeWebView) {
@@ -75,18 +79,38 @@ function buildTerminalHtml(
         }
       }
 
+      function sendResize() {
+        if (socket?.readyState !== 1) return;
+        const cols = term.cols;
+        const rows = term.rows;
+        if (!cols || !rows) return;
+        if (cols === lastCols && rows === lastRows) return;
+        lastCols = cols;
+        lastRows = rows;
+        socket.send(JSON.stringify({ type: 'resize', cols, rows }));
+      }
+
+      function scheduleFit() {
+        if (fitScheduled) return;
+        fitScheduled = true;
+        requestAnimationFrame(() => {
+          fitScheduled = false;
+          fitAddon.fit();
+          hasFitted = true;
+          sendResize();
+        });
+      }
+
       function connect() {
         socket = new WebSocket('${wsUrl}');
         socket.onopen = () => {
-          setTimeout(() => { fitAddon.fit(); sendResize(); }, 50);
+          if (hasFitted) {
+            sendResize();
+          } else {
+            setTimeout(scheduleFit, 50);
+          }
         };
         socket.onmessage = (event) => term.write(event.data);
-      }
-
-      function sendResize() {
-        if (socket?.readyState === 1) {
-          socket.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }));
-        }
       }
 
       term.onData((data) => {
@@ -95,7 +119,7 @@ function buildTerminalHtml(
         }
       });
 
-      window.__fitTerminal = () => { fitAddon.fit(); sendResize(); };
+      window.__fitTerminal = () => { scheduleFit(); };
       window.__sendCtrlC = () => {
         if (socket?.readyState === 1) socket.send(JSON.stringify({ type: 'input', data: '\\u0003' }));
       };
@@ -187,7 +211,7 @@ function buildTerminalHtml(
         }
       }, { passive: true });
 
-      window.addEventListener('resize', () => { fitAddon.fit(); sendResize(); });
+      window.addEventListener('resize', () => { scheduleFit(); });
       connect();
     </script>
   </body>

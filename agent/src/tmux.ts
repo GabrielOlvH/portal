@@ -55,7 +55,16 @@ export function requireName(value: unknown): string {
 
 export async function capturePane(target: string, lines = 12): Promise<string[]> {
   const count = Number.isFinite(lines) && lines > 0 ? Math.min(lines, 200) : 12;
-  const raw = await runTmux(['capture-pane', '-p', '-e', '-t', sessionTarget(target), '-S', `-${count}`]);
+  const raw = await runTmux([
+    'capture-pane',
+    '-J',
+    '-p',
+    '-e',
+    '-t',
+    sessionTarget(target),
+    '-S',
+    `-${count}`,
+  ]);
   if (!raw) return [];
   return raw.split('\n');
 }
