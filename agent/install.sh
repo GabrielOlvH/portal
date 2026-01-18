@@ -223,6 +223,7 @@ name="bridge-agent"
 description="Bridge Agent - Terminal Management Server"
 command="$(which node)"
 command_args="$INSTALL_DIR/agent/node_modules/.bin/tsx $INSTALL_DIR/agent/src/index.ts"
+command_user="$USER"
 command_background=true
 pidfile="/run/\${RC_SVCNAME}.pid"
 directory="$INSTALL_DIR/agent"
