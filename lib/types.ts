@@ -41,8 +41,15 @@ export type UsageCardsVisibility = {
   copilot: boolean;
 };
 
+export type ThemeSetting = 'light' | 'dark' | 'system';
+
 export type AppPreferences = {
   usageCards: UsageCardsVisibility;
+  theme: ThemeSetting;
+  notifications: {
+    pushEnabled: boolean;
+    liveEnabled: boolean;
+  };
 };
 
 export type HostStatus = 'unknown' | 'checking' | 'online' | 'offline';

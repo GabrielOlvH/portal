@@ -19,7 +19,7 @@ type CardStatus = 'online' | 'offline' | 'checking';
 export default function HostsTabScreen() {
   const router = useRouter();
   const { colors } = useTheme();
-  const { hosts, updateHostLastSeen } = useStore();
+  const { hosts, updateHostLastSeen, ready } = useStore();
   const [manualRefresh, setManualRefresh] = useState(false);
   const [updateStatusMap, setUpdateStatusMap] = useState<Record<string, UpdateStatus>>({});
   const [updatingHosts, setUpdatingHosts] = useState<Record<string, boolean>>({});
@@ -57,6 +57,7 @@ export default function HostsTabScreen() {
       Object.values(statusMap).every((s) => s === 'checking'),
     [hosts, statusMap]
   );
+  const isBooting = !ready;
 
   const sessionCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -148,7 +149,7 @@ export default function HostsTabScreen() {
     <Screen>
       <View style={styles.header}>
         <AppText variant="caps" tone="muted">
-          {onlineCount}/{hosts.length} online
+          {ready ? `${onlineCount}/${hosts.length} online` : 'Loading...'}
         </AppText>
         <Pressable style={styles.addButton} onPress={() => router.push('/hosts/new')}>
           <AppText variant="subtitle" style={styles.addButtonText}>
@@ -172,7 +173,11 @@ export default function HostsTabScreen() {
           />
         }
       >
-        {hosts.length === 0 ? (
+        {isBooting ? (
+          <FadeIn delay={100}>
+            <SkeletonList type="host" count={3} />
+          </FadeIn>
+        ) : hosts.length === 0 ? (
           <FadeIn style={styles.empty}>
             <View style={styles.emptyIcon}>
               <AppText variant="title" style={styles.emptyIconText}>

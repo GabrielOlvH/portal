@@ -30,6 +30,7 @@ import { dockerContainerAction } from '@/lib/api';
 import { theme } from '@/lib/theme';
 import { ThemeColors, useTheme } from '@/lib/useTheme';
 import { Host } from '@/lib/types';
+import { useStore } from '@/lib/store';
 
 type HostFilter = string | null;
 
@@ -37,6 +38,7 @@ export default function DockerTabScreen() {
   const router = useRouter();
   const { colors } = useTheme();
   const params = useLocalSearchParams<{ hostId?: string }>();
+  const { ready } = useStore();
   const {
     containers,
     running,
@@ -268,6 +270,16 @@ export default function DockerTabScreen() {
       </FadeIn>
     );
   };
+
+  if (!ready) {
+    return (
+      <Screen>
+        <FadeIn delay={100}>
+          <SkeletonList type="container" count={4} />
+        </FadeIn>
+      </Screen>
+    );
+  }
 
   if (hosts.length === 0) {
     return (

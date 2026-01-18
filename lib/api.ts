@@ -193,12 +193,38 @@ export type UpdateStatus = {
   error?: string;
 };
 
+export type NotificationDevicePayload = {
+  deviceId: string;
+  expoPushToken: string;
+  platform: 'ios' | 'android';
+};
+
 export async function checkForUpdate(host: Host): Promise<UpdateStatus> {
   return request(host, '/update/check', { method: 'GET' });
 }
 
 export async function applyUpdate(host: Host): Promise<{ success: boolean; message: string }> {
   return request(host, '/update/apply', { method: 'POST' });
+}
+
+export async function registerNotificationDevice(
+  host: Host,
+  payload: NotificationDevicePayload
+): Promise<{ ok: boolean }> {
+  return request(host, '/notifications/register', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function unregisterNotificationDevice(
+  host: Host,
+  deviceId: string
+): Promise<{ ok: boolean }> {
+  return request(host, '/notifications/register', {
+    method: 'DELETE',
+    body: JSON.stringify({ deviceId }),
+  });
 }
 
 export type CopilotAuthStartResponse = {

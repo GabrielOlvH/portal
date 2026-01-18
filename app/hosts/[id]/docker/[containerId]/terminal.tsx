@@ -10,6 +10,11 @@ import { AppText } from '@/components/AppText';
 import { useStore } from '@/lib/store';
 import { ThemeColors, useTheme } from '@/lib/useTheme';
 
+type WebViewSource = { html: string };
+type SourceCacheEntry = {
+  key: string;
+  source: WebViewSource;
+};
 
 function buildDockerWsUrl(host: { baseUrl: string; authToken?: string }, containerId: string): string {
   try {
@@ -206,7 +211,23 @@ export default function DockerTerminalScreen() {
     }),
     [colors]
   );
-  const source = useMemo(() => ({ html: buildTerminalHtml(wsUrl, terminalTheme) }), [wsUrl, terminalTheme]);
+  const sourceCache = useRef<SourceCacheEntry | null>(null);
+  const source = useMemo(() => {
+    if (!wsUrl) return undefined;
+    const cacheKey = `${wsUrl}|${terminalTheme.background}|${terminalTheme.foreground}|${terminalTheme.cursor}`;
+    if (!sourceCache.current || sourceCache.current.key !== cacheKey) {
+      sourceCache.current = {
+        key: cacheKey,
+        source: { html: buildTerminalHtml(wsUrl, terminalTheme) },
+      };
+    }
+    return sourceCache.current.source;
+  }, [
+    wsUrl,
+    terminalTheme.background,
+    terminalTheme.foreground,
+    terminalTheme.cursor,
+  ]);
   const webRef = useRef<WebView | null>(null);
   const styles = useMemo(() => createStyles(colors), [colors]);
 

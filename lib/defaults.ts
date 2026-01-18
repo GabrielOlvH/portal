@@ -20,5 +20,10 @@ export function defaultPreferences(): AppPreferences {
       codex: true,
       copilot: true,
     },
+    theme: 'system',
+    notifications: {
+      pushEnabled: true,
+      liveEnabled: true,
+    },
   };
 }

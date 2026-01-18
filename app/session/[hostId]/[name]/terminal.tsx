@@ -48,6 +48,10 @@ type HelperKey = {
   icon?: HelperKeyIcon;
 };
 type WebViewSource = { html: string };
+type SourceCacheEntry = {
+  key: string;
+  source: WebViewSource;
+};
 type TerminalStyles = {
   header: ViewStyle;
   headerFloating: ViewStyle;
@@ -326,7 +330,7 @@ export default function SessionTerminalScreen(): React.ReactElement {
   const [helperHeight, setHelperHeight] = useState(0);
   const [isSelecting, setIsSelecting] = useState(false);
   const webRefs = useRef<Record<string, WebView | null>>({});
-  const sourceCache = useRef<Record<string, WebViewSource>>({});
+  const sourceCache = useRef<Record<string, SourceCacheEntry>>({});
   const styles = useMemo(() => createStyles(colors), [colors]);
   const terminalTheme = useMemo(
     () => ({
@@ -343,14 +347,37 @@ export default function SessionTerminalScreen(): React.ReactElement {
   const sessionCount = sessions.length;
   const initialIndex = sessions.findIndex((session) => session.name === initialSessionName);
 
-  // Precompute stable source objects
-  useMemo(() => {
-    if (!host) return;
-    sessions.forEach((s) => {
-      const url = buildWsUrl(host, s.name);
-      if (url) sourceCache.current[s.name] = { html: buildTerminalHtml(url, terminalTheme) };
+  const themeKey = useMemo(
+    () => `${terminalTheme.background}|${terminalTheme.foreground}|${terminalTheme.cursor}`,
+    [terminalTheme.background, terminalTheme.foreground, terminalTheme.cursor]
+  );
+
+  const getSourceForSession = useCallback(
+    (sessionName: string) => {
+      if (!host) return undefined;
+      const wsUrl = buildWsUrl(host, sessionName);
+      if (!wsUrl) return undefined;
+      const cacheKey = `${wsUrl}|${themeKey}`;
+      const cached = sourceCache.current[sessionName];
+      if (!cached || cached.key !== cacheKey) {
+        sourceCache.current[sessionName] = {
+          key: cacheKey,
+          source: { html: buildTerminalHtml(wsUrl, terminalTheme) },
+        };
+      }
+      return sourceCache.current[sessionName]?.source;
+    },
+    [host, terminalTheme, themeKey]
+  );
+
+  useEffect(() => {
+    const active = new Set(sessions.map((session) => session.name));
+    Object.keys(sourceCache.current).forEach((name) => {
+      if (!active.has(name)) {
+        delete sourceCache.current[name];
+      }
     });
-  }, [sessions, host, terminalTheme]);
+  }, [sessions]);
 
   // Keyboard handling
   useEffect(() => {
@@ -521,7 +548,7 @@ export default function SessionTerminalScreen(): React.ReactElement {
                 <View style={[styles.terminal, keyboardInset > 0 && isCurrent && { paddingBottom: keyboardInset + helperHeight }]}>
                   <WebView
                     ref={(ref) => { webRefs.current[session.name] = ref; }}
-                    source={sourceCache.current[session.name]}
+                    source={getSourceForSession(session.name)}
                     originWhitelist={['*']}
                     scrollEnabled={false}
                     overScrollMode="never"

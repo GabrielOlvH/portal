@@ -1,4 +1,6 @@
+import React, { createContext, useContext, useMemo } from 'react';
 import { useColorScheme } from 'react-native';
+import type { ThemeSetting } from '@/lib/types';
 
 export const lightColors = {
   // Backgrounds
@@ -80,9 +82,29 @@ export const darkColors = {
 
 export type ThemeColors = typeof lightColors;
 
+const ThemeContext = createContext<ThemeSetting>('system');
+
+export function ThemeSettingProvider({
+  value,
+  children,
+}: {
+  value: ThemeSetting;
+  children: React.ReactNode;
+}) {
+  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
+}
+
 export function useTheme() {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
+  const systemScheme = useColorScheme();
+  const themeSetting = useContext(ThemeContext);
+
+  const isDark = useMemo(() => {
+    if (themeSetting === 'system') {
+      return systemScheme === 'dark';
+    }
+    return themeSetting === 'dark';
+  }, [themeSetting, systemScheme]);
+
   const colors = isDark ? darkColors : lightColors;
 
   return {

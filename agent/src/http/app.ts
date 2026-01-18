@@ -5,6 +5,7 @@ import { registerCopilotRoutes } from './routes/copilot';
 import { registerCoreRoutes } from './routes/core';
 import { registerDockerRoutes } from './routes/docker';
 import { registerFileRoutes } from './routes/files';
+import { registerNotificationRoutes } from './routes/notifications';
 import { registerPortRoutes } from './routes/ports';
 import { registerSessionRoutes } from './routes/sessions';
 import { registerUpdateRoutes } from './routes/update';
@@ -27,6 +28,7 @@ export function buildApp() {
   registerCoreRoutes(app);
   registerDockerRoutes(app);
   registerFileRoutes(app);
+  registerNotificationRoutes(app);
   registerPortRoutes(app);
   registerSessionRoutes(app);
   registerUpdateRoutes(app);

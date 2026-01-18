@@ -22,6 +22,9 @@ export async function saveHosts(hosts: Host[]): Promise<void> {
 function normalizePreferences(raw: Partial<AppPreferences> | null): AppPreferences {
   const defaults = defaultPreferences();
   const usageCards: Partial<AppPreferences['usageCards']> = raw?.usageCards ?? {};
+  const notifications: Partial<AppPreferences['notifications']> = raw?.notifications ?? {};
+  const validThemes = ['light', 'dark', 'system'] as const;
+  const theme = raw?.theme && validThemes.includes(raw.theme) ? raw.theme : defaults.theme;
 
   return {
     usageCards: {
@@ -29,6 +32,13 @@ function normalizePreferences(raw: Partial<AppPreferences> | null): AppPreferenc
       codex: typeof usageCards.codex === 'boolean' ? usageCards.codex : defaults.usageCards.codex,
       copilot:
         typeof usageCards.copilot === 'boolean' ? usageCards.copilot : defaults.usageCards.copilot,
+    },
+    theme,
+    notifications: {
+      pushEnabled:
+        typeof notifications.pushEnabled === 'boolean' ? notifications.pushEnabled : defaults.notifications.pushEnabled,
+      liveEnabled:
+        typeof notifications.liveEnabled === 'boolean' ? notifications.liveEnabled : defaults.notifications.liveEnabled,
     },
   };
 }

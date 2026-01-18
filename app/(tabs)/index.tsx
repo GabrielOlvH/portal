@@ -8,12 +8,13 @@ import { SkeletonList } from '@/components/Skeleton';
 import { getUsage, killSession } from '@/lib/api';
 import { hostColors, systemColors } from '@/lib/colors';
 import { useHostsLive } from '@/lib/live';
+import { useTaskLiveUpdates } from '@/lib/task-live-updates';
 import { useStore } from '@/lib/store';
 import { theme } from '@/lib/theme';
 import { ThemeColors, useTheme } from '@/lib/useTheme';
-import { Host, HostStatus, ProviderUsage, Session, SessionInsights } from '@/lib/types';
+import { Host, HostInfo, HostStatus, ProviderUsage, Session, SessionInsights } from '@/lib/types';
 import { useRouter } from 'expo-router';
-import { GitBranch, Plus } from 'lucide-react-native';
+import { Cpu, GitBranch, MemoryStick, Plus } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, View, type ColorValue } from 'react-native';
 
@@ -150,6 +151,7 @@ export default function SessionsScreen() {
   const { stateMap, refreshAll, refreshHost } = useHostsLive(hosts, {
     sessions: true,
     insights: true,
+    host: true,
   });
   const [hostUsageMap, setHostUsageMap] = useState<Record<string, SessionInsights>>({});
 
@@ -170,12 +172,15 @@ export default function SessionsScreen() {
     return all;
   }, [hosts, stateMap]);
 
+  useTaskLiveUpdates(sessions, preferences.notifications.liveEnabled);
+
   const isPending =
     ready &&
     hosts.length > 0 &&
     !Object.values(stateMap).some(
       (state) => state.status === 'online' || state.status === 'offline'
     );
+  const isBooting = !ready;
 
   const styles = useMemo(() => createStyles(colors), [colors]);
 
@@ -294,17 +299,19 @@ export default function SessionsScreen() {
   const groupedSessions = useMemo(() => {
     const groups = new Map<
       string,
-      { host: Host; hostStatus: HostStatus; sessions: SessionWithHost[] }
+      { host: Host; hostStatus: HostStatus; hostInfo?: HostInfo; sessions: SessionWithHost[] }
     >();
 
     sessions.forEach((session) => {
       const existing = groups.get(session.host.id);
+      const hostState = stateMap[session.host.id];
       if (existing) {
         existing.sessions.push(session);
       } else {
         groups.set(session.host.id, {
           host: session.host,
           hostStatus: session.hostStatus,
+          hostInfo: hostState?.hostInfo,
           sessions: [session],
         });
       }
@@ -317,7 +324,7 @@ export default function SessionsScreen() {
       const bLatest = bTimes.length > 0 ? Math.max(...bTimes) : 0;
       return bLatest - aLatest;
     });
-  }, [sessions]);
+  }, [sessions, stateMap]);
 
   return (
     <>
@@ -373,7 +380,11 @@ export default function SessionsScreen() {
             </FadeIn>
           )}
 
-          {hosts.length === 0 ? (
+          {isBooting ? (
+            <FadeIn delay={100}>
+              <SkeletonList type="session" count={3} />
+            </FadeIn>
+          ) : hosts.length === 0 ? (
             <FadeIn delay={100}>
               <Card style={styles.emptyCard}>
                 <View style={styles.emptyIconContainer}>
@@ -427,6 +438,18 @@ export default function SessionsScreen() {
                         {group.hostStatus === 'offline' && (
                           <View style={styles.offlineBadge}>
                             <AppText variant="mono" style={styles.offlineText}>offline</AppText>
+                          </View>
+                        )}
+                        {group.hostInfo && (
+                          <View style={styles.hostStatsBadge}>
+                            <Cpu size={10} color={colors.textMuted} />
+                            <AppText variant="mono" style={styles.hostStatsText}>
+                              {group.hostInfo.cpu.usage ?? '-'}%
+                            </AppText>
+                            <MemoryStick size={10} color={colors.textMuted} />
+                            <AppText variant="mono" style={styles.hostStatsText}>
+                              {group.hostInfo.memory.usedPercent ?? '-'}%
+                            </AppText>
                           </View>
                         )}
                       </View>
@@ -650,6 +673,16 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.orange,
     fontSize: 10,
     fontWeight: '500',
+  },
+  hostStatsBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  hostStatsText: {
+    fontSize: 10,
+    color: colors.textMuted,
+    marginRight: 6,
   },
   hostGroupSessions: {},
   sessionRow: {

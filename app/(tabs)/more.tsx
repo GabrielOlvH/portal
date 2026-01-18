@@ -6,7 +6,7 @@ import { ChevronRight } from 'lucide-react-native';
 
 import { useStore } from '@/lib/store';
 import { getCopilotAuthStatus, logoutCopilot, getUsage } from '@/lib/api';
-import type { ProviderUsage } from '@/lib/types';
+import type { ProviderUsage, ThemeSetting } from '@/lib/types';
 
 import { Screen } from '@/components/Screen';
 import { AppText } from '@/components/AppText';
@@ -38,6 +38,12 @@ function MenuItem({ title, subtitle, onPress, styles, chevronColor }: MenuItemPr
   );
 }
 
+type ProviderStatus = {
+  loading?: boolean;
+  error?: string;
+  ready?: boolean;
+};
+
 interface ToggleItemProps {
   title: string;
   subtitle?: string;
@@ -45,18 +51,48 @@ interface ToggleItemProps {
   onValueChange: (value: boolean) => void;
   styles: ReturnType<typeof createStyles>;
   colors: ThemeColors;
+  status?: ProviderStatus;
 }
 
-function ToggleItem({ title, subtitle, value, onValueChange, styles, colors }: ToggleItemProps) {
+function ToggleItem({ title, subtitle, value, onValueChange, styles, colors, status }: ToggleItemProps) {
+  const getStatusDisplay = () => {
+    if (status?.loading) {
+      return (
+        <View style={styles.statusRow}>
+          <ActivityIndicator size="small" color={colors.textSecondary} />
+          <AppText variant="label" tone="muted">Checking...</AppText>
+        </View>
+      );
+    }
+    if (status?.error) {
+      return (
+        <AppText variant="label" style={{ color: colors.red }}>
+          {status.error}
+        </AppText>
+      );
+    }
+    if (status?.ready) {
+      return (
+        <AppText variant="label" style={{ color: colors.accent }}>
+          Ready
+        </AppText>
+      );
+    }
+    if (subtitle) {
+      return (
+        <AppText variant="label" tone="muted">
+          {subtitle}
+        </AppText>
+      );
+    }
+    return null;
+  };
+
   return (
     <View style={styles.toggleItem}>
       <View style={styles.menuItemContent}>
         <AppText variant="subtitle">{title}</AppText>
-        {subtitle && (
-          <AppText variant="label" tone="muted">
-            {subtitle}
-          </AppText>
-        )}
+        {getStatusDisplay()}
       </View>
       <Switch
         value={value}
@@ -69,19 +105,51 @@ function ToggleItem({ title, subtitle, value, onValueChange, styles, colors }: T
   );
 }
 
+interface ThemeOptionProps {
+  label: string;
+  value: ThemeSetting;
+  selected: boolean;
+  onSelect: (value: ThemeSetting) => void;
+  styles: ReturnType<typeof createStyles>;
+  colors: ThemeColors;
+}
+
+function ThemeOption({ label, value, selected, onSelect, styles, colors }: ThemeOptionProps) {
+  return (
+    <Pressable
+      onPress={() => onSelect(value)}
+      style={[styles.themeOption, selected && { backgroundColor: colors.accent }]}
+    >
+      <AppText
+        variant="label"
+        style={{ color: selected ? colors.accentText : colors.text }}
+      >
+        {label}
+      </AppText>
+    </Pressable>
+  );
+}
+
 export default function MoreTabScreen() {
   const router = useRouter();
   const { colors } = useTheme();
-  const { hosts, preferences, updateUsageCardVisibility } = useStore();
+  const { hosts, preferences, updateUsageCardVisibility, updateNotificationSettings, updateTheme } = useStore();
   const host = hosts[0];
 
   const [copilotLoading, setCopilotLoading] = useState(false);
   const [copilotAuthenticated, setCopilotAuthenticated] = useState(false);
   const [copilotUsage, setCopilotUsage] = useState<ProviderUsage | null>(null);
+  const [claudeUsage, setClaudeUsage] = useState<ProviderUsage | null>(null);
+  const [codexUsage, setCodexUsage] = useState<ProviderUsage | null>(null);
+  const [usageLoading, setUsageLoading] = useState(true);
 
   const fetchCopilotStatus = useCallback(async () => {
-    if (!host) return;
+    if (!host) {
+      setUsageLoading(false);
+      return;
+    }
     setCopilotLoading(true);
+    setUsageLoading(true);
     try {
       const [statusRes, usageRes] = await Promise.all([
         getCopilotAuthStatus(host),
@@ -89,11 +157,16 @@ export default function MoreTabScreen() {
       ]);
       setCopilotAuthenticated(statusRes.authenticated);
       setCopilotUsage(usageRes.copilot ?? null);
+      setClaudeUsage(usageRes.claude ?? null);
+      setCodexUsage(usageRes.codex ?? null);
     } catch {
       setCopilotAuthenticated(false);
       setCopilotUsage(null);
+      setClaudeUsage({ error: 'fetch failed' });
+      setCodexUsage({ error: 'fetch failed' });
     } finally {
       setCopilotLoading(false);
+      setUsageLoading(false);
     }
   }, [host]);
 
@@ -202,42 +275,115 @@ export default function MoreTabScreen() {
           <View style={styles.separator} />
           <ToggleItem
             title="Claude Code"
-            subtitle="No setup required"
             value={preferences.usageCards.claude}
             onValueChange={(value) => updateUsageCardVisibility({ claude: value })}
             styles={styles}
             colors={colors}
+            status={
+              usageLoading
+                ? { loading: true }
+                : claudeUsage?.error
+                  ? { error: claudeUsage.error }
+                  : claudeUsage
+                    ? { ready: true }
+                    : { error: 'Not detected' }
+            }
           />
           <View style={styles.separator} />
           <ToggleItem
             title="Codex"
-            subtitle="No setup required"
             value={preferences.usageCards.codex}
             onValueChange={(value) => updateUsageCardVisibility({ codex: value })}
+            styles={styles}
+            colors={colors}
+            status={
+              usageLoading
+                ? { loading: true }
+                : codexUsage?.error
+                  ? { error: codexUsage.error }
+                  : codexUsage
+                    ? { ready: true }
+                    : { error: 'Not detected' }
+            }
+          />
+          <View style={styles.separator} />
+          <ToggleItem
+            title="GitHub Copilot"
+            value={preferences.usageCards.copilot}
+            onValueChange={(value) => updateUsageCardVisibility({ copilot: value })}
+            styles={styles}
+            colors={colors}
+            status={
+              copilotLoading
+                ? { loading: true }
+                : copilotAuthenticated
+                  ? { ready: true }
+                  : { error: 'Not connected' }
+            }
+          />
+        </Card>
+
+        <Card style={styles.card}>
+          <View style={styles.sectionHeader}>
+            <AppText variant="subtitle">Notifications</AppText>
+            <AppText variant="label" tone="muted">
+              Manage push alerts and live task updates.
+            </AppText>
+          </View>
+          <View style={styles.separator} />
+          <ToggleItem
+            title="Push notifications"
+            subtitle="Alerts when a task pauses"
+            value={preferences.notifications.pushEnabled}
+            onValueChange={(value) => updateNotificationSettings({ pushEnabled: value })}
             styles={styles}
             colors={colors}
           />
           <View style={styles.separator} />
           <ToggleItem
-            title="GitHub Copilot"
-            subtitle="Show usage card"
-            value={preferences.usageCards.copilot}
-            onValueChange={(value) => updateUsageCardVisibility({ copilot: value })}
+            title="Live updates"
+            subtitle="Live Activity on iOS and ongoing notification on Android"
+            value={preferences.notifications.liveEnabled}
+            onValueChange={(value) => updateNotificationSettings({ liveEnabled: value })}
             styles={styles}
             colors={colors}
           />
         </Card>
 
         <Card style={styles.card}>
-          <MenuItem
-            title="Settings"
-            subtitle="App preferences"
-            onPress={() => {
-              // TODO: Navigate to settings when implemented
-            }}
-            styles={styles}
-            chevronColor={colors.textSecondary}
-          />
+          <View style={styles.sectionHeader}>
+            <AppText variant="subtitle">Appearance</AppText>
+            <AppText variant="label" tone="muted">
+              Choose your preferred theme
+            </AppText>
+          </View>
+          <View style={styles.separator} />
+          <View style={styles.themeSelector}>
+            <ThemeOption
+              label="Light"
+              value="light"
+              selected={preferences.theme === 'light'}
+              onSelect={updateTheme}
+              styles={styles}
+              colors={colors}
+            />
+            <ThemeOption
+              label="Dark"
+              value="dark"
+              selected={preferences.theme === 'dark'}
+              onSelect={updateTheme}
+              styles={styles}
+              colors={colors}
+            />
+            <ThemeOption
+              label="System"
+              value="system"
+              selected={preferences.theme === 'system'}
+              onSelect={updateTheme}
+              styles={styles}
+              colors={colors}
+            />
+          </View>
         </Card>
       </ScrollView>
     </Screen>
@@ -284,8 +430,26 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     justifyContent: 'space-between',
     padding: theme.spacing.md,
   },
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+  },
   copilotButton: {
     paddingHorizontal: theme.spacing.sm,
     paddingVertical: theme.spacing.xs,
+  },
+  themeSelector: {
+    flexDirection: 'row',
+    padding: theme.spacing.md,
+    gap: theme.spacing.sm,
+  },
+  themeOption: {
+    flex: 1,
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
+    borderRadius: theme.radii.sm,
+    alignItems: 'center',
+    backgroundColor: colors.separator,
   },
 });

@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { AppPreferences, Host, HostDraft, UsageCardsVisibility } from '@/lib/types';
+import { AppPreferences, Host, HostDraft, ThemeSetting, UsageCardsVisibility } from '@/lib/types';
 import { loadHosts, loadPreferences, saveHosts, savePreferences } from '@/lib/storage';
 import { createId, defaultPreferences, pickHostAccent } from '@/lib/defaults';
 
@@ -11,6 +11,8 @@ const StoreContext = createContext<{
   removeHost: (id: string) => Promise<void>;
   updateHostLastSeen: (id: string, timestamp: number) => void;
   updateUsageCardVisibility: (updates: Partial<UsageCardsVisibility>) => void;
+  updateNotificationSettings: (updates: Partial<AppPreferences['notifications']>) => void;
+  updateTheme: (theme: ThemeSetting) => void;
 } | null>(null);
 
 export function StoreProvider({ children }: { children: React.ReactNode }) {
@@ -93,6 +95,28 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     []
   );
 
+  const updateNotificationSettings = useCallback(
+    (updates: Partial<AppPreferences['notifications']>) => {
+      setPreferences((prev) => {
+        const next: AppPreferences = {
+          ...prev,
+          notifications: { ...prev.notifications, ...updates },
+        };
+        savePreferences(next);
+        return next;
+      });
+    },
+    []
+  );
+
+  const updateTheme = useCallback((theme: ThemeSetting) => {
+    setPreferences((prev) => {
+      const next: AppPreferences = { ...prev, theme };
+      savePreferences(next);
+      return next;
+    });
+  }, []);
+
   const value = useMemo(
     () => ({
       hosts,
@@ -102,6 +126,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       removeHost,
       updateHostLastSeen,
       updateUsageCardVisibility,
+      updateNotificationSettings,
+      updateTheme,
     }),
     [
       hosts,
@@ -111,6 +137,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       removeHost,
       updateHostLastSeen,
       updateUsageCardVisibility,
+      updateNotificationSettings,
+      updateTheme,
     ]
   );
 
