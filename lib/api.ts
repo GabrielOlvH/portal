@@ -28,7 +28,7 @@ async function request<T>(
   try {
     const response = await fetch(url, {
       ...options,
-      headers: { ...headers, ...(options.headers || {}) },
+      headers: { ...headers, ...options.headers },
       signal: controller.signal,
     });
 

@@ -34,6 +34,11 @@ const BRIGHT_COLORS = [
   '#FFFFFF',
 ];
 
+const ESC = String.fromCharCode(27);
+const ANSI_SGR_REGEX = new RegExp(`${ESC}\\[[0-9;]*m`, 'g');
+const ANSI_SGR_CAPTURE_REGEX = new RegExp(`(${ESC}\\[[0-9;]*m)`, 'g');
+const ANSI_SGR_FULL_REGEX = new RegExp(`^${ESC}\\[([0-9;]*)m$`);
+
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
 }
@@ -70,17 +75,17 @@ function applyColorFromCode(code: number): string | undefined {
 }
 
 export function stripAnsi(input: string): string {
-  return input.replace(/\u001b\[[0-9;]*m/g, '');
+  return input.replace(ANSI_SGR_REGEX, '');
 }
 
 export function parseAnsi(input: string): AnsiSegment[] {
-  const parts = input.split(/(\u001b\[[0-9;]*m)/g);
+  const parts = input.split(ANSI_SGR_CAPTURE_REGEX);
   const segments: AnsiSegment[] = [];
   let style: AnsiStyle = {};
 
   for (const part of parts) {
     if (!part) continue;
-    const match = part.match(/^\u001b\[([0-9;]*)m$/);
+    const match = part.match(ANSI_SGR_FULL_REGEX);
     if (!match) {
       segments.push({ text: part, style: { ...style } });
       continue;

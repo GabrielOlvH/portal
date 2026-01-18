@@ -5,7 +5,6 @@ import {
   ScrollView,
   Pressable,
   Alert,
-  TextInput,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 

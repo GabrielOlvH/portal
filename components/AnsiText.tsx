@@ -45,9 +45,12 @@ const ANSI_BG_COLORS: Record<number, string> = {
   107: '#F6F1E8',
 };
 
+const ESC = String.fromCharCode(27);
+const ANSI_SGR_REGEX = new RegExp(`${ESC}\\[([0-9;]*)m`, 'g');
+
 function parseAnsi(text: string): AnsiSegment[] {
   const segments: AnsiSegment[] = [];
-  const regex = /\x1b\[([0-9;]*)m/g;
+  const regex = ANSI_SGR_REGEX;
 
   let lastIndex = 0;
   let currentStyle: TextStyle = {};

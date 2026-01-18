@@ -8,6 +8,6 @@ export function jsonError(
   extra?: Record<string, unknown>
 ) {
   const message = err instanceof Error ? err.message : String(err);
-  return c.json({ ...(extra || {}), error: message }, status);
+  return c.json({ ...extra, error: message }, status);
 }
 

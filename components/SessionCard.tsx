@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo } from 'react';
-import { Alert, Pressable, StyleSheet, View, Platform, type ColorValue } from 'react-native';
+import { Alert, Pressable, StyleSheet, View, type ColorValue } from 'react-native';
 import { GitBranch, Pause, Play, StopCircle } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { Card } from '@/components/Card';

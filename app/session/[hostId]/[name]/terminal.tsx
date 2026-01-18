@@ -403,8 +403,8 @@ export default function SessionTerminalScreen(): React.ReactElement {
     setCurrentSessionName(sessions[0].name);
   }, [sessions, currentSessionName]);
 
-  const panGesture = useMemo(() => (
-    Gesture.Pan()
+  const panGesture = useMemo(() => {
+    return Gesture.Pan()
       .enabled(!isSelecting)
       .maxPointers(1)
       .activeOffsetX([-15, 15])
@@ -436,7 +436,7 @@ export default function SessionTerminalScreen(): React.ReactElement {
           runOnJS(updateCurrentSession)(newIndex);
         });
       });
-  ), [screenWidth, sessionCount, offsetX, currentIndexShared, updateCurrentSession, isSelecting]);
+  }, [screenWidth, sessionCount, offsetX, currentIndexShared, updateCurrentSession, isSelecting]);
 
   const pagerStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: offsetX.value }],

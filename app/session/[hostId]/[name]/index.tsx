@@ -14,7 +14,6 @@ import { AppText } from '@/components/AppText';
 import { FadeIn } from '@/components/FadeIn';
 import { Screen } from '@/components/Screen';
 import { killSession, renameSession } from '@/lib/api';
-import { systemColors } from '@/lib/colors';
 import { buildAttachCommand, buildNewAttachCommand } from '@/lib/commands';
 import { useHostLive } from '@/lib/live';
 import { useStore } from '@/lib/store';

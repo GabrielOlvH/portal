@@ -5,8 +5,6 @@ import {
   Pressable,
   ScrollView,
   ActivityIndicator,
-  TextInput,
-  Platform,
 } from 'react-native';
 import BottomSheet, {
   BottomSheetScrollView,
@@ -51,7 +49,6 @@ export function LaunchSheet({ isOpen, onClose }: LaunchSheetProps) {
   const [loadingScripts, setLoadingScripts] = useState(false);
   const [launching, setLaunching] = useState(false);
   const [blankSessionName, setBlankSessionName] = useState('');
-
 
   const selectedHost = useMemo(
     () => hosts.find((h) => h.id === selectedHostId) || null,
@@ -113,7 +110,7 @@ export function LaunchSheet({ isOpen, onClose }: LaunchSheetProps) {
 
   const allCommands = useMemo(() => {
     const commands: Command[] = [...hardcodedCommands];
-    Object.entries(packageScripts).forEach(([name, script]) => {
+    Object.entries(packageScripts).forEach(([name]) => {
       commands.push({
         id: `npm-${name}`,
         label: name,

@@ -11,10 +11,10 @@ import { useHostsLive } from '@/lib/live';
 import { useStore } from '@/lib/store';
 import { theme } from '@/lib/theme';
 import { ThemeColors, useTheme } from '@/lib/useTheme';
-import { Host, HostStatus, ProviderUsage, Session, SessionInsights } from '@/lib/types';
+import { Host, HostStatus, ProviderUsage, Session } from '@/lib/types';
 import { useRouter } from 'expo-router';
 import { GitBranch, Plus } from 'lucide-react-native';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, View, type ColorValue } from 'react-native';
 
 type UsageCardProps = {

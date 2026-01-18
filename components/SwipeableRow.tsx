@@ -1,5 +1,5 @@
 import React, { useMemo, useRef } from 'react';
-import { View, StyleSheet, Pressable, Animated } from 'react-native';
+import { StyleSheet, Pressable, Animated } from 'react-native';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 import * as Haptics from 'expo-haptics';
 import { AppText } from '@/components/AppText';

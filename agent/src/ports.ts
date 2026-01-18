@@ -67,7 +67,7 @@ async function listPortsWithLsof(): Promise<PortInfo[]> {
   const pids = Array.from(portMap.values()).map((p) => p.pid);
   if (pids.length > 0) {
     const commands = await getCommandsForPids(pids);
-    for (const [key, info] of portMap) {
+    for (const [, info] of portMap) {
       const cmd = commands.get(info.pid);
       if (cmd) {
         info.command = cmd;

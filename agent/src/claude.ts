@@ -370,7 +370,6 @@ function isFiniteNumber(value: unknown): value is number {
 }
 
 export async function getClaudeStatus(): Promise<ClaudeUsageResult> {
-  const now = Date.now();
   const oauth = await getClaudeOAuthStatus();
   if (oauth) return oauth;
 

@@ -164,7 +164,7 @@ export async function getSessionInsights(name: string, preview?: string[]) {
     ...usage,
     git,
     meta: {
-      ...(usage.meta || {}),
+      ...usage.meta,
       activeAgent: agentInfo.agent,
       agentState,
       agentCommand: agentInfo.command,
