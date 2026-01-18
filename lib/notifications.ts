@@ -158,3 +158,43 @@ export async function unregisterNotificationsForHosts(hosts: Host[]): Promise<vo
 
   await saveRegistry(nextRegistry);
 }
+
+export type TestNotificationResult =
+  | { status: 'success'; id: string }
+  | { status: 'denied' }
+  | { status: 'error'; message: string };
+
+export async function sendTestNotification(): Promise<TestNotificationResult> {
+  try {
+    await ensureNotificationHandler();
+    await ensureAndroidChannel();
+
+    const existing = await Notifications.getPermissionsAsync();
+    let status = existing.status;
+    if (status !== 'granted') {
+      const requested = await Notifications.requestPermissionsAsync();
+      status = requested.status;
+    }
+
+    if (status !== 'granted') {
+      return { status: 'denied' };
+    }
+
+    const id = await Notifications.scheduleNotificationAsync({
+      content: {
+        title: 'Bridge',
+        body: 'Notifications are working on this device.',
+        channelId: CHANNEL_ID,
+        sound: 'default',
+      },
+      trigger: null,
+    });
+
+    return { status: 'success', id };
+  } catch (err) {
+    return {
+      status: 'error',
+      message: err instanceof Error ? err.message : 'Unable to send test notification.',
+    };
+  }
+}

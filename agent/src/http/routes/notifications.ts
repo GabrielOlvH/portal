@@ -5,6 +5,7 @@ import {
   removeNotificationDevice,
   upsertNotificationDevice,
 } from '../../notifications/registry';
+import { sendExpoPushMessages } from '../../notifications/push';
 
 type RegistrationPayload = {
   deviceId?: string;
@@ -50,6 +51,31 @@ export function registerNotificationRoutes(app: Hono) {
     try {
       const devices = await listNotificationDevices();
       return c.json({ ok: true, devices });
+    } catch (err) {
+      return jsonError(c, err);
+    }
+  });
+
+  app.post('/notifications/test', async (c) => {
+    try {
+      const payload = (await c.req.json()) as { title?: string; body?: string };
+      const devices = await listNotificationDevices();
+      const title = payload?.title?.trim() || 'Bridge';
+      const body = payload?.body?.trim() || 'Test push notification';
+      const messages = devices.map((device) => ({
+        to: device.expoPushToken,
+        title,
+        body,
+        sound: 'default',
+        channelId: 'task-updates',
+        data: { type: 'test-push' },
+      }));
+
+      if (messages.length > 0) {
+        await sendExpoPushMessages(messages);
+      }
+
+      return c.json({ ok: true, count: messages.length });
     } catch (err) {
       return jsonError(c, err);
     }

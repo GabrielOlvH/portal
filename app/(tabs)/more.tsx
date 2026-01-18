@@ -5,7 +5,8 @@ import { useFocusEffect } from '@react-navigation/native';
 import { ChevronRight } from 'lucide-react-native';
 
 import { useStore } from '@/lib/store';
-import { getCopilotAuthStatus, logoutCopilot, getUsage } from '@/lib/api';
+import { getCopilotAuthStatus, logoutCopilot, getUsage, sendTestPushNotification } from '@/lib/api';
+import { sendTestNotification } from '@/lib/notifications';
 import type { ProviderUsage, ThemeSetting } from '@/lib/types';
 
 import { Screen } from '@/components/Screen';
@@ -142,6 +143,8 @@ export default function MoreTabScreen() {
   const [claudeUsage, setClaudeUsage] = useState<ProviderUsage | null>(null);
   const [codexUsage, setCodexUsage] = useState<ProviderUsage | null>(null);
   const [usageLoading, setUsageLoading] = useState(true);
+  const [testNotificationLoading, setTestNotificationLoading] = useState(false);
+  const [testPushLoading, setTestPushLoading] = useState(false);
 
   const fetchCopilotStatus = useCallback(async () => {
     if (!host) {
@@ -348,6 +351,93 @@ export default function MoreTabScreen() {
             styles={styles}
             colors={colors}
           />
+          <View style={styles.separator} />
+          <Pressable
+            onPress={async () => {
+              if (!host) {
+                Alert.alert('No host', 'Add a host to send a push test.');
+                return;
+              }
+              if (!preferences.notifications.pushEnabled) {
+                Alert.alert('Push disabled', 'Enable push notifications to send a test alert.');
+                return;
+              }
+              setTestPushLoading(true);
+              try {
+                const result = await sendTestPushNotification(host, {
+                  title: 'Bridge',
+                  body: 'Test push notification',
+                });
+                if (result.count && result.count > 0) {
+                  Alert.alert('Push sent', `Sent to ${result.count} device(s).`);
+                } else {
+                  Alert.alert('No devices registered', 'Open the app to register this device, then try again.');
+                }
+              } catch (err) {
+                Alert.alert('Failed to send', err instanceof Error ? err.message : 'Unable to send test push.');
+              } finally {
+                setTestPushLoading(false);
+              }
+            }}
+            disabled={testPushLoading}
+            style={({ pressed }) => [
+              styles.menuItem,
+              pressed && styles.menuItemPressed,
+            ]}
+          >
+            <View style={styles.menuItemContent}>
+              <AppText variant="subtitle">Send test push</AppText>
+              <AppText variant="label" tone="muted">
+                From server via Expo Push
+              </AppText>
+            </View>
+            {testPushLoading ? (
+              <ActivityIndicator size="small" color={colors.textSecondary} />
+            ) : (
+              <AppText variant="caps" tone="accent">
+                Send
+              </AppText>
+            )}
+          </Pressable>
+          <View style={styles.separator} />
+          <Pressable
+            onPress={async () => {
+              if (!preferences.notifications.pushEnabled) {
+                Alert.alert('Push disabled', 'Enable push notifications to send a test alert.');
+                return;
+              }
+              setTestNotificationLoading(true);
+              const result = await sendTestNotification();
+              setTestNotificationLoading(false);
+
+              if (result.status === 'success') {
+                Alert.alert('Test notification sent', `Notification id: ${result.id}`);
+              } else if (result.status === 'denied') {
+                Alert.alert('Permission not granted', 'Enable notifications in system settings and try again.');
+              } else {
+                Alert.alert('Failed to send', result.message);
+              }
+            }}
+            disabled={testNotificationLoading}
+            style={({ pressed }) => [
+              styles.menuItem,
+              pressed && styles.menuItemPressed,
+            ]}
+          >
+            <View style={styles.menuItemContent}>
+              <AppText variant="subtitle">Send test notification</AppText>
+              <AppText variant="label" tone="muted">
+                Local alert to confirm permissions
+              </AppText>
+            </View>
+            {testNotificationLoading ? (
+              <ActivityIndicator size="small" color={colors.textSecondary} />
+            ) : (
+              <AppText variant="caps" tone="accent">
+                Send
+              </AppText>
+            )}
+          </Pressable>
         </Card>
 
         <Card style={styles.card}>
@@ -404,6 +494,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: theme.spacing.md,
+  },
+  menuItemPressed: {
+    backgroundColor: colors.cardPressed,
   },
   menuItemContent: {
     flex: 1,

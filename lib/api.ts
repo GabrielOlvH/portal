@@ -227,6 +227,16 @@ export async function unregisterNotificationDevice(
   });
 }
 
+export async function sendTestPushNotification(
+  host: Host,
+  payload?: { title?: string; body?: string }
+): Promise<{ ok: boolean; count?: number }> {
+  return request(host, '/notifications/test', {
+    method: 'POST',
+    body: JSON.stringify(payload ?? {}),
+  });
+}
+
 export type CopilotAuthStartResponse = {
   userCode: string;
   verificationUri: string;
