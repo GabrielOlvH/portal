@@ -272,6 +272,8 @@ export function LaunchSheet({ isOpen, onClose }: LaunchSheetProps) {
             style={styles.segmentedControl}
             tintColor={colors.accent}
             backgroundColor={colors.cardPressed}
+            fontStyle={{ color: colors.textSecondary }}
+            activeFontStyle={{ color: colors.accentText }}
           />
         </View>
 
@@ -548,15 +550,15 @@ export function LaunchSheet({ isOpen, onClose }: LaunchSheetProps) {
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
   sheet: {
     marginHorizontal: 0,
+  },
+  sheetBackground: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.08,
     shadowRadius: 12,
     elevation: 8,
-  },
-  sheetBackground: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
   },
   handleIndicator: {
     backgroundColor: colors.separator,
