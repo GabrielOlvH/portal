@@ -1,16 +1,27 @@
-import React, { useCallback, useMemo, useRef, useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  View,
-  StyleSheet,
-  Pressable,
-  ScrollView,
   Keyboard,
   Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  TextStyle,
   useWindowDimensions,
+  ViewStyle,
+  View,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { WebView } from 'react-native-webview';
-import { ChevronDown, ChevronUp, ChevronLeft, ChevronRight, OctagonX, ClipboardPaste, Copy, ImageIcon } from 'lucide-react-native';
+import {
+  ChevronDown,
+  ChevronUp,
+  ChevronLeft,
+  ChevronRight,
+  OctagonX,
+  ClipboardPaste,
+  Copy,
+  ImageIcon,
+} from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import * as Clipboard from 'expo-clipboard';
 import * as ImagePicker from 'expo-image-picker';
@@ -25,11 +36,40 @@ import Animated, {
 import { Screen } from '@/components/Screen';
 import { AppText } from '@/components/AppText';
 import { useStore } from '@/lib/store';
-import { ThemeColors, useTheme } from '@/lib/useTheme';
+import { useTheme } from '@/lib/useTheme';
 import { useHostLive } from '@/lib/live';
 import { uploadImage } from '@/lib/api';
+import type { ThemeColors } from '@/lib/useTheme';
 
-const helperKeys: Array<{ label: string; data: string; icon?: React.ComponentType<{ size: number; color: string }> }> = [
+type HelperKeyIcon = React.ComponentType<{ size: number; color: string }>;
+type HelperKey = {
+  label: string;
+  data: string;
+  icon?: HelperKeyIcon;
+};
+type WebViewSource = { html: string };
+type TerminalStyles = {
+  header: ViewStyle;
+  headerFloating: ViewStyle;
+  headerButton: ViewStyle;
+  headerButtonPressed: ViewStyle;
+  headerButtonText: TextStyle;
+  pager: ViewStyle;
+  page: ViewStyle;
+  pageLabel: ViewStyle;
+  pageLabelText: TextStyle;
+  terminal: ViewStyle;
+  webview: ViewStyle;
+  helperOverlay: ViewStyle;
+  helperBar: ViewStyle;
+  helperContent: ViewStyle;
+  helperKey: ViewStyle;
+  helperText: TextStyle;
+  doneKey: ViewStyle;
+  keyPressed: ViewStyle;
+};
+
+const helperKeys: HelperKey[] = [
   { label: 'Esc', data: '\u001b' },
   { label: 'Tab', data: '\t' },
   { label: 'Up', data: '\u001b[A', icon: ChevronUp },
@@ -272,7 +312,7 @@ function buildTerminalHtml(
 </html>`;
 }
 
-export default function SessionTerminalScreen() {
+export default function SessionTerminalScreen(): React.ReactElement {
   const router = useRouter();
   const { colors } = useTheme();
   const params = useLocalSearchParams<{ hostId: string; name: string }>();
@@ -286,7 +326,7 @@ export default function SessionTerminalScreen() {
   const [helperHeight, setHelperHeight] = useState(0);
   const [isSelecting, setIsSelecting] = useState(false);
   const webRefs = useRef<Record<string, WebView | null>>({});
-  const sourceCache = useRef<Record<string, { html: string }>>({});
+  const sourceCache = useRef<Record<string, WebViewSource>>({});
   const styles = useMemo(() => createStyles(colors), [colors]);
   const terminalTheme = useMemo(
     () => ({
@@ -300,8 +340,8 @@ export default function SessionTerminalScreen() {
 
   const { state, refresh } = useHostLive(host, { sessions: true });
   const sessions = state?.sessions ?? [];
-
-  const initialIndex = sessions.findIndex((s) => s.name === initialSessionName);
+  const sessionCount = sessions.length;
+  const initialIndex = sessions.findIndex((session) => session.name === initialSessionName);
 
   // Precompute stable source objects
   useMemo(() => {
@@ -352,9 +392,9 @@ export default function SessionTerminalScreen() {
   const currentIndexShared = useSharedValue(initialIndex >= 0 ? initialIndex : 0);
 
   const updateCurrentSession = useCallback((index: number) => {
-    if (sessions[index]) {
-      setCurrentSessionName(sessions[index].name);
-    }
+    const session = sessions[index];
+    if (!session) return;
+    setCurrentSessionName(session.name);
   }, [sessions]);
 
   useEffect(() => {
@@ -363,9 +403,8 @@ export default function SessionTerminalScreen() {
     setCurrentSessionName(sessions[0].name);
   }, [sessions, currentSessionName]);
 
-  const panGesture = useMemo(() => {
-    const sessionCount = sessions.length;
-    return Gesture.Pan()
+  const panGesture = useMemo(() => (
+    Gesture.Pan()
       .enabled(!isSelecting)
       .maxPointers(1)
       .activeOffsetX([-15, 15])
@@ -397,7 +436,7 @@ export default function SessionTerminalScreen() {
           runOnJS(updateCurrentSession)(newIndex);
         });
       });
-  }, [screenWidth, sessions.length, offsetX, currentIndexShared, updateCurrentSession, isSelecting]);
+  ), [screenWidth, sessionCount, offsetX, currentIndexShared, updateCurrentSession, isSelecting]);
 
   const pagerStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: offsetX.value }],
@@ -497,21 +536,35 @@ export default function SessionTerminalScreen() {
                     }}
                     onMessage={async (event) => {
                       try {
-                        const payload = JSON.parse(event.nativeEvent.data);
-                        if (payload?.type === 'copy' && typeof payload.text === 'string') {
-                          if (!payload.text) return;
-                          await Clipboard.setStringAsync(payload.text);
-                          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                        } else if (payload?.type === 'haptic') {
-                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                        } else if (payload?.type === 'selectionStart') {
-                          setIsSelecting(true);
-                        } else if (payload?.type === 'selectionEnd') {
-                          setIsSelecting(false);
-                        } else if (payload?.type === 'status') {
-                          if (payload.state === 'connected' || payload.state === 'disconnected') {
-                            refresh();
+                        const payload = JSON.parse(event.nativeEvent.data) as {
+                          type?: string;
+                          text?: unknown;
+                          state?: string;
+                        };
+                        if (!payload || typeof payload !== 'object') return;
+                        switch (payload.type) {
+                          case 'copy': {
+                            if (typeof payload.text !== 'string' || !payload.text) return;
+                            await Clipboard.setStringAsync(payload.text);
+                            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                            return;
                           }
+                          case 'haptic':
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                            return;
+                          case 'selectionStart':
+                            setIsSelecting(true);
+                            return;
+                          case 'selectionEnd':
+                            setIsSelecting(false);
+                            return;
+                          case 'status':
+                            if (payload.state === 'connected' || payload.state === 'disconnected') {
+                              refresh();
+                            }
+                            return;
+                          default:
+                            return;
                         }
                       } catch {}
                     }}
@@ -584,7 +637,7 @@ export default function SessionTerminalScreen() {
   );
 }
 
-function withAlpha(hex: string, alpha: number) {
+function withAlpha(hex: string, alpha: number): string {
   const clean = hex.replace('#', '');
   if (clean.length !== 6) return hex;
   const r = parseInt(clean.slice(0, 2), 16);
@@ -593,102 +646,104 @@ function withAlpha(hex: string, alpha: number) {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
-const createStyles = (colors: ThemeColors) => StyleSheet.create({
-  header: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-    zIndex: 10,
-  },
-  headerFloating: {
-    flexDirection: 'row',
-    backgroundColor: colors.terminalBackground,
-    borderBottomLeftRadius: 12,
-    borderBottomRightRadius: 12,
-    padding: 4,
-    gap: 4,
-  },
-  headerButton: {
-    padding: 6,
-    borderRadius: 6,
-  },
-  headerButtonPressed: {
-    backgroundColor: colors.terminalPressed,
-  },
-  headerButtonText: {
-    color: colors.terminalMuted,
-    fontSize: 16,
-  },
-  pager: {
-    flex: 1,
-    paddingTop: 4,
-  },
-  page: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    width: '100%',
-    backgroundColor: colors.terminalBackground,
-  },
-  pageLabel: {
-    position: 'absolute',
-    top: 8,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-    zIndex: 5,
-  },
-  pageLabelText: {
-    color: colors.terminalMuted,
-    backgroundColor: withAlpha(colors.terminalBackground, 0.8),
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    overflow: 'hidden',
-  },
-  terminal: {
-    flex: 1,
-    backgroundColor: colors.terminalBackground,
-  },
-  webview: {
-    flex: 1,
-    backgroundColor: colors.terminalBackground,
-  },
-  helperOverlay: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-  },
-  helperBar: {
-    backgroundColor: colors.terminalBackground,
-    borderTopWidth: 1,
-    borderTopColor: colors.terminalBorder,
-    paddingVertical: 8,
-  },
-  helperContent: {
-    paddingHorizontal: 12,
-    gap: 8,
-  },
-  helperKey: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 10,
-    backgroundColor: colors.terminalPressed,
-    borderWidth: 1,
-    borderColor: colors.terminalBorder,
-  },
-  helperText: {
-    color: colors.terminalForeground,
-  },
-  doneKey: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 10,
-    backgroundColor: colors.terminalBorder,
-  },
-  keyPressed: {
-    backgroundColor: colors.cardPressed,
-  },
-});
+function createStyles(colors: ThemeColors): TerminalStyles {
+  return StyleSheet.create<TerminalStyles>({
+    header: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      alignItems: 'center',
+      zIndex: 10,
+    },
+    headerFloating: {
+      flexDirection: 'row',
+      backgroundColor: colors.terminalBackground,
+      borderBottomLeftRadius: 12,
+      borderBottomRightRadius: 12,
+      padding: 4,
+      gap: 4,
+    },
+    headerButton: {
+      padding: 6,
+      borderRadius: 6,
+    },
+    headerButtonPressed: {
+      backgroundColor: colors.terminalPressed,
+    },
+    headerButtonText: {
+      color: colors.terminalMuted,
+      fontSize: 16,
+    },
+    pager: {
+      flex: 1,
+      paddingTop: 4,
+    },
+    page: {
+      position: 'absolute',
+      top: 0,
+      bottom: 0,
+      width: '100%',
+      backgroundColor: colors.terminalBackground,
+    },
+    pageLabel: {
+      position: 'absolute',
+      top: 8,
+      left: 0,
+      right: 0,
+      alignItems: 'center',
+      zIndex: 5,
+    },
+    pageLabelText: {
+      color: colors.terminalMuted,
+      backgroundColor: withAlpha(colors.terminalBackground, 0.8),
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 8,
+      overflow: 'hidden',
+    },
+    terminal: {
+      flex: 1,
+      backgroundColor: colors.terminalBackground,
+    },
+    webview: {
+      flex: 1,
+      backgroundColor: colors.terminalBackground,
+    },
+    helperOverlay: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+    },
+    helperBar: {
+      backgroundColor: colors.terminalBackground,
+      borderTopWidth: 1,
+      borderTopColor: colors.terminalBorder,
+      paddingVertical: 8,
+    },
+    helperContent: {
+      paddingHorizontal: 12,
+      gap: 8,
+    },
+    helperKey: {
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      borderRadius: 10,
+      backgroundColor: colors.terminalPressed,
+      borderWidth: 1,
+      borderColor: colors.terminalBorder,
+    },
+    helperText: {
+      color: colors.terminalForeground,
+    },
+    doneKey: {
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      borderRadius: 10,
+      backgroundColor: colors.terminalBorder,
+    },
+    keyPressed: {
+      backgroundColor: colors.cardPressed,
+    },
+  });
+}
