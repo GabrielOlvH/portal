@@ -8,6 +8,7 @@ import { sendExpoPushMessages, type ExpoPushMessage } from './push';
 type AgentState = 'running' | 'idle' | 'stopped';
 
 const lastStates = new Map<string, AgentState>();
+const runningSince = new Map<string, number>();
 let inflight: Promise<void> | null = null;
 
 function buildMessages(sessionName: string, hostLabel: string, devices: { expoPushToken: string }[]): ExpoPushMessage[] {
@@ -48,9 +49,24 @@ async function pollOnce() {
     const previous = lastStates.get(session.name);
     lastStates.set(session.name, state);
 
-    if (previous === 'running' && state === 'idle') {
-      messages.push(...buildMessages(session.name, HOST_LABEL, devices));
+    if (state === 'running') {
+      if (!runningSince.has(session.name)) {
+        runningSince.set(session.name, Date.now());
+      }
+      continue;
     }
+
+    if (state === 'idle') {
+      const startedAt = runningSince.get(session.name);
+      const durationMs = startedAt ? Date.now() - startedAt : 0;
+      if (previous === 'running' && durationMs >= 30000) {
+        messages.push(...buildMessages(session.name, HOST_LABEL, devices));
+      }
+      runningSince.delete(session.name);
+      continue;
+    }
+
+    runningSince.delete(session.name);
   }
 
   if (messages.length > 0) {

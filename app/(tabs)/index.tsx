@@ -2,6 +2,7 @@ import { AppText } from '@/components/AppText';
 import { FadeIn } from '@/components/FadeIn';
 import { Card } from '@/components/Card';
 import { PlusIcon, ServerIcon, TerminalIcon } from '@/components/icons/HomeIcons';
+import { ProviderIcon, providerColors } from '@/components/icons/ProviderIcons';
 import { useLaunchSheet } from '@/lib/launch-sheet';
 import { Screen } from '@/components/Screen';
 import { SkeletonList } from '@/components/Skeleton';
@@ -18,10 +19,9 @@ import { Cpu, GitBranch, MemoryStick, Plus } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, View, type ColorValue } from 'react-native';
 
-type UsageCardProps = {
-  provider: string;
+type CompactUsageCardProps = {
+  provider: 'claude' | 'codex' | 'copilot';
   usage: ProviderUsage;
-  color: ColorValue;
 };
 
 function formatReset(reset?: string): string {
@@ -53,63 +53,55 @@ function formatReset(reset?: string): string {
   return `${minutes}m`;
 }
 
-function UsageCard({ provider, usage, color }: UsageCardProps) {
+function CompactUsageCard({ provider, usage }: CompactUsageCardProps) {
   const { colors } = useTheme();
-  const primaryLeft = usage.session?.percentLeft;
-  const secondaryLeft = usage.weekly?.percentLeft;
+  const sessionLeft = usage.session?.percentLeft;
+  const weeklyLeft = usage.weekly?.percentLeft;
+  const color = providerColors[provider];
+  const hasWeekly = provider !== 'copilot' && weeklyLeft != null;
+  const isWeeklyExhausted = hasWeekly && weeklyLeft <= 0;
 
-  if (primaryLeft == null && secondaryLeft == null) return null;
-
-  const isCopilot = provider === 'Copilot';
-  const primaryLabel = isCopilot ? 'Premium' : 'Daily';
-  const secondaryLabel = isCopilot ? 'Chat' : 'Weekly';
+  if (sessionLeft == null) return null;
 
   return (
-    <Card style={usageStyles.card}>
-      <AppText variant="caps" style={[usageStyles.provider, { color }]}>
-        {provider}
+    <Card style={compactUsageStyles.card}>
+      <View style={compactUsageStyles.iconContainer}>
+        <ProviderIcon provider={provider} size={32} percentRemaining={isWeeklyExhausted ? 0 : sessionLeft} />
+      </View>
+      <AppText
+        variant="mono"
+        style={[
+          compactUsageStyles.percent,
+          { color: isWeeklyExhausted ? withAlpha(color, 0.3) : color },
+          isWeeklyExhausted && compactUsageStyles.strikethrough,
+        ]}
+      >
+        {Math.round(sessionLeft)}%
       </AppText>
-      {primaryLeft != null && (
-        <View style={usageStyles.row}>
-          <View style={usageStyles.rowHeader}>
-            <AppText variant="label" tone="muted" style={usageStyles.label}>
-              {primaryLabel}
-            </AppText>
-            {!isCopilot && usage.session?.reset && (
-              <AppText variant="mono" tone="muted" style={usageStyles.reset}>
-                Resets in {formatReset(usage.session?.reset)}
-              </AppText>
-            )}
-          </View>
-          <View style={usageStyles.barContainer}>
-            <View style={[usageStyles.barBg, { backgroundColor: colors.barBg }]}>
-              <View style={[usageStyles.barFill, { width: `${Math.min(100, primaryLeft)}%`, backgroundColor: color }]} />
-            </View>
-            <AppText variant="mono" style={usageStyles.percent}>
-              {Math.round(primaryLeft)}%
-            </AppText>
-          </View>
-        </View>
+      {usage.session?.reset && (
+        <AppText variant="label" tone="muted" style={compactUsageStyles.reset}>
+          {formatReset(usage.session.reset)}
+        </AppText>
       )}
-      {secondaryLeft != null && (
-        <View style={usageStyles.row}>
-          <View style={usageStyles.rowHeader}>
-            <AppText variant="label" tone="muted" style={usageStyles.label}>
-              {secondaryLabel}
+      {hasWeekly && (
+        <View style={compactUsageStyles.weeklySection}>
+          <View style={[compactUsageStyles.weeklyBar, { backgroundColor: colors.barBg }]}>
+            <View
+              style={[
+                compactUsageStyles.weeklyFill,
+                { width: `${Math.min(100, weeklyLeft)}%`, backgroundColor: color },
+              ]}
+            />
+          </View>
+          <View style={compactUsageStyles.weeklyInfo}>
+            <AppText variant="label" tone="muted" style={compactUsageStyles.weeklyLabel}>
+              {Math.round(weeklyLeft)}%
             </AppText>
-            {!isCopilot && usage.weekly?.reset && (
-              <AppText variant="mono" tone="muted" style={usageStyles.reset}>
-                Resets in {formatReset(usage.weekly?.reset)}
+            {usage.weekly?.reset && (
+              <AppText variant="label" tone="muted" style={compactUsageStyles.weeklyReset}>
+                {formatReset(usage.weekly.reset)}
               </AppText>
             )}
-          </View>
-          <View style={usageStyles.barContainer}>
-            <View style={[usageStyles.barBg, { backgroundColor: colors.barBg }]}>
-              <View style={[usageStyles.barFill, { width: `${Math.min(100, secondaryLeft)}%`, backgroundColor: color }]} />
-            </View>
-            <AppText variant="mono" style={usageStyles.percent}>
-              {Math.round(secondaryLeft)}%
-            </AppText>
           </View>
         </View>
       )}
@@ -126,17 +118,50 @@ function withAlpha(hex: string, alpha: number) {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
-const usageStyles = StyleSheet.create({
-  card: { flex: 1, minWidth: 140, padding: 12, gap: 10 },
-  provider: { fontSize: 11, fontWeight: '600', letterSpacing: 0.5 },
-  row: { gap: 4 },
-  rowHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  label: { fontSize: 11 },
-  reset: { fontSize: 9 },
-  barContainer: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  barBg: { flex: 1, height: 6, borderRadius: 3, overflow: 'hidden' },
-  barFill: { height: '100%', borderRadius: 3 },
-  percent: { fontSize: 11, width: 32, textAlign: 'right' },
+const compactUsageStyles = StyleSheet.create({
+  card: {
+    minWidth: 95,
+    padding: 10,
+    alignItems: 'center',
+    gap: 3,
+  },
+  iconContainer: {},
+  strikethrough: {
+    textDecorationLine: 'line-through',
+  },
+  percent: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  reset: {
+    fontSize: 9,
+  },
+  weeklySection: {
+    width: '100%',
+    marginTop: 4,
+    gap: 2,
+  },
+  weeklyBar: {
+    width: '100%',
+    height: 3,
+    borderRadius: 1.5,
+    overflow: 'hidden',
+  },
+  weeklyFill: {
+    height: '100%',
+    borderRadius: 1.5,
+  },
+  weeklyInfo: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  weeklyLabel: {
+    fontSize: 8,
+  },
+  weeklyReset: {
+    fontSize: 7,
+  },
 });
 
 type SessionWithHost = Session & { host: Host; hostStatus: HostStatus };
@@ -368,13 +393,13 @@ export default function SessionsScreen() {
             <FadeIn>
               <View style={styles.usageCardsRow}>
                 {usageVisibility.claude && aggregatedUsage.claude && (
-                  <UsageCard provider="Claude" usage={aggregatedUsage.claude} color={colors.orange} />
+                  <CompactUsageCard provider="claude" usage={aggregatedUsage.claude} />
                 )}
                 {usageVisibility.codex && aggregatedUsage.codex && (
-                  <UsageCard provider="Codex" usage={aggregatedUsage.codex} color={colors.green} />
+                  <CompactUsageCard provider="codex" usage={aggregatedUsage.codex} />
                 )}
                 {usageVisibility.copilot && aggregatedUsage.copilot && (
-                  <UsageCard provider="Copilot" usage={aggregatedUsage.copilot} color={colors.purple} />
+                  <CompactUsageCard provider="copilot" usage={aggregatedUsage.copilot} />
                 )}
               </View>
             </FadeIn>
@@ -544,19 +569,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   usageCardsRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
-  usageCard: {
-    flex: 1,
-    minWidth: 140,
-    padding: 12,
-    gap: 10,
-  },
-  usageProvider: {
-    fontSize: 11,
-    fontWeight: '600',
-    letterSpacing: 0.5,
+    justifyContent: 'space-between',
   },
   usageRow: {
     gap: 4,
