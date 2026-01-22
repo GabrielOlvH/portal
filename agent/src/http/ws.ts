@@ -1,3 +1,4 @@
+import { spawn, type ChildProcess } from 'node:child_process';
 import type { IncomingMessage, Server } from 'node:http';
 import type { Socket } from 'node:net';
 import { WebSocket, WebSocketServer, type RawData } from 'ws';
@@ -189,11 +190,13 @@ function attachPtyBridge(ws: WebSocket, term: ReturnType<typeof pty.spawn>, clos
 export function attachWebSocketServers(server: Server) {
   const termWss = new WebSocketServer({ noServer: true, perMessageDeflate: false });
   const dockerWss = new WebSocketServer({ noServer: true, perMessageDeflate: false });
+  const logsWss = new WebSocketServer({ noServer: true, perMessageDeflate: false });
   const eventsWss = new WebSocketServer({ noServer: true, perMessageDeflate: false });
   const wssByPath = new Map([
     ['/ws', termWss],
     ['/events', eventsWss],
     ['/docker/exec', dockerWss],
+    ['/docker/logs', logsWss],
   ]);
 
   server.on('upgrade', (req: IncomingMessage, socket: Socket, head: Buffer) => {
@@ -220,7 +223,7 @@ export function attachWebSocketServers(server: Server) {
     }
   });
 
-  termWss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
+  termWss.on('connection', async (ws: WebSocket, req: IncomingMessage) => {
     enableLowLatencySocket(ws);
     const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
     const session = url.searchParams.get('session');
@@ -231,6 +234,18 @@ export function attachWebSocketServers(server: Server) {
 
     const cols = parseDimension(url.searchParams.get('cols'), 80);
     const rows = parseDimension(url.searchParams.get('rows'), 24);
+    const createIfMissing = url.searchParams.get('create') === '1';
+
+    // Check if session exists first (unless create flag is set)
+    if (!createIfMissing) {
+      try {
+        await runTmux(['has-session', '-t', session]);
+      } catch {
+        ws.close(1008, 'session not found');
+        return;
+      }
+    }
+
     let term: ReturnType<typeof pty.spawn>;
     try {
       term = pty.spawn(
@@ -279,6 +294,73 @@ export function attachWebSocketServers(server: Server) {
       return;
     }
     attachPtyBridge(ws, term, 'exec ended');
+  });
+
+  logsWss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
+    enableLowLatencySocket(ws);
+    const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
+    const container = url.searchParams.get('container');
+    if (!container) {
+      ws.close(1008, 'container required');
+      return;
+    }
+
+    const follow = url.searchParams.get('follow') !== '0';
+    const tail = url.searchParams.get('tail') || '100';
+    const timestamps = url.searchParams.get('timestamps') === '1';
+
+    const args = ['logs'];
+    if (follow) args.push('-f');
+    if (timestamps) args.push('-t');
+    args.push('--tail', tail, container);
+
+    let proc: ChildProcess | null = null;
+    let closed = false;
+
+    const cleanup = () => {
+      if (closed) return;
+      closed = true;
+      if (proc) {
+        proc.kill();
+        proc = null;
+      }
+    };
+
+    try {
+      proc = spawn('docker', args, { stdio: ['ignore', 'pipe', 'pipe'] });
+    } catch (err) {
+      ws.close(1011, err instanceof Error ? err.message : 'docker logs failed');
+      return;
+    }
+
+    proc.stdout?.on('data', (data: Buffer) => {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(data);
+      }
+    });
+
+    proc.stderr?.on('data', (data: Buffer) => {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(data);
+      }
+    });
+
+    proc.on('close', (code) => {
+      cleanup();
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.close(1000, code === 0 ? 'logs ended' : 'container stopped');
+      }
+    });
+
+    proc.on('error', (err) => {
+      cleanup();
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.close(1011, err.message);
+      }
+    });
+
+    ws.on('close', cleanup);
+    ws.on('error', cleanup);
   });
 
   eventsWss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
@@ -334,6 +416,6 @@ export function attachWebSocketServers(server: Server) {
     ws.on('error', cleanup);
   });
 
-  return { termWss, dockerWss, eventsWss };
+  return { termWss, dockerWss, logsWss, eventsWss };
 }
 

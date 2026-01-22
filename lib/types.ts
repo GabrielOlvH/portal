@@ -36,6 +36,18 @@ export type UsageCardsVisibility = {
 
 export type ThemeSetting = 'light' | 'dark' | 'system';
 
+export type TerminalFontFamily =
+  | 'JetBrains Mono'
+  | 'Fira Code'
+  | 'Source Code Pro'
+  | 'SF Mono'
+  | 'Menlo';
+
+export type TerminalSettings = {
+  fontFamily: TerminalFontFamily;
+  fontSize: number;
+};
+
 export type AppPreferences = {
   usageCards: UsageCardsVisibility;
   theme: ThemeSetting;
@@ -43,6 +55,7 @@ export type AppPreferences = {
     pushEnabled: boolean;
     liveEnabled: boolean;
   };
+  terminal: TerminalSettings;
 };
 
 export type HostStatus = 'unknown' | 'checking' | 'online' | 'offline';
@@ -226,4 +239,95 @@ export type PortInfo = {
   port: number;
   process: string;
   command?: string;
+  protocol?: 'tcp' | 'udp';
+  address?: string;
+  connections?: number;
+};
+
+export type Tunnel = {
+  id: string;
+  listenPort: number;
+  targetHost: string;
+  targetPort: number;
+  status: 'active' | 'error' | 'closed';
+  connections: number;
+  createdAt: number;
+  error?: string;
+};
+
+export type TunnelCreate = {
+  listenPort: number;
+  targetHost: string;
+  targetPort: number;
+};
+
+// AI Session Types
+
+export type AiProvider = 'claude' | 'codex' | 'opencode';
+
+export type AiSessionTokenUsage = {
+  input: number;
+  output: number;
+  cached?: number;
+};
+
+export type AiSession = {
+  id: string;
+  provider: AiProvider;
+  directory: string;
+  summary: string;
+  createdAt: number;
+  updatedAt: number;
+  messageCount: number;
+  lastMessage: string;
+  modifiedFiles: string[];
+  tokenUsage?: AiSessionTokenUsage;
+  toolsUsed?: string[];
+  gitBranch?: string;
+};
+
+export type AiSessionMessage = {
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  timestamp: number;
+  toolCalls?: string[];
+};
+
+export type AiSessionDetail = AiSession & {
+  messages: AiSessionMessage[];
+  fullHistory?: boolean;
+};
+
+export type AiSessionListResponse = {
+  sessions: AiSession[];
+  total: number;
+  hasMore: boolean;
+};
+
+// CLI Asset Types
+
+export type CliAssetType = 'skill' | 'mcp' | 'rule' | 'agent';
+
+export type CliAssetMeta = {
+  filename?: string;
+  raw?: boolean;
+  source?: string;
+  description?: string;
+  userInvocable?: boolean;
+  keywords?: string[];
+};
+
+export type CliAsset = {
+  id: string;
+  provider: AiProvider;
+  type: CliAssetType;
+  name: string;
+  content: string;
+  updatedAt?: number;
+  path?: string;
+  meta?: CliAssetMeta;
+};
+
+export type CliAssetListResponse = {
+  assets: CliAsset[];
 };

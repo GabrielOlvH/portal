@@ -132,6 +132,12 @@ export default function DockerContainerScreen() {
           <AppText variant="caps" tone="muted">{container.image}</AppText>
         </View>
         <Pressable
+          onPress={() => router.push(`/hosts/${host.id}/docker/${encodeURIComponent(container.id)}/logs`)}
+          style={styles.attachButton}
+        >
+          <AppText variant="caps" tone="muted">Logs</AppText>
+        </Pressable>
+        <Pressable
           onPress={() => router.push(`/hosts/${host.id}/docker/${encodeURIComponent(container.id)}/terminal`)}
           style={styles.attachButton}
         >

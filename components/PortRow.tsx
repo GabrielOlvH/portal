@@ -40,13 +40,32 @@ export function PortRow({
             :{port.port}
           </AppText>
         </View>
+        {port.protocol && (
+          <View style={[styles.protocolBadge, port.protocol === 'udp' && styles.protocolUdp]}>
+            <AppText variant="label" style={styles.protocolText}>
+              {port.protocol.toUpperCase()}
+            </AppText>
+          </View>
+        )}
         <View style={styles.info}>
           <AppText variant="subtitle" numberOfLines={1}>
             {port.command || port.process}
           </AppText>
-          <AppText variant="mono" tone="muted" style={styles.pid}>
-            PID {port.pid}
-          </AppText>
+          <View style={styles.metaRow}>
+            <AppText variant="mono" tone="muted" style={styles.pid}>
+              PID {port.pid}
+            </AppText>
+            {port.address && port.address !== '0.0.0.0' && (
+              <AppText variant="mono" tone="muted" style={styles.address}>
+                {port.address}
+              </AppText>
+            )}
+            {typeof port.connections === 'number' && port.connections > 0 && (
+              <AppText variant="mono" tone="muted" style={styles.connections}>
+                {port.connections} conn
+              </AppText>
+            )}
+          </View>
         </View>
         {!selectionMode && onKill && (
           <Pressable style={styles.killButton} onPress={onKill}>
@@ -102,12 +121,37 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.accent,
     fontWeight: '600',
   },
+  protocolBadge: {
+    backgroundColor: colors.cardPressed,
+    paddingVertical: 2,
+    paddingHorizontal: 6,
+    borderRadius: 4,
+  },
+  protocolUdp: {
+    backgroundColor: colors.orange + '30',
+  },
+  protocolText: {
+    fontSize: 10,
+    color: colors.textSecondary,
+    fontWeight: '600',
+  },
   info: {
     flex: 1,
   },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 2,
+  },
   pid: {
     fontSize: 11,
-    marginTop: 2,
+  },
+  address: {
+    fontSize: 11,
+  },
+  connections: {
+    fontSize: 11,
   },
   killButton: {
     backgroundColor: colors.red,

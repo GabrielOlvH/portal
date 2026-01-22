@@ -15,7 +15,6 @@
   },
   "dependencies": {
     "@expo-google-fonts/jetbrains-mono": "^0.4.0",
-    "@expo-google-fonts/space-grotesk": "^0.4.0",
     "@expo/vector-icons": "^15.0.3",
     "@gorhom/bottom-sheet": "^5.2.8",
     "@notifee/react-native": "^9.1.8",

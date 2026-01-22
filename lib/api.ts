@@ -1,4 +1,19 @@
-import { CursorInfo, DirectoryListing, Host, PackageJsonScripts, PortInfo, Session, SessionInsights } from '@/lib/types';
+import {
+  AiProvider,
+  AiSessionDetail,
+  AiSessionListResponse,
+  CliAssetListResponse,
+  CliAssetType,
+  CursorInfo,
+  DirectoryListing,
+  Host,
+  PackageJsonScripts,
+  PortInfo,
+  Session,
+  SessionInsights,
+  Tunnel,
+  TunnelCreate,
+} from '@/lib/types';
 
 const DEFAULT_TIMEOUT_MS = 6000;
 
@@ -275,6 +290,29 @@ export async function killPorts(
   });
 }
 
+export async function getTunnels(host: Host): Promise<{ tunnels: Tunnel[] }> {
+  return request(host, '/tunnels', { method: 'GET' });
+}
+
+export async function createTunnel(
+  host: Host,
+  config: TunnelCreate
+): Promise<{ tunnel: Tunnel }> {
+  return request(host, '/tunnels', {
+    method: 'POST',
+    body: JSON.stringify(config),
+  });
+}
+
+export async function closeTunnel(
+  host: Host,
+  tunnelId: string
+): Promise<{ ok: boolean }> {
+  return request(host, `/tunnels/${encodeURIComponent(tunnelId)}`, {
+    method: 'DELETE',
+  });
+}
+
 export async function dockerContainerAction(
   host: Host,
   containerId: string,
@@ -348,6 +386,110 @@ export async function sendTestPushNotification(
   }, 15000);
 }
 
+// AI Sessions API
+
+export type AiSessionsOptions = {
+  provider?: AiProvider;
+  limit?: number;
+  offset?: number;
+  directory?: string;
+  maxAgeDays?: number;
+  refresh?: boolean;
+};
+
+export async function getAiSessions(
+  host: Host,
+  options?: AiSessionsOptions
+): Promise<AiSessionListResponse> {
+  const params = new URLSearchParams();
+  if (options?.limit) params.set('limit', String(options.limit));
+  if (options?.offset) params.set('offset', String(options.offset));
+  if (options?.provider) params.set('provider', options.provider);
+  if (options?.directory) params.set('directory', options.directory);
+  if (options?.maxAgeDays) params.set('maxAgeDays', String(options.maxAgeDays));
+  if (options?.refresh) params.set('refresh', '1');
+  const query = params.toString();
+  return request(host, `/ai-sessions${query ? `?${query}` : ''}`, { method: 'GET' });
+}
+
+export async function getAiSessionDetail(
+  host: Host,
+  provider: AiProvider,
+  id: string
+): Promise<AiSessionDetail> {
+  return request(
+    host,
+    `/ai-sessions/${encodeURIComponent(provider)}/${encodeURIComponent(id)}`,
+    { method: 'GET' }
+  );
+}
+
+export async function resumeAiSession(
+  host: Host,
+  provider: AiProvider,
+  id: string
+): Promise<void> {
+  // Resume an AI session by creating a new tmux session with the resume command
+  // Each provider has a different resume command structure
+  const resumeCommands: Record<AiProvider, string> = {
+    claude: `claude --resume ${id}`,
+    codex: `codex --resume ${id}`,
+    opencode: `opencode --resume ${id}`,
+  };
+
+  const command = resumeCommands[provider];
+  const sessionName = `${provider}-${id.slice(0, 8)}`;
+
+  // Create a new tmux session running the resume command
+  await request(host, '/sessions', {
+    method: 'POST',
+    body: JSON.stringify({
+      name: sessionName,
+      command,
+    }),
+  });
+}
+
+// CLI Assets API
+
+export type CliAssetsOptions = {
+  provider?: AiProvider;
+  type: CliAssetType;
+};
+
+export async function getCliAssets(
+  host: Host,
+  options: CliAssetsOptions
+): Promise<CliAssetListResponse> {
+  const params = new URLSearchParams();
+  params.set('type', options.type);
+  if (options.provider) params.set('provider', options.provider);
+  const query = params.toString();
+  return request(host, `/cli-assets?${query}`, { method: 'GET' });
+}
+
+export async function upsertCliAsset(
+  host: Host,
+  payload: { provider: AiProvider; type: CliAssetType; name: string; content: string }
+): Promise<{ ok: boolean }> {
+  return request(host, '/cli-assets', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteCliAsset(
+  host: Host,
+  payload: { provider: AiProvider; type: CliAssetType; name: string }
+): Promise<{ ok: boolean }> {
+  return request(host, '/cli-assets', {
+    method: 'DELETE',
+    body: JSON.stringify(payload),
+  });
+}
+
+// Copilot Auth API
+
 export type CopilotAuthStartResponse = {
   userCode: string;
   verificationUri: string;
@@ -380,4 +522,37 @@ export async function getCopilotAuthStatus(host: Host): Promise<CopilotAuthStatu
 
 export async function logoutCopilot(host: Host): Promise<{ ok: boolean }> {
   return request(host, '/copilot/auth', { method: 'DELETE' });
+}
+
+// Service Management API
+
+export type ServiceStatus = {
+  status: 'running' | 'stopped' | 'unknown';
+  pid: number;
+  uptimeSeconds: number;
+  platform: 'linux' | 'macos' | 'windows';
+  initSystem: 'systemd' | 'openrc' | 'launchd' | 'task-scheduler' | 'manual';
+  autoRestart: boolean;
+  version: string;
+  installDir: string;
+};
+
+export type ServiceLogs = {
+  lines: string[];
+  source: 'journald' | 'file' | 'eventlog';
+};
+
+export async function getServiceStatus(host: Host): Promise<ServiceStatus> {
+  return request(host, '/service/status', { method: 'GET' });
+}
+
+export async function restartService(host: Host): Promise<{ success: boolean; message: string }> {
+  return request(host, '/service/restart', { method: 'POST' });
+}
+
+export async function getServiceLogs(host: Host, lines?: number): Promise<ServiceLogs> {
+  const params = new URLSearchParams();
+  if (lines) params.set('lines', String(lines));
+  const query = params.toString();
+  return request(host, `/service/logs${query ? `?${query}` : ''}`, { method: 'GET' });
 }

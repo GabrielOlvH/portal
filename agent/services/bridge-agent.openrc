@@ -1,0 +1,26 @@
+#!/sbin/openrc-run
+
+name="bridge-agent"
+description="Bridge Agent - Terminal Management Server"
+supervisor="supervise-daemon"
+command="{{NODE_PATH}}"
+command_args="{{INSTALL_DIR}}/agent/node_modules/.bin/tsx {{INSTALL_DIR}}/agent/src/index.ts"
+command_user="{{USER}}"
+directory="{{INSTALL_DIR}}/agent"
+pidfile="/run/${RC_SVCNAME}.pid"
+respawn_delay=5
+respawn_max=0
+
+depend() {
+    need net
+    after firewall
+}
+
+start_pre() {
+    checkpath --directory --owner ${command_user} /run
+    [ -f "${directory}/.env" ] && export $(grep -v '^#' ${directory}/.env | xargs)
+}
+
+stop_post() {
+    rm -f "${pidfile}"
+}

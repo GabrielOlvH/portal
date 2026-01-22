@@ -322,7 +322,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   input: {
     fontSize: 16,
-    fontFamily: 'SpaceGrotesk_400Regular',
     color: colors.text,
     paddingVertical: 8,
     backgroundColor: colors.cardPressed,

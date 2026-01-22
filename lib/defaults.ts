@@ -25,5 +25,9 @@ export function defaultPreferences(): AppPreferences {
       pushEnabled: true,
       liveEnabled: true,
     },
+    terminal: {
+      fontFamily: 'JetBrains Mono',
+      fontSize: 12,
+    },
   };
 }

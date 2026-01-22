@@ -1,6 +1,8 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { TOKEN } from '../config';
+import { registerAiSessionRoutes } from './routes/ai-sessions';
+import { registerCliAssetRoutes } from './routes/cli-assets';
 import { registerCopilotRoutes } from './routes/copilot';
 import { registerCoreRoutes } from './routes/core';
 import { registerDockerRoutes } from './routes/docker';
@@ -8,6 +10,8 @@ import { registerFileRoutes } from './routes/files';
 import { registerNotificationRoutes } from './routes/notifications';
 import { registerPortRoutes } from './routes/ports';
 import { registerSessionRoutes } from './routes/sessions';
+import { registerTunnelRoutes } from './routes/tunnels';
+import { registerServiceRoutes } from './routes/service';
 import { registerUpdateRoutes } from './routes/update';
 
 export function buildApp() {
@@ -25,15 +29,18 @@ export function buildApp() {
     return next();
   });
 
+  registerAiSessionRoutes(app);
+  registerCliAssetRoutes(app);
   registerCoreRoutes(app);
   registerDockerRoutes(app);
   registerFileRoutes(app);
   registerNotificationRoutes(app);
   registerPortRoutes(app);
   registerSessionRoutes(app);
+  registerTunnelRoutes(app);
+  registerServiceRoutes(app);
   registerUpdateRoutes(app);
   registerCopilotRoutes(app);
 
   return app;
 }
-

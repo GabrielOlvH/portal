@@ -37,7 +37,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 14,
-    fontFamily: 'SpaceGrotesk_400Regular',
     color: colors.text,
   },
 });

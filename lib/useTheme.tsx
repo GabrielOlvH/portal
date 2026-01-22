@@ -3,81 +3,83 @@ import { useColorScheme } from 'react-native';
 import type { ThemeSetting } from '@/lib/types';
 
 export const lightColors = {
-  // Backgrounds
-  background: '#F7F3EB',        // Warm cream (kept per user preference)
+  // Backgrounds - Portal cool gray
+  background: '#f8fafc',        // Cool gray to match blue identity
   card: '#FFFFFF',              // Solid white cards
-  cardPressed: '#F5F5F5',       // Slightly darker on press
+  cardPressed: '#f1f5f9',       // Slate-100 on press
 
-  // Text
-  text: '#1A1A1A',              // Bold black primary text
-  textSecondary: '#666666',     // Secondary text
-  textMuted: '#999999',         // Muted/tertiary text
+  // Text - Navy instead of pure black
+  text: '#0f172a',              // Slate-900 (deep navy)
+  textSecondary: '#475569',     // Slate-600
+  textMuted: '#94a3b8',         // Slate-400
 
-  // Accent - Bold Black
-  accent: '#1A1A1A',            // Primary actions
-  accentText: '#FFFFFF',        // Text on accent
+  // Accent - Portal Blue
+  accent: '#3b82f6',            // Blue-500 (logo border color)
+  accentText: '#FFFFFF',        // White text on accent
 
   // Borders & Separators
-  border: '#E5E5E5',
-  separator: '#EBEBEB',
+  border: '#e2e8f0',            // Slate-200
+  separator: '#e2e8f0',         // Slate-200
 
   // Status colors (kept vibrant)
-  green: '#34C759',
-  red: '#FF3B30',
-  orange: '#FF9500',
-  blue: '#007AFF',
-  teal: '#00C7BE',
-  purple: '#AF52DE',
+  green: '#22c55e',             // Green-500
+  red: '#ef4444',               // Red-500
+  orange: '#f97316',            // Orange-500
+  blue: '#3b82f6',              // Blue-500
+  teal: '#14b8a6',              // Teal-500
+  purple: '#a855f7',            // Purple-500
 
   // UI elements
-  barBg: '#F0EBE3',             // Progress bar backgrounds
-  shadow: '#000000',
+  barBg: '#e2e8f0',             // Slate-200
+  shadow: '#0f172a',            // Navy shadow
 
   // Terminal theme
   terminalBackground: '#FFFFFF',
-  terminalForeground: '#1A1A1A',
-  terminalMuted: '#6B6B6B',
-  terminalBorder: '#E5E5E5',
-  terminalPressed: '#F5F5F5',
+  terminalForeground: '#0f172a',
+  terminalSelection: '#bfdbfe', // Blue-200
+  terminalMuted: '#64748b',     // Slate-500
+  terminalBorder: '#e2e8f0',
+  terminalPressed: '#f1f5f9',
 };
 
 export const darkColors = {
-  // Backgrounds
-  background: '#000000',        // Pure black
-  card: '#1C1C1E',              // iOS dark card
-  cardPressed: '#2C2C2E',       // Slightly lighter on press
+  // Backgrounds - Portal deep navy
+  background: '#0f172a',        // Slate-900 (deep navy from logo)
+  card: '#1e293b',              // Slate-800
+  cardPressed: '#334155',       // Slate-700 on press
 
   // Text
-  text: '#FFFFFF',              // White primary text
-  textSecondary: '#ABABAB',     // Secondary text
-  textMuted: '#6B6B6B',         // Muted/tertiary text
+  text: '#f1f5f9',              // Slate-100 (soft white)
+  textSecondary: '#94a3b8',     // Slate-400
+  textMuted: '#64748b',         // Slate-500
 
-  // Accent - stays light for contrast
-  accent: '#FFFFFF',            // White accent on dark
-  accentText: '#000000',        // Black text on accent
+  // Accent - Portal Blue (brighter for dark mode)
+  accent: '#60a5fa',            // Blue-400 (visible on dark)
+  accentText: '#0f172a',        // Navy text on accent
 
   // Borders & Separators
-  border: '#38383A',
-  separator: '#38383A',
+  border: '#334155',            // Slate-700
+  separator: '#334155',         // Slate-700
 
-  // Status colors (same, they work in both modes)
-  green: '#30D158',
-  red: '#FF453A',
-  orange: '#FF9F0A',
-  blue: '#0A84FF',
-  teal: '#64D2FF',
-  purple: '#BF5AF2',
+  // Status colors (brighter for dark mode)
+  green: '#4ade80',             // Green-400
+  red: '#f87171',               // Red-400
+  orange: '#fb923c',            // Orange-400
+  blue: '#60a5fa',              // Blue-400
+  teal: '#2dd4bf',              // Teal-400
+  purple: '#c084fc',            // Purple-400
 
   // UI elements
-  barBg: '#2C2C2E',
+  barBg: '#1e293b',             // Slate-800
   shadow: '#000000',
 
-  // Terminal theme
-  terminalBackground: '#0B0D0F',
-  terminalForeground: '#E6EDF3',
-  terminalMuted: '#8B949E',
-  terminalBorder: '#1E2226',
-  terminalPressed: '#1E2226',
+  // Terminal theme - Portal navy
+  terminalBackground: '#0f172a',
+  terminalForeground: '#e2e8f0',
+  terminalSelection: '#1e3a5f', // Logo square color
+  terminalMuted: '#64748b',
+  terminalBorder: '#1e293b',
+  terminalPressed: '#1e293b',
 };
 
 export type ThemeColors = typeof lightColors;

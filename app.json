@@ -1,30 +1,30 @@
 {
   "expo": {
-    "name": "Bridge",
-    "slug": "bridge",
+    "name": "Portal",
+    "slug": "portal",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "bridge",
+    "scheme": "portal",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
       "image": "./assets/images/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#1a365d"
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.bridge.app",
+      "bundleIdentifier": "com.portal.app",
       "infoPlist": {
         "NSLocalNetworkUsageDescription": "Find tmux agents on your local network."
       }
     },
     "android": {
-      "package": "com.bridge.app",
+      "package": "com.portal.app",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#1a365d"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
@@ -51,7 +51,7 @@
               "appExtensions": [
                 {
                   "targetName": "LiveActivity",
-                  "bundleIdentifier": "com.bridge.app.LiveActivity",
+                  "bundleIdentifier": "com.portal.app.LiveActivity",
                   "entitlements": {}
                 }
               ]

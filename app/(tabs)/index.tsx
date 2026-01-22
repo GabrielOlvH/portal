@@ -74,24 +74,28 @@ function CompactUsageCard({ provider, usage }: CompactUsageCardProps) {
 
   return (
     <Card style={compactUsageStyles.card}>
-      <View style={compactUsageStyles.iconContainer}>
-        <ProviderIcon provider={provider} size={32} percentRemaining={isWeeklyExhausted ? 0 : sessionLeft} />
+      <View style={compactUsageStyles.topRow}>
+        <View style={compactUsageStyles.iconContainer}>
+          <ProviderIcon provider={provider} size={32} percentRemaining={isWeeklyExhausted ? 0 : sessionLeft} />
+        </View>
+        <View style={compactUsageStyles.sessionInfo}>
+          <AppText
+            variant="mono"
+            style={[
+              compactUsageStyles.percent,
+              { color: isWeeklyExhausted ? withAlpha(color, 0.3) : color },
+              isWeeklyExhausted && compactUsageStyles.strikethrough,
+            ]}
+          >
+            {Math.round(sessionLeft)}%
+          </AppText>
+          {usage.session?.reset && (
+            <AppText variant="label" tone="muted" style={compactUsageStyles.reset}>
+              {formatReset(usage.session.reset)}
+            </AppText>
+          )}
+        </View>
       </View>
-      <AppText
-        variant="mono"
-        style={[
-          compactUsageStyles.percent,
-          { color: isWeeklyExhausted ? withAlpha(color, 0.3) : color },
-          isWeeklyExhausted && compactUsageStyles.strikethrough,
-        ]}
-      >
-        {Math.round(sessionLeft)}%
-      </AppText>
-      {usage.session?.reset && (
-        <AppText variant="label" tone="muted" style={compactUsageStyles.reset}>
-          {formatReset(usage.session.reset)}
-        </AppText>
-      )}
       {hasWeekly && (
         <View style={compactUsageStyles.weeklySection}>
           <View style={[compactUsageStyles.weeklyBar, { backgroundColor: colors.barBg }]}>
@@ -129,12 +133,22 @@ function withAlpha(hex: string, alpha: number) {
 
 const compactUsageStyles = StyleSheet.create({
   card: {
-    minWidth: 95,
+    flex: 1,
     padding: 10,
-    alignItems: 'center',
-    gap: 3,
+    gap: 6,
   },
-  iconContainer: {},
+  topRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  iconContainer: {
+    flexShrink: 0,
+  },
+  sessionInfo: {
+    flex: 1,
+    alignItems: 'flex-end',
+  },
   strikethrough: {
     textDecorationLine: 'line-through',
   },
@@ -396,7 +410,7 @@ export default function SessionsScreen() {
         {/* Header */}
         <View style={styles.header}>
           <View>
-            <AppText variant="title">Bridge</AppText>
+            <AppText variant="title">Portal</AppText>
           </View>
           {hosts.length > 0 && (
             <Pressable
@@ -624,7 +638,7 @@ const createStyles = (colors: ThemeColors, _isDark: boolean) => {
   },
   usageCardsRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    gap: 10,
   },
   usageRow: {
     gap: 4,

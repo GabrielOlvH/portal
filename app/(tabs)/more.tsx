@@ -7,7 +7,7 @@ import { ChevronRight } from 'lucide-react-native';
 import { useStore } from '@/lib/store';
 import { getCopilotAuthStatus, logoutCopilot, getUsage, sendTestPushNotification } from '@/lib/api';
 import { registerNotificationsForHostsWithResult, sendTestNotification } from '@/lib/notifications';
-import type { ProviderUsage, ThemeSetting } from '@/lib/types';
+import type { ProviderUsage, TerminalFontFamily, ThemeSetting } from '@/lib/types';
 
 import { Screen } from '@/components/Screen';
 import { AppText } from '@/components/AppText';
@@ -131,10 +131,72 @@ function ThemeOption({ label, value, selected, onSelect, styles, colors }: Theme
   );
 }
 
+const FONT_OPTIONS: { label: string; value: TerminalFontFamily }[] = [
+  { label: 'JetBrains Mono', value: 'JetBrains Mono' },
+  { label: 'Fira Code', value: 'Fira Code' },
+  { label: 'Source Code Pro', value: 'Source Code Pro' },
+  { label: 'SF Mono', value: 'SF Mono' },
+  { label: 'Menlo', value: 'Menlo' },
+];
+
+interface FontOptionProps {
+  label: string;
+  value: TerminalFontFamily;
+  selected: boolean;
+  onSelect: (value: TerminalFontFamily) => void;
+  styles: ReturnType<typeof createStyles>;
+  colors: ThemeColors;
+}
+
+function FontOption({ label, value, selected, onSelect, styles, colors }: FontOptionProps) {
+  return (
+    <Pressable
+      onPress={() => onSelect(value)}
+      style={[styles.fontOption, selected && { backgroundColor: colors.accent }]}
+    >
+      <AppText
+        variant="label"
+        style={{ color: selected ? colors.accentText : colors.text }}
+      >
+        {label}
+      </AppText>
+    </Pressable>
+  );
+}
+
+interface FontSizeSelectorProps {
+  value: number;
+  onChange: (size: number) => void;
+  styles: ReturnType<typeof createStyles>;
+  colors: ThemeColors;
+}
+
+function FontSizeSelector({ value, onChange, styles, colors }: FontSizeSelectorProps) {
+  return (
+    <View style={styles.fontSizeSelector}>
+      <Pressable
+        onPress={() => onChange(Math.max(10, value - 1))}
+        style={[styles.fontSizeButton, value <= 10 && { opacity: 0.4 }]}
+        disabled={value <= 10}
+      >
+        <AppText variant="title" style={{ color: colors.text }}>−</AppText>
+      </Pressable>
+      <AppText variant="subtitle" style={{ minWidth: 40, textAlign: 'center' }}>{value}px</AppText>
+      <Pressable
+        onPress={() => onChange(Math.min(16, value + 1))}
+        style={[styles.fontSizeButton, value >= 16 && { opacity: 0.4 }]}
+        disabled={value >= 16}
+      >
+        <AppText variant="title" style={{ color: colors.text }}>+</AppText>
+      </Pressable>
+    </View>
+  );
+}
+
 export default function MoreTabScreen() {
   const router = useRouter();
   const { colors } = useTheme();
-  const { hosts, preferences, updateUsageCardVisibility, updateNotificationSettings, updateTheme } = useStore();
+  const { hosts, preferences, updateUsageCardVisibility, updateNotificationSettings, updateTheme, updateTerminalSettings } = useStore();
   const host = hosts[0];
 
   const [copilotLoading, setCopilotLoading] = useState(false);
@@ -232,6 +294,22 @@ export default function MoreTabScreen() {
             title="Snippets"
             subtitle="Global commands to reuse anywhere"
             onPress={() => router.push('/snippets')}
+            styles={styles}
+            chevronColor={colors.textSecondary}
+          />
+          <View style={styles.separator} />
+          <MenuItem
+            title="AI Sessions"
+            subtitle="Claude, Codex, and OpenCode sessions"
+            onPress={() => router.push('/ai-sessions')}
+            styles={styles}
+            chevronColor={colors.textSecondary}
+          />
+          <View style={styles.separator} />
+          <MenuItem
+            title="CLI Sync"
+            subtitle="Skills, commands, and MCPs"
+            onPress={() => router.push('/cli-assets')}
             styles={styles}
             chevronColor={colors.textSecondary}
           />
@@ -506,6 +584,44 @@ export default function MoreTabScreen() {
             />
           </View>
         </Card>
+
+        <Card style={styles.card}>
+          <View style={styles.sectionHeader}>
+            <AppText variant="subtitle">Terminal</AppText>
+            <AppText variant="label" tone="muted">
+              Customize terminal appearance
+            </AppText>
+          </View>
+          <View style={styles.separator} />
+          <View style={styles.settingRow}>
+            <AppText variant="label">Font</AppText>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View style={styles.fontSelector}>
+                {FONT_OPTIONS.map((opt) => (
+                  <FontOption
+                    key={opt.value}
+                    label={opt.label}
+                    value={opt.value}
+                    selected={preferences.terminal.fontFamily === opt.value}
+                    onSelect={(val) => updateTerminalSettings({ fontFamily: val })}
+                    styles={styles}
+                    colors={colors}
+                  />
+                ))}
+              </View>
+            </ScrollView>
+          </View>
+          <View style={styles.separator} />
+          <View style={styles.settingRow}>
+            <AppText variant="label">Size</AppText>
+            <FontSizeSelector
+              value={preferences.terminal.fontSize}
+              onChange={(size) => updateTerminalSettings({ fontSize: size })}
+              styles={styles}
+              colors={colors}
+            />
+          </View>
+        </Card>
       </ScrollView>
     </Screen>
   );
@@ -575,5 +691,34 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderRadius: theme.radii.sm,
     alignItems: 'center',
     backgroundColor: colors.separator,
+  },
+  fontOption: {
+    paddingVertical: theme.spacing.xs,
+    paddingHorizontal: theme.spacing.sm,
+    borderRadius: theme.radii.sm,
+    backgroundColor: colors.separator,
+    marginRight: theme.spacing.xs,
+  },
+  fontSelector: {
+    flexDirection: 'row',
+  },
+  fontSizeSelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.md,
+  },
+  fontSizeButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.separator,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  settingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: theme.spacing.md,
   },
 });

@@ -2,10 +2,16 @@
   "name": "tmux-agent",
   "private": true,
   "type": "module",
+  "bin": {
+    "bridge-agent": "./src/index.ts"
+  },
   "scripts": {
     "start": "tsx src/index.ts",
     "dev": "tsx watch src/index.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "install-service": "tsx scripts/install.ts",
+    "uninstall-service": "tsx scripts/uninstall.ts",
+    "update-service": "tsx scripts/update.ts"
   },
   "dependencies": {
     "@hono/node-server": "^1.13.2",

@@ -3,12 +3,6 @@ import { ThemeProvider } from '@react-navigation/native';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useFonts } from 'expo-font';
-import {
-  SpaceGrotesk_400Regular,
-  SpaceGrotesk_500Medium,
-  SpaceGrotesk_600SemiBold,
-  SpaceGrotesk_700Bold,
-} from '@expo-google-fonts/space-grotesk';
 import { JetBrainsMono_500Medium } from '@expo-google-fonts/jetbrains-mono';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context';
@@ -30,10 +24,6 @@ SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const [loaded, error] = useFonts({
-    SpaceGrotesk_400Regular,
-    SpaceGrotesk_500Medium,
-    SpaceGrotesk_600SemiBold,
-    SpaceGrotesk_700Bold,
     JetBrainsMono_500Medium,
   });
 
@@ -107,6 +97,7 @@ function NavigationRoot() {
               <Stack.Screen name="projects/index" />
               <Stack.Screen name="projects/new" />
               <Stack.Screen name="snippets/index" />
+              <Stack.Screen name="cli-assets/index" />
               <Stack.Screen name="ports/index" />
               <Stack.Screen name="session/[hostId]/[name]/index" />
             </Stack>

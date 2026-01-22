@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { AppPreferences, Host, HostDraft, ThemeSetting, UsageCardsVisibility } from '@/lib/types';
+import { AppPreferences, Host, HostDraft, TerminalSettings, ThemeSetting, UsageCardsVisibility } from '@/lib/types';
 import { loadHosts, loadPreferences, saveHosts, savePreferences } from '@/lib/storage';
 import { createId, defaultPreferences, pickHostAccent } from '@/lib/defaults';
 
@@ -13,6 +13,7 @@ const StoreContext = createContext<{
   updateUsageCardVisibility: (updates: Partial<UsageCardsVisibility>) => void;
   updateNotificationSettings: (updates: Partial<AppPreferences['notifications']>) => void;
   updateTheme: (theme: ThemeSetting) => void;
+  updateTerminalSettings: (updates: Partial<TerminalSettings>) => void;
 } | null>(null);
 
 export function StoreProvider({ children }: { children: React.ReactNode }) {
@@ -117,6 +118,20 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  const updateTerminalSettings = useCallback(
+    (updates: Partial<TerminalSettings>) => {
+      setPreferences((prev) => {
+        const next: AppPreferences = {
+          ...prev,
+          terminal: { ...prev.terminal, ...updates },
+        };
+        savePreferences(next);
+        return next;
+      });
+    },
+    []
+  );
+
   const value = useMemo(
     () => ({
       hosts,
@@ -128,6 +143,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       updateUsageCardVisibility,
       updateNotificationSettings,
       updateTheme,
+      updateTerminalSettings,
     }),
     [
       hosts,
@@ -139,6 +155,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       updateUsageCardVisibility,
       updateNotificationSettings,
       updateTheme,
+      updateTerminalSettings,
     ]
   );
 

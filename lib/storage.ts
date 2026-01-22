@@ -23,7 +23,9 @@ function normalizePreferences(raw: Partial<AppPreferences> | null): AppPreferenc
   const defaults = defaultPreferences();
   const usageCards: Partial<AppPreferences['usageCards']> = raw?.usageCards ?? {};
   const notifications: Partial<AppPreferences['notifications']> = raw?.notifications ?? {};
+  const terminal: Partial<AppPreferences['terminal']> = raw?.terminal ?? {};
   const validThemes = ['light', 'dark', 'system'] as const;
+  const validFonts = ['JetBrains Mono', 'Fira Code', 'Source Code Pro', 'SF Mono', 'Menlo'] as const;
   const theme = raw?.theme && validThemes.includes(raw.theme) ? raw.theme : defaults.theme;
 
   return {
@@ -39,6 +41,16 @@ function normalizePreferences(raw: Partial<AppPreferences> | null): AppPreferenc
         typeof notifications.pushEnabled === 'boolean' ? notifications.pushEnabled : defaults.notifications.pushEnabled,
       liveEnabled:
         typeof notifications.liveEnabled === 'boolean' ? notifications.liveEnabled : defaults.notifications.liveEnabled,
+    },
+    terminal: {
+      fontFamily:
+        terminal.fontFamily && validFonts.includes(terminal.fontFamily as typeof validFonts[number])
+          ? (terminal.fontFamily as typeof validFonts[number])
+          : defaults.terminal.fontFamily,
+      fontSize:
+        typeof terminal.fontSize === 'number' && terminal.fontSize >= 10 && terminal.fontSize <= 16
+          ? terminal.fontSize
+          : defaults.terminal.fontSize,
     },
   };
 }

@@ -4,7 +4,13 @@ import { Card } from '@/components/Card';
 import { Pill } from '@/components/Pill';
 import { Screen } from '@/components/Screen';
 import { SectionHeader } from '@/components/SectionHeader';
-import { createSession, killSession } from '@/lib/api';
+import {
+  createSession,
+  killSession,
+  getServiceStatus,
+  restartService,
+  ServiceStatus,
+} from '@/lib/api';
 import { systemColors } from '@/lib/colors';
 import { useHostLive } from '@/lib/live';
 import { useStore } from '@/lib/store';
@@ -67,6 +73,9 @@ export default function HostDetailScreen() {
   const host = hosts.find((item) => item.id === params.id);
   const [newSession, setNewSession] = useState('');
   const [syncing, setSyncing] = useState(false);
+  const [serviceStatus, setServiceStatus] = useState<ServiceStatus | null>(null);
+  const [serviceError, setServiceError] = useState<string | null>(null);
+  const [restarting, setRestarting] = useState(false);
   const isFocused = useIsFocused();
 
   const { state, refresh } = useHostLive(host, {
@@ -86,6 +95,57 @@ export default function HostDetailScreen() {
     if (host.lastSeen === state.lastUpdate) return;
     updateHostLastSeen(host.id, state.lastUpdate);
   }, [host?.id, host?.lastSeen, state?.lastUpdate, updateHostLastSeen]);
+
+  useEffect(() => {
+    if (!host || !isFocused) return;
+    let cancelled = false;
+    const fetchServiceStatus = async () => {
+      try {
+        const svcStatus = await getServiceStatus(host);
+        if (!cancelled) {
+          setServiceStatus(svcStatus);
+          setServiceError(null);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setServiceStatus(null);
+          if (err instanceof Error && err.message.includes('404')) {
+            setServiceError('Service info unavailable');
+          } else {
+            setServiceError(err instanceof Error ? err.message : 'Failed to fetch service status');
+          }
+        }
+      }
+    };
+    fetchServiceStatus();
+    return () => { cancelled = true; };
+  }, [host, isFocused, state?.lastUpdate]);
+
+  const handleRestartService = useCallback(async () => {
+    if (!host || restarting) return;
+    Alert.alert('Restart service', 'Restart the ter agent service?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Restart',
+        style: 'destructive',
+        onPress: async () => {
+          setRestarting(true);
+          try {
+            const result = await restartService(host);
+            if (result.success) {
+              Alert.alert('Service restarting', result.message);
+            } else {
+              Alert.alert('Restart failed', result.message);
+            }
+          } catch (err) {
+            Alert.alert('Restart failed', err instanceof Error ? err.message : 'Unable to restart service.');
+          } finally {
+            setRestarting(false);
+          }
+        },
+      },
+    ]);
+  }, [host, restarting]);
 
   const handleCreate = useCallback(async () => {
     if (!host || !newSession.trim()) return;
@@ -312,6 +372,59 @@ export default function HostDetailScreen() {
           )}
         </Card>
 
+        <SectionHeader title="Service" />
+        <Card style={styles.serviceCard}>
+          {serviceError ? (
+            <AppText variant="body" tone="muted">{serviceError}</AppText>
+          ) : serviceStatus ? (
+            <>
+              <View style={styles.serviceHeader}>
+                <View style={styles.serviceStatusRow}>
+                  <Pill
+                    label={serviceStatus.status === 'running' ? 'Running' : serviceStatus.status === 'stopped' ? 'Stopped' : 'Unknown'}
+                    tone={serviceStatus.status === 'running' ? 'success' : serviceStatus.status === 'stopped' ? 'warning' : 'neutral'}
+                  />
+                  <AppText variant="label" tone="muted">
+                    {formatUptime(serviceStatus.uptimeSeconds)}
+                  </AppText>
+                </View>
+                <AppText variant="label" tone="muted">
+                  v{serviceStatus.version}
+                </AppText>
+              </View>
+              <View style={styles.serviceInfo}>
+                <View style={styles.serviceInfoRow}>
+                  <AppText variant="caps" tone="muted">Platform</AppText>
+                  <AppText variant="label">
+                    {serviceStatus.platform} ({serviceStatus.initSystem})
+                  </AppText>
+                </View>
+                <View style={styles.serviceInfoRow}>
+                  <AppText variant="caps" tone="muted">PID</AppText>
+                  <AppText variant="label">{serviceStatus.pid}</AppText>
+                </View>
+                <View style={styles.serviceInfoRow}>
+                  <AppText variant="caps" tone="muted">Auto-restart</AppText>
+                  <AppText variant="label">{serviceStatus.autoRestart ? 'Yes' : 'No'}</AppText>
+                </View>
+              </View>
+              <View style={styles.serviceActions}>
+                <Pressable
+                  onPress={handleRestartService}
+                  disabled={restarting}
+                  style={[styles.serviceButton, restarting && styles.serviceButtonDisabled]}
+                >
+                  <AppText variant="caps" tone={restarting ? 'muted' : 'accent'}>
+                    {restarting ? 'Restarting...' : 'Restart'}
+                  </AppText>
+                </Pressable>
+              </View>
+            </>
+          ) : (
+            <AppText variant="body" tone="muted">Loading service status...</AppText>
+          )}
+        </Card>
+
         <SectionHeader title="Create session" />
         <Card style={styles.createCard}>
           <TextInput
@@ -443,6 +556,43 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginTop: theme.spacing.sm,
     gap: 4,
   },
+  serviceCard: {
+    padding: 14,
+  },
+  serviceHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: theme.spacing.sm,
+  },
+  serviceStatusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  serviceInfo: {
+    gap: 6,
+  },
+  serviceInfoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  serviceActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginTop: theme.spacing.sm,
+    gap: 12,
+  },
+  serviceButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: theme.radii.sm,
+    backgroundColor: colors.cardPressed,
+  },
+  serviceButtonDisabled: {
+    opacity: 0.5,
+  },
   createCard: {
     padding: 12,
   },
@@ -452,7 +602,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderRadius: theme.radii.md,
     paddingHorizontal: 10,
     paddingVertical: 8,
-    fontFamily: 'SpaceGrotesk_400Regular',
     fontSize: 14,
     color: colors.text,
   },

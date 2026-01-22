@@ -2,6 +2,8 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ActionSheetIOS,
   Alert,
+  AppState,
+  type AppStateStatus,
   Keyboard,
   Platform,
   Pressable,
@@ -14,7 +16,7 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useIsFocused } from '@react-navigation/native';
-import { WebView } from 'react-native-webview';
+import type { WebView } from 'react-native-webview';
 import {
   ChevronDown,
   ChevronUp,
@@ -30,21 +32,17 @@ import {
 import * as Haptics from 'expo-haptics';
 import * as Clipboard from 'expo-clipboard';
 import * as ImagePicker from 'expo-image-picker';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  runOnJS,
-} from 'react-native-reanimated';
+import type { NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
 
 import { Screen } from '@/components/Screen';
 import { AppText } from '@/components/AppText';
+import { TerminalWebView } from '@/components/TerminalWebView';
 import { useStore } from '@/lib/store';
 import { useSnippets } from '@/lib/snippets-store';
 import { useTheme } from '@/lib/useTheme';
 import { useHostLive } from '@/lib/live';
 import { uploadImage } from '@/lib/api';
+import { buildTerminalHtml, TERMINAL_HTML_VERSION, TerminalFontConfig } from '@/lib/terminal-html';
 import type { ThemeColors } from '@/lib/useTheme';
 
 type HelperKeyIcon = React.ComponentType<{ size: number; color: string }>;
@@ -65,6 +63,8 @@ type TerminalStyles = {
   headerButtonPressed: ViewStyle;
   headerButtonText: TextStyle;
   pager: ViewStyle;
+  pagerFrame: ViewStyle;
+  pagerContent: ViewStyle;
   page: ViewStyle;
   pageLabel: ViewStyle;
   pageLabelText: TextStyle;
@@ -82,8 +82,6 @@ type TerminalStyles = {
   expandKey: ViewStyle;
   keyPressed: ViewStyle;
 };
-
-const TERMINAL_HTML_VERSION = 'v2';
 
 const mainHelperKeys: HelperKey[] = [
   { label: 'Esc', data: '\u001b' },
@@ -110,331 +108,43 @@ function buildWsUrl(host: { baseUrl: string; authToken?: string }, sessionName: 
   }
 }
 
-function buildTerminalHtml(
-  wsUrl: string,
-  theme: { background: string; foreground: string; cursor: string }
-): string {
-  const { background, foreground, cursor } = theme;
-  return `<!doctype html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link rel="stylesheet" href="https://unpkg.com/xterm/css/xterm.css" />
-    <style>
-      html, body { height: 100%; margin: 0; background: ${background}; overflow: hidden; }
-      #terminal { height: 100%; width: 100%; padding-left: 4px; }
-    </style>
-  </head>
-  <body>
-    <div id="terminal"></div>
-    <script src="https://unpkg.com/xterm/lib/xterm.js"></script>
-    <script src="https://unpkg.com/xterm-addon-fit/lib/xterm-addon-fit.js"></script>
-    <script>
-      const term = new Terminal({
-        cursorBlink: true,
-        fontFamily: 'JetBrainsMono, Menlo, monospace',
-        fontSize: 12,
-        allowProposedApi: true,
-        rendererType: 'canvas',
-        theme: { background: '${background}', foreground: '${foreground}', cursor: '${cursor}' },
-      });
-      const fitAddon = new FitAddon.FitAddon();
-      term.loadAddon(fitAddon);
-      term.open(document.getElementById('terminal'));
-
-      let socket = null;
-      let reconnectTimer = null;
-      let hasFitted = false;
-      let fitScheduled = false;
-      let lastCols = 0;
-      let lastRows = 0;
-      let outputBuffer = '';
-      let outputScheduled = false;
-      let inputBuffer = '';
-      let inputScheduled = false;
-
-      function scheduleMicrotask(fn) {
-        if (typeof queueMicrotask === 'function') {
-          queueMicrotask(fn);
-          return;
-        }
-        Promise.resolve().then(fn);
-      }
-
-      function flushOutput() {
-        if (!outputBuffer) return;
-        const chunk = outputBuffer;
-        outputBuffer = '';
-        term.write(chunk, () => {
-          if (socket?.readyState === 1) {
-            socket.send(JSON.stringify({ type: 'ack', bytes: chunk.length }));
-          }
-        });
-      }
-
-      function queueOutput(data) {
-        outputBuffer += data;
-        if (outputScheduled) return;
-        outputScheduled = true;
-        scheduleMicrotask(() => {
-          outputScheduled = false;
-          flushOutput();
-        });
-      }
-
-      function flushInput() {
-        if (!inputBuffer) return;
-        const chunk = inputBuffer;
-        inputBuffer = '';
-        if (socket?.readyState === 1) {
-          socket.send(JSON.stringify({ type: 'input', data: chunk }));
-        }
-      }
-
-      function queueInput(data) {
-        if (!data) return;
-        if (socket?.readyState === 1 && data.length <= 1 && !inputScheduled && !inputBuffer) {
-          socket.send(JSON.stringify({ type: 'input', data }));
-          return;
-        }
-        inputBuffer += data;
-        if (inputScheduled) return;
-        inputScheduled = true;
-        scheduleMicrotask(() => {
-          inputScheduled = false;
-          flushInput();
-        });
-      }
-
-
-      function sendToRN(payload) {
-        if (window.ReactNativeWebView) {
-          window.ReactNativeWebView.postMessage(JSON.stringify(payload));
-        }
-      }
-
-      function sendResize() {
-        if (socket?.readyState !== 1) return;
-        const cols = term.cols;
-        const rows = term.rows;
-        if (!cols || !rows) return;
-        if (cols === lastCols && rows === lastRows) return;
-        lastCols = cols;
-        lastRows = rows;
-        socket.send(JSON.stringify({ type: 'resize', cols, rows }));
-      }
-
-      function scheduleFit() {
-        if (fitScheduled) return;
-        fitScheduled = true;
-        requestAnimationFrame(() => {
-          fitScheduled = false;
-          fitAddon.fit();
-          hasFitted = true;
-          sendResize();
-        });
-      }
-
-      function connect() {
-        socket = new WebSocket('${wsUrl}');
-        socket.onopen = () => {
-          sendToRN({ type: 'status', state: 'connected' });
-          flushInput();
-          if (hasFitted) {
-            sendResize();
-          } else {
-            setTimeout(scheduleFit, 50);
-          }
-        };
-        socket.onmessage = (event) => {
-          const data = typeof event.data === 'string' ? event.data : String(event.data);
-          if (data) queueOutput(data);
-        };
-        socket.onclose = () => {
-          sendToRN({ type: 'status', state: 'disconnected' });
-          if (reconnectTimer) clearTimeout(reconnectTimer);
-          reconnectTimer = setTimeout(connect, 1000);
-        };
-        socket.onerror = () => sendToRN({ type: 'status', state: 'error' });
-      }
-
-      term.onData((data) => {
-        queueInput(data);
-      });
-
-      window.__sendToTerminal = (data) => {
-        queueInput(data);
-      };
-      window.__focusTerminal = () => term.focus();
-      window.__blurTerminal = () => term.blur();
-      window.__fitTerminal = () => { scheduleFit(); };
-      window.__copySelection = () => {
-        const text = term.getSelection();
-        if (text && text.trim().length > 0) {
-          sendToRN({ type: 'copy', text });
-          return;
-        }
-        const buffer = term.buffer.active;
-        const start = buffer.viewportY;
-        const lines = [];
-        for (let i = start; i < Math.min(buffer.length, start + term.rows); i += 1) {
-          const line = buffer.getLine(i);
-          if (line) lines.push(line.translateToString(true));
-        }
-        sendToRN({ type: 'copy', text: lines.join('\\n') });
-      };
-
-      // Mouse wheel scroll for tmux (SGR protocol)
-      function sendScroll(deltaY, clientX, clientY) {
-        if (socket?.readyState !== 1) return;
-        const rect = document.getElementById('terminal').getBoundingClientRect();
-        const col = Math.floor((clientX - rect.left) / 7) + 1;
-        const row = Math.floor((clientY - rect.top) / 14) + 1;
-        const btn = deltaY < 0 ? 64 : 65;
-        const esc = String.fromCharCode(27);
-        socket.send(JSON.stringify({ type: 'input', data: esc + '[<' + btn + ';' + col + ';' + row + 'M' }));
-      }
-
-      document.addEventListener('wheel', (e) => {
-        e.preventDefault();
-        const lines = Math.max(1, Math.ceil(Math.abs(e.deltaY) / 40));
-        for (let i = 0; i < lines; i++) sendScroll(e.deltaY, e.clientX, e.clientY);
-      }, { passive: false });
-
-      // Touch handling: long-press for selection, quick swipe for scroll
-      let touchStartX = 0;
-      let touchStartY = 0;
-      let lastScrollY = 0;
-      let touchStartTime = 0;
-      let isSelectionMode = false;
-      let isVerticalScroll = null;
-      let selectionStartCol = 0;
-      let selectionStartRow = 0;
-      const LONG_PRESS_DURATION = 400;
-      const MOVE_THRESHOLD = 10;
-
-      // Get cell dimensions from xterm
-      function getCellSize() {
-        const core = term._core;
-        return {
-          width: core._renderService.dimensions.css.cell.width,
-          height: core._renderService.dimensions.css.cell.height
-        };
-      }
-
-      // Convert touch position to terminal cell
-      function touchToCell(clientX, clientY) {
-        const rect = document.getElementById('terminal').getBoundingClientRect();
-        const cell = getCellSize();
-        const col = Math.floor((clientX - rect.left) / cell.width);
-        const row = Math.floor((clientY - rect.top) / cell.height);
-        return { col: Math.max(0, col), row: Math.max(0, row) };
-      }
-
-      document.addEventListener('touchstart', (e) => {
-        if (e.touches.length === 1) {
-          touchStartX = e.touches[0].clientX;
-          touchStartY = e.touches[0].clientY;
-          lastScrollY = touchStartY;
-          touchStartTime = Date.now();
-          if (isSelectionMode) {
-            sendToRN({ type: 'selectionEnd' });
-          }
-          isSelectionMode = false;
-          isVerticalScroll = null;
-          term.clearSelection();
-        }
-      }, { passive: true });
-
-      document.addEventListener('touchmove', (e) => {
-        if (e.touches.length === 1) {
-          const x = e.touches[0].clientX;
-          const y = e.touches[0].clientY;
-          const dx = x - touchStartX;
-          const dy = y - touchStartY;
-          const elapsed = Date.now() - touchStartTime;
-          const moved = Math.abs(dx) > MOVE_THRESHOLD || Math.abs(dy) > MOVE_THRESHOLD;
-
-          // Long-press without initial movement = start selection mode
-          if (!isSelectionMode && !moved && elapsed > LONG_PRESS_DURATION) {
-            isSelectionMode = true;
-            const start = touchToCell(touchStartX, touchStartY);
-            selectionStartCol = start.col;
-            selectionStartRow = start.row;
-            term.select(selectionStartCol, selectionStartRow + term.buffer.active.viewportY, 1);
-            sendToRN({ type: 'selectionStart' });
-            sendToRN({ type: 'haptic' });
-            return;
-          }
-
-          // In selection mode, extend selection
-          if (isSelectionMode) {
-            const end = touchToCell(x, y);
-            const startRow = selectionStartRow + term.buffer.active.viewportY;
-            const endRow = end.row + term.buffer.active.viewportY;
-            if (endRow === startRow) {
-              const length = Math.abs(end.col - selectionStartCol) + 1;
-              const startCol = Math.min(selectionStartCol, end.col);
-              term.select(startCol, startRow, length);
-            } else if (endRow > startRow) {
-              term.select(selectionStartCol, startRow, (term.cols - selectionStartCol) + (endRow - startRow - 1) * term.cols + end.col + 1);
-            } else {
-              term.select(end.col, endRow, (term.cols - end.col) + (startRow - endRow - 1) * term.cols + selectionStartCol + 1);
-            }
-            return;
-          }
-
-          // Otherwise handle scroll
-          if (isVerticalScroll === null) {
-            if (Math.abs(dy) > 8 && Math.abs(dy) > Math.abs(dx) + 4) {
-              isVerticalScroll = true;
-            } else if (Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy) + 4) {
-              isVerticalScroll = false;
-            } else {
-              return;
-            }
-          }
-          if (!isVerticalScroll) return;
-          const delta = lastScrollY - y;
-          if (Math.abs(delta) > 14) {
-            sendScroll(delta, x, y);
-            lastScrollY = y;
-          }
-        }
-      }, { passive: true });
-
-      window.addEventListener('resize', () => { scheduleFit(); });
-      connect();
-    </script>
-  </body>
-</html>`;
-}
-
 export default function SessionTerminalScreen(): React.ReactElement {
   const router = useRouter();
   const { colors } = useTheme();
   const params = useLocalSearchParams<{ hostId: string; name: string }>();
   const initialSessionName = decodeURIComponent(params.name ?? '');
-  const { hosts } = useStore();
+  const { hosts, preferences } = useStore();
   const { snippets } = useSnippets();
   const host = hosts.find((item) => item.id === params.hostId);
+  const fontConfig: TerminalFontConfig = useMemo(
+    () => ({
+      fontFamily: preferences.terminal.fontFamily,
+      fontSize: preferences.terminal.fontSize,
+    }),
+    [preferences.terminal.fontFamily, preferences.terminal.fontSize]
+  );
   const isFocused = useIsFocused();
   const { width: screenWidth } = useWindowDimensions();
 
   const [currentSessionName, setCurrentSessionName] = useState(initialSessionName);
   const [keyboardOffset, setKeyboardOffset] = useState(0);
   const [helperHeight, setHelperHeight] = useState(0);
+  const [pagerHeight, setPagerHeight] = useState(0);
   const [isSelecting, setIsSelecting] = useState(false);
   const [isAccessoryExpanded, setIsAccessoryExpanded] = useState(false);
+  const [focusedSessionName, setFocusedSessionName] = useState<string | null>(null);
+  const [appState, setAppState] = useState<AppStateStatus>(AppState.currentState);
+  const keyboardVisibleRef = useRef(false);
   const webRefs = useRef<Record<string, WebView | null>>({});
   const sourceCache = useRef<Record<string, SourceCacheEntry>>({});
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const fitScript = 'window.__fitTerminal && window.__fitTerminal(); true;';
   const terminalTheme = useMemo(
     () => ({
       background: colors.terminalBackground,
       foreground: colors.terminalForeground,
       cursor: colors.terminalForeground,
+      selection: colors.terminalSelection,
     }),
     [colors]
   );
@@ -449,23 +159,24 @@ export default function SessionTerminalScreen(): React.ReactElement {
     () => `${terminalTheme.background}|${terminalTheme.foreground}|${terminalTheme.cursor}`,
     [terminalTheme.background, terminalTheme.foreground, terminalTheme.cursor]
   );
+  const fontKey = `${fontConfig.fontFamily}|${fontConfig.fontSize}`;
 
   const getSourceForSession = useCallback(
     (sessionName: string) => {
       if (!host) return undefined;
       const wsUrl = buildWsUrl(host, sessionName);
       if (!wsUrl) return undefined;
-      const cacheKey = `${wsUrl}|${themeKey}|${TERMINAL_HTML_VERSION}`;
+      const cacheKey = `${wsUrl}|${themeKey}|${fontKey}|${TERMINAL_HTML_VERSION}|session`;
       const cached = sourceCache.current[sessionName];
       if (!cached || cached.key !== cacheKey) {
         sourceCache.current[sessionName] = {
           key: cacheKey,
-          source: { html: buildTerminalHtml(wsUrl, terminalTheme) },
+          source: { html: buildTerminalHtml('session', wsUrl, terminalTheme, fontConfig) },
         };
       }
       return sourceCache.current[sessionName]?.source;
     },
-    [host, terminalTheme, themeKey]
+    [host, terminalTheme, themeKey, fontConfig, fontKey]
   );
 
   useEffect(() => {
@@ -479,12 +190,97 @@ export default function SessionTerminalScreen(): React.ReactElement {
 
   // Keyboard handling
   useEffect(() => {
-    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
-    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
-    const show = Keyboard.addListener(showEvent, (e) => setKeyboardOffset(e.endCoordinates.height));
-    const hide = Keyboard.addListener(hideEvent, () => setKeyboardOffset(0));
-    return () => { show.remove(); hide.remove(); };
+    const updateKeyboardOffset = (height: number) => {
+      if (!isFocused || appState !== 'active') return;
+      const nextHeight = Math.max(0, height);
+      keyboardVisibleRef.current = nextHeight > 0;
+      setKeyboardOffset(nextHeight);
+    };
+    const show = Keyboard.addListener('keyboardDidShow', (e) => updateKeyboardOffset(e.endCoordinates.height));
+    const hide = Keyboard.addListener('keyboardDidHide', () => {
+      updateKeyboardOffset(0);
+      if (currentSessionName) {
+        webRefs.current[currentSessionName]?.injectJavaScript(
+          'window.__blurTerminal && window.__blurTerminal(); true;'
+        );
+      }
+    });
+    const changeFrame = Keyboard.addListener('keyboardDidChangeFrame', (e) => updateKeyboardOffset(e.endCoordinates.height));
+    return () => { show.remove(); hide.remove(); changeFrame.remove(); };
+  }, [appState, currentSessionName, isFocused]);
+
+  useEffect(() => {
+    if (!isFocused || appState !== 'active') return;
+    const height = Keyboard.metrics()?.height ?? 0;
+    const isVisible = Keyboard.isVisible();
+    if (!isVisible || height <= 0) {
+      keyboardVisibleRef.current = false;
+      setKeyboardOffset(0);
+      return;
+    }
+    keyboardVisibleRef.current = true;
+    setKeyboardOffset(height);
+  }, [isFocused, appState]);
+
+  useEffect(() => {
+    if (!isFocused || appState !== 'active') return;
+    if (keyboardOffset === 0) return;
+    const timeout = setTimeout(() => {
+      const height = Keyboard.metrics()?.height ?? 0;
+      if (!Keyboard.isVisible() || height <= 0) {
+        keyboardVisibleRef.current = false;
+        setKeyboardOffset(0);
+        setIsAccessoryExpanded(false);
+      }
+    }, 120);
+    return () => clearTimeout(timeout);
+  }, [appState, isFocused, keyboardOffset]);
+
+  useEffect(() => {
+    if (!isFocused || appState !== 'active') return;
+    const height = Keyboard.metrics()?.height ?? 0;
+    if (Keyboard.isVisible() && height > 0) return;
+    if (keyboardOffset === 0) return;
+    keyboardVisibleRef.current = false;
+    setKeyboardOffset(0);
+    setIsAccessoryExpanded(false);
+  }, [appState, currentSessionName, isFocused, keyboardOffset]);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', setAppState);
+    return () => subscription.remove();
   }, []);
+
+  useEffect(() => {
+    if (!isFocused) {
+      keyboardVisibleRef.current = false;
+      setKeyboardOffset(0);
+      setIsAccessoryExpanded(false);
+      setFocusedSessionName(null);
+    }
+  }, [isFocused]);
+
+  useEffect(() => {
+    if (appState === 'active') return;
+    keyboardVisibleRef.current = false;
+    setKeyboardOffset(0);
+    setIsAccessoryExpanded(false);
+    setFocusedSessionName(null);
+  }, [appState]);
+
+  useEffect(() => {
+    if (appState !== 'active' || !currentSessionName) return;
+    setIsAccessoryExpanded(false);
+    const ref = webRefs.current[currentSessionName];
+    if (!ref) return;
+    const timeout = setTimeout(() => {
+      ref.injectJavaScript(fitScript);
+      if (keyboardOffset > 0) {
+        ref.injectJavaScript('window.__focusTerminal && window.__focusTerminal(); true;');
+      }
+    }, 60);
+    return () => clearTimeout(timeout);
+  }, [appState, currentSessionName, keyboardOffset]);
 
   // Terminal helpers
   const sendToTerminal = useCallback((data: string) => {
@@ -495,6 +291,10 @@ export default function SessionTerminalScreen(): React.ReactElement {
   }, [currentSessionName]);
 
   const blurTerminal = useCallback(() => {
+    keyboardVisibleRef.current = false;
+    setKeyboardOffset(0);
+    setIsAccessoryExpanded(false);
+    setFocusedSessionName(null);
     webRefs.current[currentSessionName]?.injectJavaScript(
       'window.__blurTerminal && window.__blurTerminal(); true;'
     );
@@ -576,9 +376,7 @@ export default function SessionTerminalScreen(): React.ReactElement {
   }, []);
 
 
-  // Animation state - cumulative offset, never resets
-  const offsetX = useSharedValue(initialIndex >= 0 ? -initialIndex * screenWidth : 0);
-  const currentIndexShared = useSharedValue(initialIndex >= 0 ? initialIndex : 0);
+  const pagerRef = useRef<ScrollView | null>(null);
 
   const updateCurrentSession = useCallback((index: number) => {
     const session = sessions[index];
@@ -586,62 +384,49 @@ export default function SessionTerminalScreen(): React.ReactElement {
     setCurrentSessionName(session.name);
   }, [sessions]);
 
+  const hadSessionsRef = useRef(false);
+
   useEffect(() => {
+    if (sessions.length > 0) {
+      hadSessionsRef.current = true;
+    }
+    // Navigate back if all sessions were killed
+    if (sessions.length === 0 && hadSessionsRef.current) {
+      router.back();
+      return;
+    }
     if (sessions.length === 0) return;
     if (currentSessionName && sessions.some((session) => session.name === currentSessionName)) return;
     setCurrentSessionName(sessions[0].name);
-  }, [sessions, currentSessionName]);
+  }, [sessions, currentSessionName, router]);
 
-  const panGesture = useMemo(() => {
-    return Gesture.Pan()
-      .enabled(!isSelecting)
-      .maxPointers(1)
-      .activeOffsetX([-15, 15])
-      .failOffsetY([-10, 10])
-      .onUpdate((e) => {
-        const currentIdx = currentIndexShared.value;
-        let tx = e.translationX;
-        // Rubber band at edges
-        if (tx > 0 && currentIdx === 0) tx *= 0.3;
-        if (tx < 0 && currentIdx === sessionCount - 1) tx *= 0.3;
-        offsetX.value = -currentIdx * screenWidth + tx;
-      })
-      .onEnd((e) => {
-        const currentIdx = currentIndexShared.value;
-        const threshold = screenWidth * 0.3;
-        const shouldSwitch = Math.abs(e.translationX) > threshold || Math.abs(e.velocityX) > 500;
 
-        let newIndex = currentIdx;
-        if (shouldSwitch && e.translationX > 0 && currentIdx > 0) {
-          newIndex = currentIdx - 1;
-          runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Medium);
-        } else if (shouldSwitch && e.translationX < 0 && currentIdx < sessionCount - 1) {
-          newIndex = currentIdx + 1;
-          runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Medium);
-        }
+  const handlePagerMomentumEnd = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const nextIndex = Math.round(event.nativeEvent.contentOffset.x / screenWidth);
+    if (!Number.isFinite(nextIndex)) return;
+    updateCurrentSession(nextIndex);
+  }, [screenWidth, updateCurrentSession]);
 
-        currentIndexShared.value = newIndex;
-        offsetX.value = withTiming(-newIndex * screenWidth, { duration: 200 }, () => {
-          runOnJS(updateCurrentSession)(newIndex);
-        });
-      });
-  }, [screenWidth, sessionCount, offsetX, currentIndexShared, updateCurrentSession, isSelecting]);
+  const keyboardInset = focusedSessionName === currentSessionName ? Math.max(0, keyboardOffset) : 0;
 
-  const pagerStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: offsetX.value }],
-  }));
+  useEffect(() => {
+    if (!currentSessionName || !isFocused) return;
+    const ref = webRefs.current[currentSessionName];
+    if (!ref) return;
+    const timeout = setTimeout(() => {
+      ref.injectJavaScript(fitScript);
+    }, 60);
+    return () => clearTimeout(timeout);
+  }, [currentSessionName, isFocused, keyboardInset, helperHeight]);
 
-  const keyboardInset = Math.max(0, keyboardOffset);
 
   useEffect(() => {
     if (!currentSessionName || sessions.length === 0) return;
     const index = sessions.findIndex((session) => session.name === currentSessionName);
     if (index < 0) return;
-    if (currentIndexShared.value !== index || offsetX.value !== -index * screenWidth) {
-      currentIndexShared.value = index;
-      offsetX.value = -index * screenWidth;
-    }
-  }, [currentSessionName, sessions, screenWidth, offsetX, currentIndexShared]);
+    const x = index * screenWidth;
+    pagerRef.current?.scrollTo({ x, animated: false });
+  }, [currentSessionName, sessions, screenWidth]);
 
   useEffect(() => {
     if (!currentSessionName) return;
@@ -650,6 +435,7 @@ export default function SessionTerminalScreen(): React.ReactElement {
       webRefs.current[previousSession]?.injectJavaScript(
         'window.__blurTerminal && window.__blurTerminal(); true;'
       );
+      setFocusedSessionName((prev) => (prev === previousSession ? null : prev));
     }
     if (keyboardInset > 0) {
       focusTerminal(currentSessionName);
@@ -697,32 +483,44 @@ export default function SessionTerminalScreen(): React.ReactElement {
         </View>
       </View>
 
-      <GestureDetector gesture={panGesture}>
-        <Animated.View style={[styles.pager, pagerStyle]}>
-          {sessions.map((session, index) => {
+      <View style={styles.pagerFrame} onLayout={(e) => setPagerHeight(e.nativeEvent.layout.height)}>
+        <ScrollView
+          ref={pagerRef}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          scrollEnabled={!isSelecting}
+          onMomentumScrollEnd={handlePagerMomentumEnd}
+          scrollEventThrottle={16}
+          style={styles.pager}
+          contentContainerStyle={[
+            styles.pagerContent,
+            pagerHeight > 0 ? { height: pagerHeight, width: screenWidth * Math.max(1, sessionCount) } : null,
+          ]}
+        >
+          {sessions.map((session) => {
             const isCurrent = session.name === currentSessionName;
             return (
-              <View key={session.name} style={[styles.page, { left: index * screenWidth }]}>
+              <View key={session.name} style={[styles.page, { width: screenWidth, height: pagerHeight || undefined }]}>
                 {!isCurrent && (
                   <View style={styles.pageLabel}>
                     <AppText variant="caps" style={styles.pageLabelText}>{session.name}</AppText>
                   </View>
                 )}
-                <View style={[styles.terminal, keyboardInset > 0 && isCurrent && { paddingBottom: keyboardInset + helperHeight }]}>
-                  <WebView
-                    ref={(ref) => { webRefs.current[session.name] = ref; }}
+                <View
+                  style={[styles.terminal, keyboardInset > 0 && isCurrent && { paddingBottom: keyboardInset + helperHeight }]}
+                  onLayout={() => {
+                    if (!isCurrent) return;
+                    webRefs.current[session.name]?.injectJavaScript(fitScript);
+                  }}
+                >
+                  <TerminalWebView
+                    setRef={(ref) => { webRefs.current[session.name] = ref; }}
                     source={getSourceForSession(session.name)}
-                    originWhitelist={['*']}
-                    scrollEnabled={false}
-                    overScrollMode="never"
-                    nestedScrollEnabled={true}
-                    keyboardDisplayRequiresUserAction={false}
-                    hideKeyboardAccessoryView
                     style={styles.webview}
-                    javaScriptEnabled
-                    domStorageEnabled
+                    autoFit
                     onLoadEnd={() => {
-                      webRefs.current[session.name]?.injectJavaScript('window.__fitTerminal && window.__fitTerminal(); true;');
+                      webRefs.current[session.name]?.injectJavaScript(fitScript);
                     }}
                     onMessage={async (event) => {
                       try {
@@ -730,6 +528,7 @@ export default function SessionTerminalScreen(): React.ReactElement {
                           type?: string;
                           text?: unknown;
                           state?: string;
+                          focused?: boolean;
                         };
                         if (!payload || typeof payload !== 'object') return;
                         switch (payload.type) {
@@ -753,6 +552,18 @@ export default function SessionTerminalScreen(): React.ReactElement {
                               refresh();
                             }
                             return;
+                          case 'focus':
+                            if (payload.focused) {
+                              setFocusedSessionName(session.name);
+                              return;
+                            }
+                            setFocusedSessionName((prev) => (prev === session.name ? null : prev));
+                            setKeyboardOffset(0);
+                            setIsAccessoryExpanded(false);
+                            return;
+                          case 'sessionEnded':
+                            router.back();
+                            return;
                           default:
                             return;
                         }
@@ -763,8 +574,8 @@ export default function SessionTerminalScreen(): React.ReactElement {
               </View>
             );
           })}
-        </Animated.View>
-      </GestureDetector>
+        </ScrollView>
+      </View>
 
       {keyboardInset > 0 && (
         <View style={[styles.helperOverlay, { bottom: keyboardInset }]}>
@@ -895,11 +706,16 @@ function createStyles(colors: ThemeColors): TerminalStyles {
       flex: 1,
       paddingTop: 4,
     },
+    pagerFrame: {
+      flex: 1,
+    },
+    pagerContent: {
+      height: '100%',
+      alignItems: 'stretch',
+    },
     page: {
-      position: 'absolute',
-      top: 0,
-      bottom: 0,
-      width: '100%',
+      flex: 1,
+      height: '100%',
       backgroundColor: colors.terminalBackground,
     },
     pageLabel: {

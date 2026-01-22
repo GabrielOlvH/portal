@@ -1,5 +1,6 @@
 import type { Hono } from 'hono';
 import { existsSync } from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { jsonError } from '../errors';
 
@@ -65,19 +66,48 @@ export function registerUpdateRoutes(app: Hono) {
     try {
       const { spawn } = await import('node:child_process');
       const installDir = resolveInstallDir();
-      const updateScript = path.join(installDir, 'agent', 'update.sh');
-      if (!existsSync(updateScript)) {
-        throw new Error(`Update script not found at ${updateScript}`);
+      const platform = os.platform();
+
+      // Prefer TypeScript script (cross-platform)
+      const tsScript = path.join(installDir, 'agent', 'scripts', 'update.ts');
+      const bashScript = path.join(installDir, 'agent', 'update.sh');
+
+      if (existsSync(tsScript)) {
+        // Use npx tsx for cross-platform execution
+        const tsxPath = path.join(installDir, 'agent', 'node_modules', '.bin', 'tsx');
+
+        // Find executable: prefer local tsx, fall back to npx tsx
+        const useLocalTsx = existsSync(tsxPath) || existsSync(tsxPath + '.cmd');
+        const command = useLocalTsx ? tsxPath : 'npx';
+        const args = useLocalTsx ? [tsScript, installDir] : ['tsx', tsScript, installDir];
+
+        const child = spawn(command, args, {
+          cwd: path.join(installDir, 'agent'),
+          detached: true,
+          stdio: 'ignore',
+          shell: platform === 'win32', // Use shell on Windows for .cmd scripts
+        });
+        child.unref();
+
+        return c.json({ success: true, message: 'Update started (TypeScript). Service will restart.' });
       }
 
-      // Run update script in background (it will restart the service)
-      const child = spawn('bash', [updateScript, installDir], {
+      // Fall back to bash script (Linux/macOS only)
+      if (platform === 'win32') {
+        throw new Error('Bash update script not supported on Windows. TypeScript script required.');
+      }
+
+      if (!existsSync(bashScript)) {
+        throw new Error(`No update script found at ${tsScript} or ${bashScript}`);
+      }
+
+      const child = spawn('bash', [bashScript, installDir], {
         detached: true,
         stdio: 'ignore',
       });
       child.unref();
 
-      return c.json({ success: true, message: 'Update started. Service will restart.' });
+      return c.json({ success: true, message: 'Update started (bash). Service will restart.' });
     } catch (err) {
       return jsonError(c, err);
     }

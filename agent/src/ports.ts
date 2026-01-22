@@ -8,6 +8,9 @@ export type PortInfo = {
   port: number;
   process: string;
   command?: string;
+  protocol?: 'tcp' | 'udp';
+  address?: string;
+  connections?: number;
 };
 
 const MIN_PORT = 3000;
@@ -45,7 +48,11 @@ async function listPortsWithLsof(): Promise<PortInfo[]> {
 
     const process = parts[0];
     const pid = parseInt(parts[1], 10);
-    
+
+    // NODE column contains protocol (TCP/UDP)
+    const node = parts[parts.length - 3];
+    const protocol = node.toLowerCase() === 'udp' ? 'udp' : 'tcp';
+
     // NAME column is second-to-last (last is "(LISTEN)")
     // e.g., "*:4020" or "127.0.0.1:8080"
     const name = parts[parts.length - 2];
@@ -56,10 +63,16 @@ async function listPortsWithLsof(): Promise<PortInfo[]> {
     const port = parseInt(portMatch[1], 10);
     if (port < MIN_PORT || port > MAX_PORT) continue;
 
+    // Extract listening address (part before the port)
+    const addressMatch = name.match(/^(.+):(\d+)$/);
+    const rawAddress = addressMatch ? addressMatch[1] : '*';
+    // Normalize: * means all interfaces
+    const address = rawAddress === '*' ? '0.0.0.0' : rawAddress;
+
     // Dedupe by pid:port
     const key = `${pid}:${port}`;
     if (!portMap.has(key)) {
-      portMap.set(key, { pid, port, process });
+      portMap.set(key, { pid, port, process, protocol, address });
     }
   }
 
@@ -72,6 +85,15 @@ async function listPortsWithLsof(): Promise<PortInfo[]> {
       if (cmd) {
         info.command = cmd;
       }
+    }
+  }
+
+  // Enrich with connection counts
+  const ports = Array.from(portMap.values()).map((p) => p.port);
+  if (ports.length > 0) {
+    const connectionCounts = await getConnectionCounts(ports);
+    for (const [, info] of portMap) {
+      info.connections = connectionCounts.get(info.port) || 0;
     }
   }
 
@@ -103,6 +125,39 @@ async function getCommandsForPids(pids: number[]): Promise<Map<number, string>> 
     }
   } catch {
     // Ignore errors, we'll just use the process name from lsof
+  }
+  return result;
+}
+
+/**
+ * Get active connection counts for ports using ss.
+ */
+async function getConnectionCounts(ports: number[]): Promise<Map<number, number>> {
+  const result = new Map<number, number>();
+  try {
+    const { stdout } = await execFileAsync(
+      'ss',
+      ['-tn', 'state', 'established'],
+      { timeout: 3000 }
+    );
+
+    for (const line of stdout.trim().split('\n').slice(1)) {
+      // Format: State Recv-Q Send-Q Local Address:Port Peer Address:Port
+      const parts = line.split(/\s+/);
+      if (parts.length < 5) continue;
+
+      // Local address is typically in parts[3], e.g., "127.0.0.1:8080" or "[::1]:3000"
+      const localAddr = parts[3];
+      const portMatch = localAddr.match(/:(\d+)$/);
+      if (!portMatch) continue;
+
+      const port = parseInt(portMatch[1], 10);
+      if (ports.includes(port)) {
+        result.set(port, (result.get(port) || 0) + 1);
+      }
+    }
+  } catch {
+    // Ignore errors - connection count is optional enrichment
   }
   return result;
 }
@@ -168,12 +223,23 @@ async function listPortsWithSs(): Promise<PortInfo[]> {
   const portMap = new Map<string, PortInfo>();
 
   for (const line of lines) {
-    // Extract port from local address (4th column typically)
-    const portMatch = line.match(/:(\d+)\s/);
-    if (!portMatch) continue;
+    const parts = line.split(/\s+/);
+    if (parts.length < 5) continue;
 
-    const port = parseInt(portMatch[1], 10);
+    // Local address typically in parts[3], e.g., "0.0.0.0:3000" or "[::]:8080"
+    const localAddr = parts[3] || '';
+    const addrMatch = localAddr.match(/^(.+):(\d+)$/);
+    if (!addrMatch) continue;
+
+    const rawAddress = addrMatch[1];
+    const port = parseInt(addrMatch[2], 10);
     if (port < MIN_PORT || port > MAX_PORT) continue;
+
+    // Normalize address
+    const address = rawAddress === '*' || rawAddress === '[::]' ? '0.0.0.0' : rawAddress.replace(/^\[|\]$/g, '');
+
+    // ss -t is TCP, ss -u is UDP; we're using -t so protocol is TCP
+    const protocol: 'tcp' | 'udp' = 'tcp';
 
     // Extract PID and process from users:((...)) section
     const pidMatch = line.match(/pid=(\d+)/);
@@ -186,7 +252,16 @@ async function listPortsWithSs(): Promise<PortInfo[]> {
 
     const key = `${pid}:${port}`;
     if (!portMap.has(key)) {
-      portMap.set(key, { pid, port, process });
+      portMap.set(key, { pid, port, process, protocol, address, connections: 0 });
+    }
+  }
+
+  // Enrich with connection counts
+  const ports = Array.from(portMap.values()).map((p) => p.port);
+  if (ports.length > 0) {
+    const connectionCounts = await getConnectionCounts(ports);
+    for (const [, info] of portMap) {
+      info.connections = connectionCounts.get(info.port) || 0;
     }
   }
 

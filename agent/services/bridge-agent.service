@@ -1,0 +1,18 @@
+[Unit]
+Description=Bridge Agent - Terminal Management Server
+Documentation=https://github.com/GabrielOlvH/bridge
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory={{INSTALL_DIR}}/agent
+ExecStart={{NODE_PATH}} {{INSTALL_DIR}}/agent/node_modules/.bin/tsx {{INSTALL_DIR}}/agent/src/index.ts
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=bridge-agent
+EnvironmentFile={{INSTALL_DIR}}/agent/.env
+
+[Install]
+WantedBy=default.target
