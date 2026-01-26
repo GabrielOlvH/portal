@@ -93,7 +93,7 @@ export default function SessionDetailScreen() {
           <AppText variant="subtitle">Back</AppText>
         </Pressable>
         <View style={styles.headerCenter}>
-          <AppText variant="title" numberOfLines={1}>{sessionName}</AppText>
+          <AppText variant="title" numberOfLines={1}>{session?.title || sessionName}</AppText>
           <View style={styles.hostBadge}>
             <View style={[styles.hostDot, { backgroundColor: host.color || colors.accent }]} />
             <AppText variant="caps" tone="muted">{host.name}</AppText>

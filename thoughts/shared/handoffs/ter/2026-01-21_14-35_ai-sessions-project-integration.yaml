@@ -1,0 +1,54 @@
+---
+session: ter
+date: 2026-01-21
+status: complete
+outcome: SUCCEEDED
+---
+
+goal: Plan AI Sessions integration with Projects feature
+now: Implement Task 1 - Add AI Sessions to LaunchSheet CommandStep
+
+test: pnpm typecheck && pnpm lint
+
+done_this_session:
+  - task: Explored Projects feature architecture
+    files: [lib/projects-store.tsx, app/projects/new.tsx, lib/types.ts]
+  - task: Explored AI Sessions feature implementation
+    files: [app/ai-sessions/index.tsx, agent/src/http/routes/ai-sessions.ts, lib/api.ts]
+  - task: Analyzed LaunchSheet component for integration points
+    files: [components/LaunchSheet.tsx]
+  - task: Created integration plan (LaunchSheet approach instead of new tab)
+    files: [thoughts/shared/plans/PLAN-ai-sessions-integration.md]
+
+blockers: []
+
+questions:
+  - Should AI sessions appear above or below npm scripts in CommandStep?
+
+decisions:
+  - launchsheet_integration: User preferred integrating via LaunchSheet/Projects rather than adding a new tab
+  - path_matching: Use session.directory.startsWith(project.path) for matching
+  - no_new_tabs: Keep existing tab structure, use LaunchSheet for prominence
+
+findings:
+  - launchsheet_flow: Host → Project → Command (3 steps with animated pager)
+  - ai_session_directory: AiSession.directory maps to Project.path for matching
+  - resume_api_exists: resumeAiSession(host, provider, id) creates tmux session
+
+worked:
+  - Using scout agents for parallel codebase exploration
+  - LaunchSheet pattern is extensible for AI sessions
+
+failed: []
+
+next:
+  - Implement Task 1: Add AI Sessions section to LaunchSheet CommandStep
+  - Fetch AI sessions filtered by project directory
+  - Show resume button with provider icon
+  - Implement Task 2: Add session count badge to project cards
+
+files:
+  created:
+    - thoughts/shared/plans/PLAN-ai-sessions-integration.md
+    - thoughts/shared/handoffs/ter/plan-ai-sessions-integration.md
+  modified: []

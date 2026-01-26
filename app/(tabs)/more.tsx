@@ -283,14 +283,6 @@ export default function MoreTabScreen() {
       >
         <Card style={styles.card}>
           <MenuItem
-            title="Projects"
-            subtitle="Quick-launch commands and agents"
-            onPress={() => router.push('/projects')}
-            styles={styles}
-            chevronColor={colors.textSecondary}
-          />
-          <View style={styles.separator} />
-          <MenuItem
             title="Snippets"
             subtitle="Global commands to reuse anywhere"
             onPress={() => router.push('/snippets')}

@@ -2,6 +2,12 @@ import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { View, StyleSheet, Platform, type StyleProp, type ViewStyle, type LayoutChangeEvent } from 'react-native';
 import { WebView, type WebViewMessageEvent } from 'react-native-webview';
 
+type DimensionRequest = {
+  type: 'dimensionRequest';
+  container: { width: number; height: number };
+  proposed: { cols: number; rows: number } | null;
+};
+
 type TerminalWebViewProps = {
   source?: { html: string };
   setRef?: (ref: WebView | null) => void;
@@ -11,7 +17,6 @@ type TerminalWebViewProps = {
   onLayout?: (event: LayoutChangeEvent) => void;
   keyboardEnabled?: boolean;
   autoFit?: boolean;
-  fitDelaysMs?: number[];
 };
 
 export function TerminalWebView({
@@ -23,12 +28,10 @@ export function TerminalWebView({
   onLayout,
   keyboardEnabled = true,
   autoFit = false,
-  fitDelaysMs,
 }: TerminalWebViewProps) {
   const webRef = useRef<WebView | null>(null);
   const layoutRef = useRef<{ width: number; height: number } | null>(null);
   const loadedRef = useRef(false);
-  const delays = fitDelaysMs ?? [0, 50, 150];
 
   const flattenedStyle = useMemo(() => StyleSheet.flatten(style) ?? {}, [style]);
   const containerStyle = useMemo(
@@ -45,26 +48,48 @@ export function TerminalWebView({
     [flattenedStyle.backgroundColor]
   );
 
-  const canFit = useCallback(() => {
-    if (!loadedRef.current) return false;
-    const layout = layoutRef.current;
-    if (!layout) return false;
-    const width = layout.width;
-    const height = layout.height;
-    return Number.isFinite(width) && Number.isFinite(height) && width > 0 && height > 0;
+  const confirmDimensions = useCallback((cols: number, rows: number) => {
+    if (!loadedRef.current || !webRef.current) return;
+    webRef.current.injectJavaScript(
+      `window.__confirmDimensions && window.__confirmDimensions(${cols}, ${rows}); true;`
+    );
   }, []);
 
-  const scheduleFit = useCallback(() => {
+  const handleDimensionRequest = useCallback((request: DimensionRequest) => {
     if (!autoFit) return;
-    delays.forEach((delay) => {
-      setTimeout(() => {
-        if (!canFit()) return;
-        webRef.current?.injectJavaScript(
-          `(function(){const fit=()=>window.__fitTerminal&&window.__fitTerminal();requestAnimationFrame(fit);setTimeout(fit,60);})(); true;`
-        );
-      }, delay);
-    });
-  }, [autoFit, delays, canFit]);
+    const layout = layoutRef.current;
+    if (!layout || layout.width <= 0 || layout.height <= 0) return;
+    if (!request.proposed || request.proposed.cols <= 0 || request.proposed.rows <= 0) return;
+    // Verify container matches RN layout (within tolerance)
+    const tolerance = 8;
+    const widthMatch = Math.abs(request.container.width - layout.width) < tolerance;
+    const heightMatch = Math.abs(request.container.height - layout.height) < tolerance;
+    if (widthMatch && heightMatch) {
+      confirmDimensions(request.proposed.cols, request.proposed.rows);
+    }
+    // If mismatch, don't confirm - WebView will retry
+  }, [autoFit, confirmDimensions]);
+
+  const handleMessage = useCallback((event: WebViewMessageEvent) => {
+    try {
+      const data = JSON.parse(event.nativeEvent.data);
+      if (data && data.type === 'dimensionRequest') {
+        handleDimensionRequest(data as DimensionRequest);
+        onMessage?.(event);
+        return;
+      }
+    } catch {
+      // Not JSON or not a dimension request, pass through
+    }
+    onMessage?.(event);
+  }, [handleDimensionRequest, onMessage]);
+
+  const triggerDimensionRequest = useCallback(() => {
+    if (!autoFit || !loadedRef.current || !webRef.current) return;
+    webRef.current.injectJavaScript(
+      `window.__fitTerminal && window.__fitTerminal(); true;`
+    );
+  }, [autoFit]);
 
   const handleRef = useCallback((ref: WebView | null) => {
     webRef.current = ref;
@@ -74,27 +99,27 @@ export function TerminalWebView({
   const handleLoadEnd = useCallback(() => {
     loadedRef.current = true;
     onLoadEnd?.();
-    scheduleFit();
-  }, [onLoadEnd, scheduleFit]);
+    triggerDimensionRequest();
+  }, [onLoadEnd, triggerDimensionRequest]);
 
   const handleLayout = useCallback((event: LayoutChangeEvent) => {
-    layoutRef.current = event.nativeEvent.layout;
+    const prevLayout = layoutRef.current;
+    const newLayout = event.nativeEvent.layout;
+    layoutRef.current = newLayout;
     onLayout?.(event);
-    scheduleFit();
-  }, [onLayout, scheduleFit]);
+    if (!loadedRef.current) return;
+    // Only trigger if layout changed significantly
+    const significantChange = !prevLayout ||
+      Math.abs(prevLayout.width - newLayout.width) > 2 ||
+      Math.abs(prevLayout.height - newLayout.height) > 2;
+    if (significantChange) {
+      triggerDimensionRequest();
+    }
+  }, [onLayout, triggerDimensionRequest]);
 
   useEffect(() => {
     loadedRef.current = false;
   }, [source]);
-
-  useEffect(() => {
-    scheduleFit();
-  }, [scheduleFit, source]);
-
-  useEffect(() => {
-    if (!loadedRef.current) return;
-    scheduleFit();
-  }, [scheduleFit]);
 
   return (
     <View style={containerStyle} onLayout={handleLayout}>
@@ -114,7 +139,7 @@ export function TerminalWebView({
         javaScriptEnabled
         domStorageEnabled
         onLoadEnd={handleLoadEnd}
-        onMessage={onMessage}
+        onMessage={handleMessage}
       />
     </View>
   );
@@ -129,3 +154,4 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
   },
 });
+

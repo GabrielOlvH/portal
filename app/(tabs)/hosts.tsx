@@ -34,7 +34,7 @@ export default function HostsTabScreen() {
   }>({ status: 'idle', results: [] });
   const [addingAgents, setAddingAgents] = useState<Record<string, boolean>>({});
 
-  const { stateMap, refreshAll } = useHostsLive(hosts, { sessions: true, docker: true, enabled: isFocused });
+  const { stateMap, refreshAll } = useHostsLive(hosts, { sessions: false, host: true, docker: false, enabled: isFocused });
 
   const statusMap = useMemo(() => {
     const next: Record<string, CardStatus> = {};
@@ -69,32 +69,9 @@ export default function HostsTabScreen() {
   );
   const isBooting = !ready;
 
-  const sessionCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    hosts.forEach((host) => {
-      counts[host.id] = stateMap[host.id]?.sessions?.length ?? 0;
-    });
-    return counts;
-  }, [hosts, stateMap]);
-
-  const containerCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    hosts.forEach((host) => {
-      counts[host.id] = stateMap[host.id]?.docker?.containers?.length ?? 0;
-    });
-    return counts;
-  }, [hosts, stateMap]);
-
   const handleTerminal = useCallback(
     (hostId: string) => {
       router.push(`/hosts/${hostId}`);
-    },
-    [router]
-  );
-
-  const handleDocker = useCallback(
-    (hostId: string) => {
-      router.push(`/(tabs)/docker?hostId=${hostId}`);
     },
     [router]
   );
@@ -322,15 +299,18 @@ export default function HostsTabScreen() {
               <HostCard
                 host={host}
                 status={statusMap[host.id]}
-                sessionCount={sessionCounts[host.id]}
-                containerCount={containerCounts[host.id] || undefined}
+                metrics={{
+                  cpu: stateMap[host.id]?.hostInfo?.cpu?.usage,
+                  ram: stateMap[host.id]?.hostInfo?.memory?.usedPercent,
+                }}
+                uptime={stateMap[host.id]?.hostInfo?.uptime}
+                load={stateMap[host.id]?.hostInfo?.load}
                 updateStatus={updateStatusMap[host.id]}
                 isUpdating={Boolean(updatingHosts[host.id])}
                 errorMessage={statusMap[host.id] === 'offline' ? stateMap[host.id]?.error : undefined}
                 onUpdate={() => handleUpdate(host.id)}
                 onPress={() => router.push(`/hosts/${host.id}`)}
                 onTerminal={() => handleTerminal(host.id)}
-                onDocker={() => handleDocker(host.id)}
               />
             </FadeIn>
           ))

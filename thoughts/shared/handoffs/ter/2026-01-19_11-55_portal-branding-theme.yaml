@@ -1,0 +1,77 @@
+---
+session: ter
+date: 2026-01-19
+status: complete
+outcome: SUCCEEDED
+---
+
+goal: Rebrand app from Bridge to Portal with new logo, colors, and theme
+now: Implement terminal font settings feature per plan
+
+test: bun run typecheck
+
+done_this_session:
+  - task: Created 5 SVG logo concepts for brand exploration
+    files: [components/BridgeLogos.tsx]
+  - task: Renamed app from Bridge to Portal
+    files: [app.json, app/(tabs)/index.tsx]
+  - task: Set up app icons from user's Portal logo
+    files: [assets/images/icon.png, assets/images/splash-icon.png, assets/images/adaptive-icon.png]
+  - task: Updated color palette to Portal blue scale (navy dark mode, cool gray light mode)
+    files: [lib/useTheme.tsx, lib/theme.ts]
+  - task: Updated border radii to match logo (12/18/24/32)
+    files: [lib/theme.ts]
+  - task: Added JetBrains Mono to terminal WebView via Google Fonts
+    files: [lib/terminal-html.ts]
+  - task: Cleaned up unused font packages and simplified AppText
+    files: [app/_layout.tsx, components/AppText.tsx]
+  - task: Created plan for terminal font settings feature
+    files: [thoughts/shared/plans/PLAN-terminal-font-settings.md]
+
+blockers: []
+
+questions: []
+
+decisions:
+  - portal_name: User chose "Portal" - works in English and Portuguese, matches logo concept
+  - system_fonts: Reverted to system fonts (SF Pro/Roboto) after custom fonts didn't apply consistently
+  - jetbrains_mono: Keep for monospace/terminal only, loaded via Google Fonts in WebView
+
+findings:
+  - expo_fonts_webview: Fonts loaded via expo-google-fonts don't apply to WebView - need Google Fonts CSS
+  - hardcoded_fonts: Several files had hardcoded fontFamily that bypassed AppText
+
+worked:
+  - Loading fonts from Google Fonts CDN for terminal WebView
+  - Portal blue color scale (slate-900 for dark mode bg)
+  - Removing unused font packages to reduce bundle
+
+failed:
+  - Plus Jakarta Sans and Inter didn't consistently apply across all components on iOS
+
+next:
+  - Implement terminal font settings per PLAN-terminal-font-settings.md
+  - Phase 1: Add types and store for terminal settings
+  - Phase 2: Update terminal-html.ts to accept font config
+  - Phase 3: Wire up terminal screens to pass font settings
+  - Phase 4: Add settings UI in more.tsx
+
+files:
+  created:
+    - thoughts/shared/plans/PLAN-terminal-font-settings.md
+    - thoughts/shared/handoffs/ter/2026-01-19_11-55_portal-branding-theme.yaml
+  modified:
+    - app.json
+    - app/_layout.tsx
+    - app/(tabs)/index.tsx
+    - assets/images/icon.png
+    - assets/images/splash-icon.png
+    - assets/images/adaptive-icon.png
+    - lib/useTheme.tsx
+    - lib/theme.ts
+    - lib/terminal-html.ts
+    - components/AppText.tsx
+    - components/HostForm.tsx
+    - components/Field.tsx
+    - app/projects/new.tsx
+    - app/hosts/[id]/index.tsx

@@ -1,0 +1,51 @@
+---
+session: ter
+date: 2026-01-25
+status: complete
+outcome: SUCCEEDED
+---
+
+goal: Plan dynamic terminal names showing title bar content from processes
+now: Implement the plan at thoughts/shared/plans/PLAN-dynamic-terminal-names.md
+
+test: pnpm typecheck && pnpm lint
+
+done_this_session:
+  - task: Researched terminal session naming architecture
+    files: [agent/src/agents.ts, agent/src/sessions.ts, components/SessionCard.tsx]
+  - task: Created implementation plan for dynamic terminal titles
+    files: [thoughts/shared/plans/PLAN-dynamic-terminal-names.md]
+  - task: Created handoff documentation
+    files: [thoughts/handoffs/dynamic-terminal-names/plan-dynamic-terminal-names.md]
+
+blockers: []
+
+questions: []
+
+decisions:
+  - use_pane_title: User clarified they want terminal title bar (#{pane_title}) not command name (#{pane_current_command})
+  - display_strategy: Show title when set, fall back to session name
+  - filter_defaults: Filter out hostname/shell defaults to avoid showing useless info
+
+findings:
+  - tmux_pane_title: "#{pane_title} captures what processes set via escape sequences like \\e]0;title\\a"
+  - cli_title_support: Many CLIs set titles - vim (vim - filename), htop, npm, Claude Code
+  - existing_queries: Current session listing only queries session metadata, not pane info
+
+worked:
+  - scout agent for initial codebase exploration
+  - tldr search for finding specific patterns
+
+failed: []
+
+next:
+  - Add title field to Session type in lib/types.ts
+  - Query pane_title from tmux in agent/src/sessions.ts
+  - Include title in session API response
+  - Update SessionCard, home screen, terminal labels to show title
+
+files:
+  created:
+    - thoughts/shared/plans/PLAN-dynamic-terminal-names.md
+    - thoughts/handoffs/dynamic-terminal-names/plan-dynamic-terminal-names.md
+  modified: []

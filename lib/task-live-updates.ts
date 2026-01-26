@@ -20,6 +20,7 @@ export function useTaskLiveUpdates(sessions: SessionWithHost[], enabled: boolean
   const activityIdRef = useRef<string | null>(null);
   const currentKeyRef = useRef<string | null>(null);
   const currentStateRef = useRef<AgentState>('stopped');
+  const currentTitleRef = useRef<string | null>(null);
 
   const activeSession = useMemo(() => {
     return sessions.find((session) => {
@@ -36,6 +37,7 @@ export function useTaskLiveUpdates(sessions: SessionWithHost[], enabled: boolean
       activityIdRef.current = null;
       currentKeyRef.current = null;
       currentStateRef.current = 'stopped';
+      currentTitleRef.current = null;
       void clearOngoingNotification();
       return;
     }
@@ -50,12 +52,13 @@ export function useTaskLiveUpdates(sessions: SessionWithHost[], enabled: boolean
       activityIdRef.current = null;
       currentKeyRef.current = null;
       currentStateRef.current = 'stopped';
+      currentTitleRef.current = null;
       void clearOngoingNotification();
       return;
     }
 
     const subtitle = buildSubtitle(activeSession, state);
-    const title = activeSession.name;
+    const title = activeSession.title || activeSession.name;
 
     if (currentKeyRef.current !== key) {
       if (activityIdRef.current) {
@@ -64,15 +67,17 @@ export function useTaskLiveUpdates(sessions: SessionWithHost[], enabled: boolean
       activityIdRef.current = startTaskLiveActivity({ title, subtitle });
       currentKeyRef.current = key;
       currentStateRef.current = state;
+      currentTitleRef.current = title;
       void updateOngoingNotification(title, subtitle);
       return;
     }
 
-    if (currentStateRef.current !== state) {
+    if (currentStateRef.current !== state || currentTitleRef.current !== title) {
       if (activityIdRef.current) {
         updateTaskLiveActivity(activityIdRef.current, { title, subtitle });
       }
       currentStateRef.current = state;
+      currentTitleRef.current = title;
       void updateOngoingNotification(title, subtitle);
     }
   }, [activeSession]);

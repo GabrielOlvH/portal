@@ -1,0 +1,59 @@
+---
+session: ter
+date: 2026-01-21
+status: complete
+outcome: SUCCEEDED
+---
+
+goal: Plan AI session manager feature for Claude Code, Codex CLI, and OpenCode
+now: Implement Task 1 (types) and Task 2 (agent endpoint) from plan
+
+test: bun run typecheck
+
+done_this_session:
+  - task: Research Claude Code session storage (JSONL in ~/.claude/)
+    files: []
+  - task: Research OpenAI Codex CLI session storage (JSONL in ~/.codex/)
+    files: []
+  - task: Research OpenCode session storage (JSON in ~/.local/share/opencode/)
+    files: []
+  - task: Create comprehensive implementation plan with 7 tasks
+    files: [thoughts/shared/plans/PLAN-ai-session-manager.md]
+  - task: Add rich context parsing requirements (modified files, last message, tokens)
+    files: [thoughts/shared/plans/PLAN-ai-session-manager.md]
+
+blockers: []
+
+questions: []
+
+decisions:
+  - read_only: Sessions read from native locations, no intermediate DB - keeps things simple
+  - agent_based_access: Agent parses session files via SSH, returns JSON to app
+  - rich_context: Parse JSONL deeply to extract modified files, messages, token usage
+  - expandable_rows: Compact list + expandable details for full context without clutter
+  - unified_types: Common AiSession type maps all three providers with rich fields
+
+findings:
+  - claude_paths: ~/.claude/projects/[encoded-path]/[uuid].jsonl, path uses hyphens for slashes
+  - codex_paths: ~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl organized by date
+  - opencode_paths: ~/.local/share/opencode/storage/session/ with separate message files
+  - resume_commands: claude --resume <id>, codex resume <id>, opencode -s <id>
+  - jsonl_structure: Each tool uses different event types but all have file changes, messages, usage
+
+worked:
+  - Parallel oracle agents for researching each tool's session format
+  - Scout agent for exploring Portal app patterns before planning
+
+failed: []
+
+next:
+  - Implement Task 1: Add AiProvider, AiSession types to lib/types.ts
+  - Implement Task 2: Create agent/src/http/routes/ai-sessions.ts with parsers
+  - Implement Task 3: Add API client functions in lib/api.ts
+  - Then proceed to UI tasks (4-7)
+
+files:
+  created:
+    - thoughts/shared/plans/PLAN-ai-session-manager.md
+    - thoughts/shared/handoffs/ter/plan-ai-session-manager.md
+  modified: []

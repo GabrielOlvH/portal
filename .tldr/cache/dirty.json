@@ -2,8 +2,26 @@
   "dirty_files": [
     "/home/gabrielolv/Documents/Projects/ter/app/(tabs)/index.tsx",
     "/home/gabrielolv/Documents/Projects/ter/app/_layout.tsx",
-    "/home/gabrielolv/Documents/Projects/ter/app/(tabs)/more.tsx"
+    "/home/gabrielolv/Documents/Projects/ter/app/(tabs)/more.tsx",
+    "/home/gabrielolv/Documents/Projects/ter/app/projects/new.tsx",
+    "/home/gabrielolv/Documents/Projects/ter/app/hosts/new.tsx",
+    "/home/gabrielolv/Documents/Projects/ter/app/(tabs)/docker.tsx",
+    "/home/gabrielolv/Documents/Projects/ter/app/session/[hostId]/[name]/terminal.tsx",
+    "/home/gabrielolv/Documents/Projects/ter/app/hosts/[id]/docker/[containerId]/logs.tsx",
+    "/home/gabrielolv/Documents/Projects/ter/app/hosts/[id]/docker/[containerId]/index.tsx",
+    "/home/gabrielolv/Documents/Projects/ter/app/ports/index.tsx",
+    "/home/gabrielolv/Documents/Projects/ter/app/hosts/[id]/docker/[containerId]/terminal.tsx",
+    "/home/gabrielolv/Documents/Projects/ter/app.json",
+    "/home/gabrielolv/Documents/Projects/ter/app/hosts/[id]/index.tsx",
+    "/home/gabrielolv/Documents/Projects/ter/app/ai-sessions/index.tsx",
+    "/home/gabrielolv/Documents/Projects/ter/app/ai-sessions/[provider]/[id].tsx",
+    "/home/gabrielolv/Documents/Projects/ter/app/projects/index.tsx",
+    "/home/gabrielolv/Documents/Projects/ter/app/cli-assets/index.tsx",
+    "/home/gabrielolv/Documents/Projects/ter/app/(tabs)/_layout.tsx",
+    "/home/gabrielolv/Documents/Projects/ter/app/(tabs)/projects.tsx",
+    "/home/gabrielolv/Documents/Projects/ter/app/(tabs)/hosts.tsx",
+    "/home/gabrielolv/Documents/Projects/ter/app/session/[hostId]/[name]/index.tsx"
   ],
   "first_dirty_at": "2026-01-18T13:44:18.412893Z",
-  "last_dirty_at": "2026-01-18T16:10:35.630363Z"
+  "last_dirty_at": "2026-01-25T15:47:32.606280Z"
 }

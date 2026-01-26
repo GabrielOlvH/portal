@@ -223,10 +223,6 @@ export function buildTerminalHtml(profile: TerminalHtmlProfile, wsUrl: string, t
       let reconnectTimer = null;
       let reconnectAttempts = 0;
       let hasFitted = false;
-      let fitScheduled = false;
-      let fitRetryTimer = null;
-      let fitRetryCount = 0;
-      let renderFitTriggered = false;
       let lastCols = 0;
       let lastRows = 0;
       let outputBuffer = '';
@@ -237,6 +233,10 @@ export function buildTerminalHtml(profile: TerminalHtmlProfile, wsUrl: string, t
       let fontsReady = false;
       let layoutReady = false;
       let fontReadyTimer = null;
+      let dimensionRequestPending = false;
+      let dimensionRequestTimer = null;
+      let dimensionRetryTimer = null;
+      let pendingProposed = null;
 
       function scheduleMicrotask(fn) {
         if (typeof queueMicrotask === 'function') {
@@ -342,7 +342,7 @@ export function buildTerminalHtml(profile: TerminalHtmlProfile, wsUrl: string, t
         if (ready !== layoutReady) {
           layoutReady = ready;
           if (layoutReady && fontsReady) {
-            fitBurst();
+            requestDimensions();
           }
         }
       }
@@ -360,7 +360,7 @@ export function buildTerminalHtml(profile: TerminalHtmlProfile, wsUrl: string, t
         }
         term.setOption('fontFamily', config.fontFamily);
         term.setOption('fontSize', config.fontSize);
-        fitBurst();
+        requestDimensions();
       }
 
       function getProposedDimensions() {
@@ -372,50 +372,58 @@ export function buildTerminalHtml(profile: TerminalHtmlProfile, wsUrl: string, t
         }
       }
 
-      function tryFit() {
-        updateLayoutReady();
-        if (!canFit()) return false;
-        const dims = getProposedDimensions();
-        if (!dims || !dims.cols || !dims.rows) return false;
-        fitAddon.fit();
-        if (term.cols !== dims.cols || term.rows !== dims.rows) {
-          term.resize(dims.cols, dims.rows);
+      function requestDimensions() {
+        if (!canFit()) return;
+        if (!terminalEl) return;
+        if (dimensionRequestPending) return;
+        if (dimensionRequestTimer) {
+          clearTimeout(dimensionRequestTimer);
         }
-        if (term.cols !== dims.cols || term.rows !== dims.rows) return false;
+        // Debounce to let layout settle
+        dimensionRequestTimer = setTimeout(() => {
+          dimensionRequestTimer = null;
+          const rect = terminalEl.getBoundingClientRect();
+          if (rect.width <= 0 || rect.height <= 0) return;
+          const proposed = getProposedDimensions();
+          if (!proposed || !proposed.cols || !proposed.rows) return;
+          dimensionRequestPending = true;
+          pendingProposed = proposed;
+          sendToRN({
+            type: 'dimensionRequest',
+            container: { width: Math.round(rect.width), height: Math.round(rect.height) },
+            proposed: { cols: proposed.cols, rows: proposed.rows }
+          });
+          // Retry once if not confirmed
+          if (dimensionRetryTimer) clearTimeout(dimensionRetryTimer);
+          dimensionRetryTimer = setTimeout(() => {
+            dimensionRetryTimer = null;
+            if (dimensionRequestPending) {
+              dimensionRequestPending = false;
+              requestDimensions();
+            }
+          }, 200);
+        }, 50);
+      }
+
+      function applyDimensions(cols, rows) {
+        dimensionRequestPending = false;
+        pendingProposed = null;
+        if (dimensionRetryTimer) {
+          clearTimeout(dimensionRetryTimer);
+          dimensionRetryTimer = null;
+        }
+        if (!cols || !rows || cols <= 0 || rows <= 0) return;
+        fitAddon.fit();
+        if (term.cols !== cols || term.rows !== rows) {
+          term.resize(cols, rows);
+        }
         hasFitted = true;
         sendResize();
-        fitRetryCount = 0;
-        return true;
       }
 
-      function scheduleFitRetry() {
-        const MAX_FIT_RETRIES = 12;
-        if (fitRetryTimer || fitRetryCount >= MAX_FIT_RETRIES) return;
-        fitRetryTimer = setTimeout(() => {
-          fitRetryTimer = null;
-          fitRetryCount += 1;
-          scheduleFit();
-        }, 60);
-      }
-
-      function scheduleFit() {
-        if (fitScheduled) return;
-        fitScheduled = true;
-        requestAnimationFrame(() => {
-          fitScheduled = false;
-          if (!tryFit()) {
-            scheduleFitRetry();
-          }
-        });
-      }
-
-      function fitBurst() {
-        scheduleFit();
-        setTimeout(scheduleFit, 80);
-        setTimeout(scheduleFit, 200);
-        setTimeout(scheduleFit, 500);
-        setTimeout(scheduleFit, 1000);
-      }
+      window.__confirmDimensions = (cols, rows) => {
+        applyDimensions(cols, rows);
+      };
 
       function loadFonts() {
         if (!document.fonts || typeof document.fonts.load !== 'function') {
@@ -434,7 +442,7 @@ export function buildTerminalHtml(profile: TerminalHtmlProfile, wsUrl: string, t
       function watchXtermCss() {
         const cssLink = document.getElementById('xterm-css');
         if (!cssLink || typeof cssLink.addEventListener !== 'function') return;
-        const handleReady = () => { fitBurst(); };
+        const handleReady = () => { requestDimensions(); };
         cssLink.addEventListener('load', handleReady);
         cssLink.addEventListener('error', handleReady);
         if (cssLink.sheet) {
@@ -478,7 +486,7 @@ export function buildTerminalHtml(profile: TerminalHtmlProfile, wsUrl: string, t
           if (hasFitted) {
             sendResize();
           } else {
-            setTimeout(scheduleFit, 50);
+            setTimeout(requestDimensions, 50);
           }
         };
         socket.onmessage = (event) => {
@@ -529,9 +537,8 @@ export function buildTerminalHtml(profile: TerminalHtmlProfile, wsUrl: string, t
         bindFocusEvents();
       }
       term.onRender(() => {
-        if (renderFitTriggered || hasFitted) return;
-        renderFitTriggered = true;
-        fitBurst();
+        if (hasFitted) return;
+        requestDimensions();
       });
 
       if (config.autoScroll) {
@@ -542,7 +549,7 @@ export function buildTerminalHtml(profile: TerminalHtmlProfile, wsUrl: string, t
         });
       }
 
-      window.__fitTerminal = () => { fitBurst(); };
+      window.__fitTerminal = () => { requestDimensions(); };
       if (config.enableInput) {
         window.__sendToTerminal = (data) => { queueInput(data); };
         window.__sendCtrlC = () => { queueInput('\\u0003'); };
@@ -644,12 +651,56 @@ export function buildTerminalHtml(profile: TerminalHtmlProfile, wsUrl: string, t
 
         const overlay = document.getElementById('overlay');
 
+        const WHEEL_PIXELS_PER_LINE = 80;
+        const TOUCH_PIXELS_PER_LINE = 60;
+        const MAX_SCROLL_LINES_PER_FRAME = 3;
+
+        function createScrollState() {
+          return {
+            remainder: 0,
+            pending: 0,
+            raf: 0,
+            lastX: 0,
+            lastY: 0,
+          };
+        }
+
+        const wheelScroll = createScrollState();
+        const touchScroll = createScrollState();
+
+        function flushScroll(state) {
+          state.raf = 0;
+          const pending = state.pending;
+          if (!pending) return;
+          const direction = pending > 0 ? 1 : -1;
+          const lines = Math.min(MAX_SCROLL_LINES_PER_FRAME, Math.abs(pending));
+          for (let i = 0; i < lines; i += 1) sendScroll(direction, state.lastX, state.lastY);
+          state.pending -= direction * lines;
+          if (state.pending) {
+            state.raf = requestAnimationFrame(() => flushScroll(state));
+          }
+        }
+
+        function queueScroll(deltaY, clientX, clientY, pixelsPerLine, state) {
+          if (!deltaY) return;
+          state.lastX = clientX;
+          state.lastY = clientY;
+          state.remainder += deltaY;
+          const lines = Math.trunc(Math.abs(state.remainder) / pixelsPerLine);
+          if (!lines) return;
+          const direction = state.remainder > 0 ? 1 : -1;
+          state.pending += direction * lines;
+          state.remainder -= direction * lines * pixelsPerLine;
+          if (!state.raf) {
+            state.raf = requestAnimationFrame(() => flushScroll(state));
+          }
+        }
+
         function handleWheel(e) {
           if (!config.enableSgrScroll) return;
           e.preventDefault();
           e.stopPropagation();
-          const lines = Math.max(1, Math.ceil(Math.abs(e.deltaY) / 40));
-          for (let i = 0; i < lines; i += 1) sendScroll(e.deltaY, e.clientX, e.clientY);
+          queueScroll(e.deltaY, e.clientX, e.clientY, WHEEL_PIXELS_PER_LINE, wheelScroll);
         }
 
         if (overlay && config.enableSgrScroll) {
@@ -751,11 +802,8 @@ export function buildTerminalHtml(profile: TerminalHtmlProfile, wsUrl: string, t
             if (!isVerticalScroll) return;
             if (e.cancelable) e.preventDefault();
             const delta = lastScrollY - y;
-            if (Math.abs(delta) > 14) {
-              const lines = Math.max(1, Math.ceil(Math.abs(delta) / 14));
-              for (let i = 0; i < lines; i += 1) sendScroll(delta, x, y);
-              lastScrollY = y;
-            }
+            lastScrollY = y;
+            queueScroll(delta, x, y, TOUCH_PIXELS_PER_LINE, touchScroll);
           }
         }, { passive: false });
 
@@ -769,19 +817,19 @@ export function buildTerminalHtml(profile: TerminalHtmlProfile, wsUrl: string, t
       loadFonts();
       watchXtermCss();
       updateLayoutReady();
-      scheduleFit();
+      requestDimensions();
       if (typeof ResizeObserver !== 'undefined' && terminalEl) {
         const resizeObserver = new ResizeObserver(() => {
-          scheduleFit();
+          requestDimensions();
         });
         resizeObserver.observe(terminalEl);
       }
       const visualViewport = window.visualViewport;
       if (visualViewport && typeof visualViewport.addEventListener === 'function') {
-        visualViewport.addEventListener('resize', scheduleFit);
-        visualViewport.addEventListener('scroll', scheduleFit);
+        visualViewport.addEventListener('resize', requestDimensions);
+        visualViewport.addEventListener('scroll', requestDimensions);
       }
-      window.addEventListener('resize', scheduleFit);
+      window.addEventListener('resize', requestDimensions);
       connect();
     </script>
   </body>

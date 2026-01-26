@@ -1,0 +1,55 @@
+---
+session: ter
+date: 2026-01-18
+status: complete
+outcome: PARTIAL_PLUS
+---
+
+goal: Add expandable keyboard accessory with vertical expansion for terminal
+now: Test keyboard accessory expansion on device, verify layout looks correct
+
+test: npx tsc --noEmit
+
+done_this_session:
+  - task: Split helperKeys into mainHelperKeys and expandedHelperKeys
+    files: [app/session/[hostId]/[name]/terminal.tsx]
+  - task: Add isAccessoryExpanded state for toggle
+    files: [app/session/[hostId]/[name]/terminal.tsx]
+  - task: Implement vertical expansion with main row + expanded row below
+    files: [app/session/[hostId]/[name]/terminal.tsx]
+  - task: Add expandedRow and helperScroll styles
+    files: [app/session/[hostId]/[name]/terminal.tsx]
+  - task: Move paste, image, PgUp, PgDn, snippets to expanded row
+    files: [app/session/[hostId]/[name]/terminal.tsx]
+
+blockers: []
+
+questions:
+  - Does the current layout look correct on device?
+
+decisions:
+  - vertical-expansion: Expanded row appears BELOW main row (user preference)
+  - expand-button-inline: Expand button is part of main row ScrollView for alignment
+
+findings:
+  - mainHelperKeys: Esc, Tab, Up, Down, Left, Right
+  - expandedHelperKeys: PgUp, PgDn
+  - expanded-row-content: Paste, Image, PgUp, PgDn, Snippets
+
+worked:
+  - Putting expand button inside same ScrollView as other keys for alignment
+  - Using conditional rendering with && instead of ternary for two-row layout
+
+failed:
+  - First attempt had expand button outside ScrollView causing alignment issues
+  - First attempt showed expanded row above main row (user wanted below)
+
+next:
+  - Test on device to verify layout
+  - Adjust styling if needed
+  - Consider animation for expand/collapse transition
+
+files:
+  created: []
+  modified:
+    - app/session/[hostId]/[name]/terminal.tsx

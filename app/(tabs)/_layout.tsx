@@ -14,9 +14,9 @@ export default function TabLayout() {
         <Icon sf={{ default: 'server.rack', selected: 'server.rack' }} />
         <Label>Hosts</Label>
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="docker">
-        <Icon sf={{ default: 'shippingbox', selected: 'shippingbox.fill' }} />
-        <Label>Docker</Label>
+      <NativeTabs.Trigger name="projects">
+        <Icon sf={{ default: 'folder', selected: 'folder.fill' }} />
+        <Label>Projects</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="more">
         <Icon sf={{ default: 'ellipsis', selected: 'ellipsis' }} />

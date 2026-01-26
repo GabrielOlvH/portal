@@ -19,6 +19,7 @@ export type Session = {
   lastAttached?: number;
   preview?: string[];
   insights?: SessionInsights;
+  title?: string;
 };
 
 export type CursorInfo = {

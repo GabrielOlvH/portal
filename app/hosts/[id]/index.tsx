@@ -1,14 +1,13 @@
 import { AppText } from '@/components/AppText';
-import { FadeIn } from '@/components/FadeIn';
 import { Card } from '@/components/Card';
 import { Pill } from '@/components/Pill';
+import { PulsingDot } from '@/components/PulsingDot';
 import { Screen } from '@/components/Screen';
 import { SectionHeader } from '@/components/SectionHeader';
 import {
-  createSession,
-  killSession,
   getServiceStatus,
   restartService,
+  dockerContainerAction,
   ServiceStatus,
 } from '@/lib/api';
 import { systemColors } from '@/lib/colors';
@@ -16,31 +15,20 @@ import { useHostLive } from '@/lib/live';
 import { useStore } from '@/lib/store';
 import { theme } from '@/lib/theme';
 import { ThemeColors, useTheme } from '@/lib/useTheme';
-import { HostInfo } from '@/lib/types';
+import { DockerContainer, HostInfo } from '@/lib/types';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useIsFocused } from '@react-navigation/native';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
-  TextInput,
   View,
 } from 'react-native';
-
-function formatTimestamp(timestamp?: number) {
-  if (!timestamp) return '-';
-  const diff = Date.now() - timestamp;
-  const minutes = Math.floor(diff / 60000);
-  if (minutes < 1) return 'Just now';
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  return `${days}d ago`;
-}
+import { Play, Square, ChevronDown, ChevronRight } from 'lucide-react-native';
 
 function formatBytes(bytes?: number) {
   if (!bytes || bytes <= 0) return '-';
@@ -64,6 +52,12 @@ function formatUptime(seconds?: number) {
   return `${mins}m`;
 }
 
+function isContainerRunning(container: DockerContainer): boolean {
+  if (container.state) return container.state.toLowerCase() === 'running';
+  if (container.status) return container.status.toLowerCase().startsWith('up');
+  return false;
+}
+
 
 export default function HostDetailScreen() {
   const router = useRouter();
@@ -71,7 +65,6 @@ export default function HostDetailScreen() {
   const params = useLocalSearchParams<{ id: string }>();
   const { hosts, updateHostLastSeen, removeHost } = useStore();
   const host = hosts.find((item) => item.id === params.id);
-  const [newSession, setNewSession] = useState('');
   const [syncing, setSyncing] = useState(false);
   const [serviceStatus, setServiceStatus] = useState<ServiceStatus | null>(null);
   const [serviceError, setServiceError] = useState<string | null>(null);
@@ -79,16 +72,64 @@ export default function HostDetailScreen() {
   const isFocused = useIsFocused();
 
   const { state, refresh } = useHostLive(host, {
-    sessions: true,
+    sessions: false,
     host: true,
+    docker: true,
     enabled: isFocused,
   });
 
-  const sessions = state?.sessions ?? [];
+  const [dockerExpanded, setDockerExpanded] = useState(false);
+  const [dockerActionInProgress, setDockerActionInProgress] = useState<string | null>(null);
+
   const status = state?.status ?? 'unknown';
   const error = state?.error ?? null;
   const hostInfo: HostInfo | undefined = state?.hostInfo;
+  const dockerSnapshot = state?.docker;
+  const containers = dockerSnapshot?.containers ?? [];
+  const hasDocker = dockerSnapshot?.available === true;
   const styles = useMemo(() => createStyles(colors), [colors]);
+
+  const runningContainers = useMemo(
+    () => containers.filter((c) => isContainerRunning(c)),
+    [containers]
+  );
+  const stoppedContainers = useMemo(
+    () => containers.filter((c) => !isContainerRunning(c)),
+    [containers]
+  );
+
+  const handleDockerAction = useCallback(
+    async (container: DockerContainer, action: 'start' | 'stop') => {
+      if (!host) return;
+      const actionLabel = action === 'start' ? 'Start' : 'Stop';
+      Alert.alert(
+        `${actionLabel} Container`,
+        `${actionLabel} "${container.name}"?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: actionLabel,
+            style: action === 'stop' ? 'destructive' : 'default',
+            onPress: async () => {
+              setDockerActionInProgress(container.id);
+              try {
+                await dockerContainerAction(host, container.id, action);
+                refresh();
+              } catch (err) {
+                Alert.alert(
+                  'Failed',
+                  err instanceof Error ? err.message : `Could not ${action} container`
+                );
+              } finally {
+                setDockerActionInProgress(null);
+              }
+            },
+          },
+        ]
+      );
+    },
+    [host, refresh]
+  );
 
   useEffect(() => {
     if (!host?.id || !state?.lastUpdate) return;
@@ -147,90 +188,6 @@ export default function HostDetailScreen() {
     ]);
   }, [host, restarting]);
 
-  const handleCreate = useCallback(async () => {
-    if (!host || !newSession.trim()) return;
-    const name = newSession.trim();
-    setNewSession('');
-    try {
-      await createSession(host, name);
-      refresh();
-    } catch (err) {
-      Alert.alert('Session failed', err instanceof Error ? err.message : 'Unable to create session.');
-    }
-  }, [host, newSession, refresh]);
-
-  const handleKill = useCallback(
-    async (sessionName: string) => {
-      if (!host) return;
-      Alert.alert('Kill session', `Stop ${sessionName}?`, [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Kill',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await killSession(host, sessionName);
-              refresh();
-            } catch (err) {
-              Alert.alert('Kill failed', err instanceof Error ? err.message : 'Unable to kill session.');
-            }
-          },
-        },
-      ]);
-    },
-    [host, refresh]
-  );
-
-  const sessionCards = useMemo(
-    () =>
-      sessions.map((session, index) => (
-        <FadeIn key={session.name} delay={index * 50} style={styles.sessionWrap}>
-          <Pressable
-            onPress={() => router.push(`/session/${host?.id}/${encodeURIComponent(session.name)}/terminal`)}
-            style={({ pressed }) => [
-              styles.sessionPressable,
-              pressed && styles.sessionCardPressed,
-            ]}
-          >
-            <Card style={styles.sessionCard}>
-            <View style={styles.sessionRow}>
-              <View style={styles.sessionInfo}>
-                <AppText variant="subtitle">{session.name}</AppText>
-                <AppText variant="label" tone="muted">
-                  {session.windows} windows - {formatTimestamp(session.lastAttached)}
-                </AppText>
-              </View>
-              <View style={styles.sessionActions}>
-                <Pressable
-                  style={styles.editButton}
-                  onPress={(e) => {
-                    e.stopPropagation();
-                    router.push(`/session/${host?.id}/${encodeURIComponent(session.name)}`);
-                  }}
-                  hitSlop={8}
-                >
-                  <AppText variant="caps" tone="muted">Edit</AppText>
-                </Pressable>
-                <Pill label={session.attached ? 'Attached' : 'Idle'} tone={session.attached ? 'success' : 'neutral'} />
-              </View>
-            </View>
-            <View style={styles.sessionFooter}>
-              <AppText variant="label" tone="muted">
-                created {formatTimestamp(session.createdAt)}
-              </AppText>
-              <Pressable onPress={() => handleKill(session.name)} hitSlop={8}>
-                <AppText variant="caps" tone="clay">
-                  Kill
-                </AppText>
-              </Pressable>
-            </View>
-            </Card>
-          </Pressable>
-        </FadeIn>
-      )),
-    [sessions, router, host, handleKill, styles]
-  );
-
   if (!host) {
     return (
       <Screen>
@@ -256,21 +213,13 @@ export default function HostDetailScreen() {
 
   return (
     <Screen>
-      {/* Clean Header */}
       <View style={styles.header}>
         <AppText variant="title">{host.name}</AppText>
-        <View style={styles.headerActions}>
-          <Pressable onPress={() => router.push(`/(tabs)/docker?hostId=${host.id}`)}>
-            <AppText variant="caps" tone="accent">
-              Docker
-            </AppText>
-          </Pressable>
-          <Pressable onPress={() => router.push(`/hosts/${host.id}/edit`)}>
-            <AppText variant="caps" tone="accent">
-              Edit
-            </AppText>
-          </Pressable>
-        </View>
+        <Pressable onPress={() => router.push(`/hosts/${host.id}/edit`)}>
+          <AppText variant="caps" tone="accent">
+            Edit
+          </AppText>
+        </Pressable>
       </View>
 
       <ScrollView
@@ -306,28 +255,10 @@ export default function HostDetailScreen() {
           </View>
         ) : null}
 
-        <SectionHeader title="Host info" />
+        <SectionHeader title="System" />
         <Card style={styles.infoCard}>
           {hostInfo ? (
             <>
-              <View style={styles.infoHeader}>
-                <View style={styles.infoColumn}>
-                  <AppText variant="caps" tone="muted">CPU</AppText>
-                  <AppText variant="label">
-                    {hostInfo.cpu.usage !== undefined ? `${hostInfo.cpu.usage}%` : '-'}
-                  </AppText>
-                </View>
-                <View style={styles.infoColumn}>
-                  <AppText variant="caps" tone="muted">RAM</AppText>
-                  <AppText variant="label">
-                    {hostInfo.memory.usedPercent !== undefined ? `${hostInfo.memory.usedPercent}%` : '-'}
-                  </AppText>
-                </View>
-                <View style={styles.infoColumn}>
-                  <AppText variant="caps" tone="muted">Uptime</AppText>
-                  <AppText variant="label">{formatUptime(hostInfo.uptime)}</AppText>
-                </View>
-              </View>
               <View style={styles.metricRow}>
                 <AppText variant="caps" tone="muted" style={styles.metricLabel}>CPU</AppText>
                 <View style={styles.metricBar}>
@@ -338,7 +269,7 @@ export default function HostDetailScreen() {
                     ]}
                   />
                 </View>
-                <AppText variant="label" style={styles.metricValue}>
+                <AppText variant="mono" style={styles.metricValue}>
                   {hostInfo.cpu.usage !== undefined ? `${hostInfo.cpu.usage}%` : '-'}
                 </AppText>
               </View>
@@ -352,18 +283,27 @@ export default function HostDetailScreen() {
                     ]}
                   />
                 </View>
-                <AppText variant="label" style={styles.metricValue}>
-                  {formatBytes(hostInfo.memory.used)} / {formatBytes(hostInfo.memory.total)}
+                <AppText variant="mono" style={styles.metricValue}>
+                  {hostInfo.memory.usedPercent}%
                 </AppText>
               </View>
-              <View style={styles.infoFooter}>
-                <AppText variant="label" tone="muted">
-                  {hostInfo.platform} {hostInfo.release} ({hostInfo.arch})
-                </AppText>
-                <AppText variant="label" tone="muted">
-                  Load {hostInfo.load.map((value) => value.toFixed(2)).join(' / ')}
-                </AppText>
+              <View style={styles.statsRow}>
+                <View style={styles.statItem}>
+                  <AppText variant="caps" tone="muted">UP</AppText>
+                  <AppText variant="mono">{formatUptime(hostInfo.uptime)}</AppText>
+                </View>
+                <View style={styles.statItem}>
+                  <AppText variant="caps" tone="muted">LOAD</AppText>
+                  <AppText variant="mono">{hostInfo.load[0]?.toFixed(2) ?? '-'}</AppText>
+                </View>
+                <View style={styles.statItem}>
+                  <AppText variant="caps" tone="muted">MEM</AppText>
+                  <AppText variant="mono">{formatBytes(hostInfo.memory.used)}</AppText>
+                </View>
               </View>
+              <AppText variant="label" tone="muted" style={styles.platformText}>
+                {hostInfo.platform} {hostInfo.arch}
+              </AppText>
             </>
           ) : (
             <AppText variant="body" tone="muted">
@@ -425,33 +365,102 @@ export default function HostDetailScreen() {
           )}
         </Card>
 
-        <SectionHeader title="Create session" />
-        <Card style={styles.createCard}>
-          <TextInput
-            value={newSession}
-            onChangeText={setNewSession}
-            placeholder="session name"
-            placeholderTextColor={colors.textMuted}
-            style={styles.input}
-          />
-          <Pressable onPress={handleCreate} style={styles.createButton}>
-            <AppText variant="subtitle" style={styles.createText}>
-              Launch
-            </AppText>
-          </Pressable>
-        </Card>
-
-        <SectionHeader title={`Sessions (${sessions.length})`} />
-
-        {sessions.length === 0 ? (
-          <Card style={styles.emptyCard}>
-            <AppText variant="subtitle">No sessions yet</AppText>
-            <AppText variant="body" tone="muted" style={{ marginTop: theme.spacing.sm }}>
-              Create a session or pull to refresh to get the latest state from tmux.
-            </AppText>
-          </Card>
-        ) : (
-          sessionCards
+        {hasDocker && (
+          <>
+            <SectionHeader title={`Docker (${containers.length})`} />
+            <Card style={styles.dockerCard}>
+              <Pressable
+                style={styles.dockerHeader}
+                onPress={() => setDockerExpanded(!dockerExpanded)}
+              >
+                {dockerExpanded ? (
+                  <ChevronDown size={18} color={colors.textMuted} />
+                ) : (
+                  <ChevronRight size={18} color={colors.textMuted} />
+                )}
+                <View style={styles.dockerHeaderInfo}>
+                  <AppText variant="body">
+                    {containers.length} container{containers.length !== 1 ? 's' : ''}
+                  </AppText>
+                  <View style={styles.dockerStats}>
+                    {runningContainers.length > 0 && (
+                      <View style={styles.dockerStat}>
+                        <View style={[styles.statDot, { backgroundColor: colors.green }]} />
+                        <AppText variant="caps" style={{ color: colors.green }}>
+                          {runningContainers.length}
+                        </AppText>
+                      </View>
+                    )}
+                    {stoppedContainers.length > 0 && (
+                      <View style={styles.dockerStat}>
+                        <View style={[styles.statDot, { backgroundColor: colors.textMuted }]} />
+                        <AppText variant="caps" tone="muted">
+                          {stoppedContainers.length}
+                        </AppText>
+                      </View>
+                    )}
+                  </View>
+                </View>
+              </Pressable>
+              {dockerExpanded && (
+                <View style={styles.dockerContainers}>
+                  {containers.map((container, idx) => {
+                    const isRunning = isContainerRunning(container);
+                    const isActionLoading = dockerActionInProgress === container.id;
+                    const isLast = idx === containers.length - 1;
+                    return (
+                      <Pressable
+                        key={container.id}
+                        style={[styles.containerRow, !isLast && styles.containerRowBorder]}
+                        onPress={() => router.push(`/hosts/${host.id}/docker/${encodeURIComponent(container.id)}`)}
+                      >
+                        <PulsingDot
+                          color={isRunning ? colors.accent : colors.textMuted}
+                          active={isRunning}
+                          size={8}
+                        />
+                        <View style={styles.containerInfo}>
+                          <AppText variant="body" numberOfLines={1}>
+                            {container.name}
+                          </AppText>
+                          <AppText variant="caps" tone="muted" numberOfLines={1}>
+                            {container.image}
+                          </AppText>
+                        </View>
+                        <View style={styles.containerActions}>
+                          {isActionLoading ? (
+                            <ActivityIndicator size="small" color={isRunning ? colors.red : colors.accent} />
+                          ) : isRunning ? (
+                            <Pressable
+                              style={styles.actionButton}
+                              onPress={(e) => {
+                                e.stopPropagation();
+                                handleDockerAction(container, 'stop');
+                              }}
+                              hitSlop={8}
+                            >
+                              <Square size={14} color={colors.red} />
+                            </Pressable>
+                          ) : (
+                            <Pressable
+                              style={styles.actionButton}
+                              onPress={(e) => {
+                                e.stopPropagation();
+                                handleDockerAction(container, 'start');
+                              }}
+                              hitSlop={8}
+                            >
+                              <Play size={14} color={colors.accent} />
+                            </Pressable>
+                          )}
+                        </View>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              )}
+            </Card>
+          </>
         )}
 
         <Pressable
@@ -517,25 +526,16 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginBottom: theme.spacing.sm,
   },
   infoCard: {
-    padding: 14,
-  },
-  infoHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: theme.spacing.sm,
-  },
-  infoColumn: {
-    alignItems: 'center',
-    flex: 1,
+    padding: 12,
+    gap: 8,
   },
   metricRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginBottom: theme.spacing.xs,
   },
   metricLabel: {
-    width: 44,
+    width: 36,
   },
   metricBar: {
     flex: 1,
@@ -549,12 +549,21 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderRadius: 4,
   },
   metricValue: {
-    width: 110,
+    width: 40,
     textAlign: 'right',
   },
-  infoFooter: {
-    marginTop: theme.spacing.sm,
-    gap: 4,
+  statsRow: {
+    flexDirection: 'row',
+    gap: theme.spacing.md,
+    paddingTop: theme.spacing.xs,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.separator,
+  },
+  statItem: {
+    gap: 2,
+  },
+  platformText: {
+    marginTop: 4,
   },
   serviceCard: {
     padding: 14,
@@ -593,70 +602,67 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   serviceButtonDisabled: {
     opacity: 0.5,
   },
-  createCard: {
-    padding: 12,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: theme.radii.md,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    fontSize: 14,
-    color: colors.text,
-  },
-  createButton: {
-    marginTop: theme.spacing.xs,
-    backgroundColor: colors.accent,
-    paddingVertical: 8,
-    borderRadius: theme.radii.md,
-    alignItems: 'center',
-  },
-  createText: {
-    color: colors.accentText,
-  },
-  sessionWrap: {
-    marginBottom: 8,
-  },
-  sessionPressable: {
-    borderRadius: theme.radii.lg,
-  },
-  sessionCard: {
-    padding: 14,
-  },
-  sessionCardPressed: {
-    transform: [{ scale: 0.99 }],
-    opacity: 0.92,
-  },
-  sessionRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  sessionInfo: {
-    flex: 1,
-  },
-  sessionActions: {
-    alignItems: 'flex-end',
-    gap: 6,
-  },
-  editButton: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    backgroundColor: colors.cardPressed,
-  },
-  sessionFooter: {
-    marginTop: theme.spacing.xs,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  emptyCard: {
-    padding: 32,
-    alignItems: 'center',
-  },
   remove: {
     marginTop: theme.spacing.lg,
     alignSelf: 'center',
+  },
+  dockerCard: {
+    padding: 0,
+    overflow: 'hidden',
+  },
+  dockerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: theme.spacing.md,
+  },
+  dockerHeaderInfo: {
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  dockerStats: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  dockerStat: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  statDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  dockerContainers: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.separator,
+  },
+  containerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 12,
+    paddingHorizontal: theme.spacing.md,
+  },
+  containerRowBorder: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.separator,
+  },
+  containerInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  containerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  actionButton: {
+    padding: 4,
   },
 });

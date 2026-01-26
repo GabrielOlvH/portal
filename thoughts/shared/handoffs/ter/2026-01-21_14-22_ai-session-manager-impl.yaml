@@ -1,0 +1,72 @@
+---
+session: ter
+date: 2026-01-21
+status: partial
+outcome: PARTIAL_PLUS
+---
+
+goal: Implement AI session manager feature for Claude/Codex/OpenCode sessions
+now: Debug why UI shows no sessions (endpoint works, app side issue)
+
+test: curl http://localhost:4020/ai-sessions | jq '.sessions | length'
+
+done_this_session:
+  - task: Define AiProvider, AiSession, AiSessionDetail types
+    files: [lib/types.ts]
+  - task: Create agent endpoint with JSONL parsers for 3 providers
+    files: [agent/src/http/routes/ai-sessions.ts, agent/src/http/app.ts]
+  - task: Add API client functions (getAiSessions, getAiSessionDetail, resumeAiSession)
+    files: [lib/api.ts]
+  - task: Create AI Sessions list screen with grouping, search, filtering
+    files: [app/ai-sessions/index.tsx]
+  - task: Create session detail screen with messages and resume
+    files: [app/ai-sessions/[provider]/[id].tsx]
+  - task: Add navigation entry point in More tab
+    files: [app/(tabs)/more.tsx]
+  - task: Create reusable AiSessionRow component with expand/swipe
+    files: [components/AiSessionRow.tsx]
+
+blockers:
+  - UI shows no sessions despite endpoint returning data correctly
+
+questions:
+  - Is the app connecting to the right host/port?
+  - Is there an error being swallowed in the query?
+
+decisions:
+  - read_only: Sessions read directly from ~/.claude, ~/.codex, ~/.local/share/opencode
+  - agent_based_parsing: Agent parses JSONL on host, returns JSON to app
+  - cache_strategy: 30-second TTL cache with force refresh option
+
+findings:
+  - endpoint_works: curl localhost:4020/ai-sessions returns full session list
+  - claude_format: sessions-index.json + per-session JSONL transcripts
+  - codex_format: year/month/day directory structure with rollout JSONL
+  - agent_running: tsx watch on port 4020, routes registered
+
+worked:
+  - Agent orchestration with 7 tasks via kraken agents
+  - Parallel parsing of 3 providers with error isolation
+  - Following existing PortRow/ports screen patterns
+
+failed:
+  - App UI not displaying sessions (investigating)
+
+next:
+  - Debug app-side API call (check host config, network errors)
+  - Add console.log to query function to see what's happening
+  - Check if query is enabled (ready && !!currentHost)
+  - Verify host baseUrl matches agent port
+
+files:
+  created:
+    - agent/src/http/routes/ai-sessions.ts
+    - app/ai-sessions/index.tsx
+    - app/ai-sessions/[provider]/[id].tsx
+    - components/AiSessionRow.tsx
+    - thoughts/handoffs/ai-session-manager/ (7 task handoffs)
+  modified:
+    - lib/types.ts
+    - lib/api.ts
+    - agent/src/http/app.ts
+    - app/(tabs)/more.tsx

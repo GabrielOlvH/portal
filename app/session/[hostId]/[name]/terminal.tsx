@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useIsFocused } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { WebView } from 'react-native-webview';
 import {
   ChevronDown,
@@ -124,12 +125,15 @@ export default function SessionTerminalScreen(): React.ReactElement {
     [preferences.terminal.fontFamily, preferences.terminal.fontSize]
   );
   const isFocused = useIsFocused();
-  const { width: screenWidth } = useWindowDimensions();
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+
+  // Calculate pager height directly - no need to wait for onLayout
+  const pagerHeight = screenHeight - insets.top;
 
   const [currentSessionName, setCurrentSessionName] = useState(initialSessionName);
   const [keyboardOffset, setKeyboardOffset] = useState(0);
   const [helperHeight, setHelperHeight] = useState(0);
-  const [pagerHeight, setPagerHeight] = useState(0);
   const [isSelecting, setIsSelecting] = useState(false);
   const [isAccessoryExpanded, setIsAccessoryExpanded] = useState(false);
   const [focusedSessionName, setFocusedSessionName] = useState<string | null>(null);
@@ -187,6 +191,11 @@ export default function SessionTerminalScreen(): React.ReactElement {
       }
     });
   }, [sessions]);
+
+  // Request fresh state on mount to sync newly created sessions
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
 
   // Keyboard handling
   useEffect(() => {
@@ -396,9 +405,19 @@ export default function SessionTerminalScreen(): React.ReactElement {
       return;
     }
     if (sessions.length === 0) return;
+    // If current session exists in list, keep it
     if (currentSessionName && sessions.some((session) => session.name === currentSessionName)) return;
-    setCurrentSessionName(sessions[0].name);
-  }, [sessions, currentSessionName, router]);
+    // If initial session exists in list, use it (handles race condition on mount)
+    if (initialSessionName && sessions.some((session) => session.name === initialSessionName)) {
+      setCurrentSessionName(initialSessionName);
+      return;
+    }
+    // Only fall back to first session if neither current nor initial is found
+    // and we've had sessions before (avoids wrong session during initial load)
+    if (hadSessionsRef.current) {
+      setCurrentSessionName(sessions[0].name);
+    }
+  }, [sessions, currentSessionName, initialSessionName, router]);
 
 
   const handlePagerMomentumEnd = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -409,15 +428,17 @@ export default function SessionTerminalScreen(): React.ReactElement {
 
   const keyboardInset = focusedSessionName === currentSessionName ? Math.max(0, keyboardOffset) : 0;
 
+  // Trigger dimension sync when layout-affecting values change
   useEffect(() => {
     if (!currentSessionName || !isFocused) return;
     const ref = webRefs.current[currentSessionName];
     if (!ref) return;
+    // Small delay to let React finish rendering
     const timeout = setTimeout(() => {
       ref.injectJavaScript(fitScript);
-    }, 60);
+    }, 50);
     return () => clearTimeout(timeout);
-  }, [currentSessionName, isFocused, keyboardInset, helperHeight]);
+  }, [currentSessionName, isFocused, pagerHeight, keyboardInset, helperHeight]);
 
 
   useEffect(() => {
@@ -425,7 +446,10 @@ export default function SessionTerminalScreen(): React.ReactElement {
     const index = sessions.findIndex((session) => session.name === currentSessionName);
     if (index < 0) return;
     const x = index * screenWidth;
-    pagerRef.current?.scrollTo({ x, animated: false });
+    // Use requestAnimationFrame to ensure layout is complete before scrolling
+    requestAnimationFrame(() => {
+      pagerRef.current?.scrollTo({ x, animated: false });
+    });
   }, [currentSessionName, sessions, screenWidth]);
 
   useEffect(() => {
@@ -483,7 +507,7 @@ export default function SessionTerminalScreen(): React.ReactElement {
         </View>
       </View>
 
-      <View style={styles.pagerFrame} onLayout={(e) => setPagerHeight(e.nativeEvent.layout.height)}>
+      <View style={styles.pagerFrame}>
         <ScrollView
           ref={pagerRef}
           horizontal
@@ -495,33 +519,26 @@ export default function SessionTerminalScreen(): React.ReactElement {
           style={styles.pager}
           contentContainerStyle={[
             styles.pagerContent,
-            pagerHeight > 0 ? { height: pagerHeight, width: screenWidth * Math.max(1, sessionCount) } : null,
+            { height: pagerHeight, width: screenWidth * Math.max(1, sessionCount) },
           ]}
         >
           {sessions.map((session) => {
             const isCurrent = session.name === currentSessionName;
             return (
-              <View key={session.name} style={[styles.page, { width: screenWidth, height: pagerHeight || undefined }]}>
+              <View key={session.name} style={[styles.page, { width: screenWidth, height: pagerHeight }]}>
                 {!isCurrent && (
                   <View style={styles.pageLabel}>
-                    <AppText variant="caps" style={styles.pageLabelText}>{session.name}</AppText>
+                    <AppText variant="caps" style={styles.pageLabelText}>{session.title || session.name}</AppText>
                   </View>
                 )}
                 <View
                   style={[styles.terminal, keyboardInset > 0 && isCurrent && { paddingBottom: keyboardInset + helperHeight }]}
-                  onLayout={() => {
-                    if (!isCurrent) return;
-                    webRefs.current[session.name]?.injectJavaScript(fitScript);
-                  }}
                 >
                   <TerminalWebView
                     setRef={(ref) => { webRefs.current[session.name] = ref; }}
                     source={getSourceForSession(session.name)}
                     style={styles.webview}
                     autoFit
-                    onLoadEnd={() => {
-                      webRefs.current[session.name]?.injectJavaScript(fitScript);
-                    }}
                     onMessage={async (event) => {
                       try {
                         const payload = JSON.parse(event.nativeEvent.data) as {

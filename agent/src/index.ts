@@ -1,10 +1,11 @@
 import 'dotenv/config';
 import { startServer } from './server';
-import { NOTIFICATION_POLL_INTERVAL, USAGE_POLL_INTERVAL, TOKEN_POLL_INTERVAL } from './config';
+import { NOTIFICATION_POLL_INTERVAL, USAGE_POLL_INTERVAL, TOKEN_POLL_INTERVAL, RESET_MONITOR_INTERVAL } from './config';
 import { startUsageRefresh, primeTokenRefresh } from './usage';
 import { claudeSession } from './state';
 import { logStartup } from './log';
 import { startPauseMonitor } from './notifications/pause-monitor';
+import { startResetMonitor } from './notifications/reset-monitor';
 
 startServer();
 logStartup();
@@ -40,4 +41,11 @@ if (NOTIFICATION_POLL_INTERVAL > 0) {
   setInterval(() => {
     startPauseMonitor();
   }, NOTIFICATION_POLL_INTERVAL);
+}
+
+if (RESET_MONITOR_INTERVAL > 0) {
+  startResetMonitor();
+  setInterval(() => {
+    startResetMonitor();
+  }, RESET_MONITOR_INTERVAL);
 }

@@ -1,0 +1,57 @@
+---
+session: ter
+date: 2026-01-23
+status: complete
+outcome: SUCCEEDED
+---
+
+goal: Plan app layout revamp - replace Docker tab with Projects, move Docker to host pages
+now: Review plan at thoughts/shared/plans/PLAN-app-layout-revamp.md and run /implement_plan
+test: pnpm typecheck && pnpm lint
+
+done_this_session:
+  - task: Researched current tab structure and navigation
+    files: [app/(tabs)/_layout.tsx, app/(tabs)/docker.tsx, app/(tabs)/more.tsx]
+  - task: Analyzed Docker functionality and integration points
+    files: [app/(tabs)/docker.tsx, app/hosts/[id]/index.tsx, lib/docker-hooks.ts]
+  - task: Reviewed Projects and AI Sessions architecture
+    files: [app/projects/index.tsx, app/ai-sessions/index.tsx, lib/projects-store.tsx]
+  - task: Created comprehensive implementation plan with 7 tasks
+    files: [thoughts/shared/plans/PLAN-app-layout-revamp.md]
+
+blockers: []
+
+questions:
+  - Verify useDocker(host) hook exists for single-host Docker queries
+  - Confirm users don't heavily rely on cross-host Docker aggregation view
+
+decisions:
+  - tab_replacement: Replace Docker tab with Projects (keep 4 tabs) rather than adding 5th
+  - inline_docker: Show Docker containers directly on host detail pages
+  - three_section_layout: Recent Launches + Open Sessions + Projects List for comprehensive UX
+
+findings:
+  - docker_tab_cross_host: Current Docker tab aggregates ALL containers across ALL hosts - this view will be lost
+  - container_routes_safe: Container detail routes at app/hosts/[id]/docker/[containerId]/ remain unchanged
+  - recent_launches_exists: RecentLaunch state and addRecentLaunch() already in projects-store
+  - host_docker_link: Host detail page already has Docker link at line 263
+
+worked:
+  - Using scout agents for parallel codebase exploration
+  - TLDR structure commands for understanding file organization
+
+failed: []
+
+next:
+  - Review plan at thoughts/shared/plans/PLAN-app-layout-revamp.md
+  - Run /implement_plan thoughts/shared/plans/PLAN-app-layout-revamp.md
+  - Task 1: Update tab configuration (_layout.tsx)
+  - Task 2: Create new projects tab file
+  - Task 3: Add Docker section to host detail page
+  - Task 4: Build three-section Projects tab UI
+
+files:
+  created:
+    - thoughts/shared/plans/PLAN-app-layout-revamp.md
+    - thoughts/handoffs/app-layout-revamp/plan-app-layout-revamp.md
+  modified: []

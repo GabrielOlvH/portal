@@ -87,7 +87,7 @@ export function SessionCard({
         <View style={styles.content}>
           <View style={styles.header}>
             <AppText variant="subtitle" numberOfLines={1} style={styles.name}>
-              {session.name}
+              {session.title || session.name}
             </AppText>
             <View style={[styles.stateBadge, { backgroundColor: stateBgColor }]}>
               <StateIcon size={10} color={stateColor} />

@@ -1,5 +1,5 @@
 import { getSessionInsights } from '../agents';
-import { listSessions } from '../sessions';
+import { getPaneTitle, listSessions } from '../sessions';
 import { capturePane, parseSessions } from '../tmux';
 import { getUsageSnapshot } from '../usage';
 
@@ -22,14 +22,12 @@ export async function fetchSessions(options: SessionsOptions = {}) {
     const usage = includeInsights ? await getUsageSnapshot() : null;
     const withPreview = await Promise.all(
       sessions.map(async (session) => {
-        let previewLines: string[] | null = null;
-        if (preview) {
-          try {
-            previewLines = await capturePane(session.name, lines);
-          } catch {
-            previewLines = [];
-          }
-        }
+        const [previewLines, title] = await Promise.all([
+          preview
+            ? capturePane(session.name, lines).catch(() => [] as string[])
+            : Promise.resolve(null),
+          getPaneTitle(session.name),
+        ]);
 
         let insights: Record<string, unknown> | null = null;
         if (usage) {
@@ -38,11 +36,17 @@ export async function fetchSessions(options: SessionsOptions = {}) {
           insights = { ...usage, ...sessionInsights, meta };
         }
 
-        if (!preview) {
-          return { ...session, ...(insights ? { insights } : {}) };
+        const result = {
+          ...session,
+          ...(title ? { title } : {}),
+          ...(insights ? { insights } : {}),
+        };
+
+        if (preview) {
+          return { ...result, preview: previewLines || [] };
         }
 
-        return { ...session, preview: previewLines || [], ...(insights ? { insights } : {}) };
+        return result;
       })
     );
     return withPreview;

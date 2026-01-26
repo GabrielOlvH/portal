@@ -10,6 +10,8 @@ export const MAX_TOKEN_FILES = Number(process.env.TMUX_AGENT_TOKEN_FILES || 200)
 export const TOKEN_POLL_INTERVAL = Number(process.env.TMUX_AGENT_TOKEN_POLL_MS || 180000);
 export const IDLE_STOP_MS = Number(process.env.TMUX_AGENT_IDLE_STOP_MS || 2000);
 export const NOTIFICATION_POLL_INTERVAL = Number(process.env.TMUX_AGENT_NOTIFICATION_POLL_MS || 15000);
+export const RESET_MONITOR_INTERVAL = Number(process.env.TMUX_AGENT_RESET_MONITOR_MS || 60000);
+export const RESET_NOTIFY_THRESHOLD = Number(process.env.TMUX_AGENT_RESET_THRESHOLD || 50);
 export const CLAUDE_PROBE_DIR = path.join(os.homedir(), '.tmux-agent', 'claude-probe');
 export const CLAUDE_PROMPT_RESPONSES = [
   { needle: 'do you trust the files in this folder?', keys: '1\r', resend: true },

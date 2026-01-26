@@ -1,0 +1,67 @@
+---
+session: ter
+date: 2026-01-18
+status: complete
+outcome: SUCCEEDED
+---
+
+goal: Improve LaunchSheet auto-selection, redesign Add Project/Host screens, fix swipe actions
+now: Test all UI changes on device, verify swipe actions and Alert.prompt work correctly
+
+test: npx tsc --noEmit
+
+done_this_session:
+  - task: LaunchSheet auto-select host/project when only 1 available
+    files: [components/LaunchSheet.tsx]
+  - task: Improve LaunchSheet chip selection colors (border, inverted colors when selected)
+    files: [components/LaunchSheet.tsx]
+  - task: Redesign Add Project screen with card-based host selection and grouped form fields
+    files: [app/projects/new.tsx]
+  - task: Simplify DirectoryBrowser to clean list layout (removed cards)
+    files: [components/DirectoryBrowser.tsx]
+  - task: Redesign HostForm with card sections and better visual hierarchy
+    files: [components/HostForm.tsx]
+  - task: Update Add Host screen with matching header style
+    files: [app/hosts/new.tsx]
+  - task: Fix swipe actions (Kill on right/swipe left, Rename on left/swipe right)
+    files: [app/(tabs)/index.tsx]
+  - task: Add icons to swipe actions (Trash2 for kill, Pencil for rename)
+    files: [app/(tabs)/index.tsx]
+  - task: Replace custom rename modal with native Alert.prompt
+    files: [app/(tabs)/index.tsx]
+  - task: Fix SwipeableRow color type to accept ColorValue
+    files: [components/SwipeableRow.tsx]
+
+blockers: []
+
+questions: []
+
+decisions:
+  - native-alert-prompt: Used Alert.prompt for rename instead of custom modal for native iOS feel
+  - swipe-convention: Kill on right (swipe left) matches iOS destructive action convention
+
+findings:
+  - systemColors-opaquevalue: iOS systemColors return OpaqueColorValue, need ColorValue type for compatibility
+
+worked:
+  - Card-based sections with dividers for forms
+  - List layout simpler than cards for file browser
+  - Alert.prompt cleaner than custom modal
+
+failed: []
+
+next:
+  - Test UI changes on physical device
+  - Verify Alert.prompt works correctly on both iOS and Android
+  - Check dark mode appearance of new designs
+
+files:
+  created: []
+  modified:
+    - components/LaunchSheet.tsx
+    - app/projects/new.tsx
+    - components/DirectoryBrowser.tsx
+    - components/HostForm.tsx
+    - app/hosts/new.tsx
+    - app/(tabs)/index.tsx
+    - components/SwipeableRow.tsx

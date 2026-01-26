@@ -370,6 +370,7 @@ export default function CliAssetsScreen() {
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
+          style={styles.hostRowContainer}
           contentContainerStyle={styles.hostRow}
         >
           {hosts.map((host) => (
@@ -633,13 +634,20 @@ const createStyles = (colors: ThemeColors) =>
       color: colors.accentText,
       fontSize: 18,
     },
-    hostRow: {
-      gap: theme.spacing.xs,
+    hostRowContainer: {
+      flexGrow: 0,
+      flexShrink: 0,
       marginBottom: theme.spacing.sm,
+    },
+    hostRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: theme.spacing.xs,
     },
     chip: {
       flexDirection: 'row',
       alignItems: 'center',
+      alignSelf: 'flex-start',
       gap: 6,
       paddingHorizontal: 12,
       paddingVertical: 8,

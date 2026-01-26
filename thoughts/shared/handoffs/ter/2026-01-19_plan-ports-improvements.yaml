@@ -1,0 +1,57 @@
+---
+date: 2026-01-19T12:30:00Z
+type: plan
+status: complete
+plan_file: thoughts/shared/plans/PLAN-ports-improvements-ssh-tunnels.md
+---
+
+# Plan Handoff: Ports Page Improvements & SSH Tunnels
+
+## Summary
+
+Created comprehensive plan to enhance the ports page with search/filter, grouping, extended port details, and quick actions. Added SSH tunnel management feature for creating local/remote port forwards.
+
+## Plan Created
+
+`thoughts/shared/plans/PLAN-ports-improvements-ssh-tunnels.md`
+
+## Key Technical Decisions
+
+- **SSH for tunneling**: Using standard `ssh -L/-R` commands (widely compatible, no extra dependencies)
+- **Client-side grouping**: Grouping logic in React to minimize agent changes
+- **TanStack Query**: Consistent with existing state management patterns
+- **Tunnel state in memory**: Tunnels tracked in agent memory, auto-cleanup on shutdown
+
+## Task Overview
+
+1. **Extend Port Information** - Add protocol, address, connection count to agent
+2. **Add Search/Filter UI** - Real-time filtering by port/process/command
+3. **Implement Port Grouping** - Collapsible groups by process name
+4. **Enhanced PortRow** - Protocol badge, address, connection count, action menu
+5. **SSH Tunnel Types** - Define Tunnel and TunnelCreate types
+6. **Agent Tunnel Management** - Create/list/close tunnels module
+7. **Tunnel API Routes** - GET/POST/DELETE endpoints
+8. **Client API Functions** - getTunnels, createTunnel, closeTunnel
+9. **Tunnel UI List** - TunnelRow component with status
+10. **Create Tunnel Modal** - Form for creating new tunnels
+11. **Integrate Quick Actions** - Open browser, copy, create tunnel from port
+
+## Research Findings
+
+- Current port scanning uses lsof (primary) with ss fallback at `agent/src/ports.ts:21-75`
+- Port range is hardcoded 3000-9999 at `agent/src/ports.ts:12-13`
+- UI follows StyleSheet + useTheme() pattern consistently
+- TanStack Query v5 used for all data fetching
+
+## Assumptions Made
+
+- User has SSH keys configured for passwordless authentication (VERIFY)
+- SSH binary available on agent host (VERIFY)
+- Tunnels are ephemeral (don't persist across agent restarts)
+- Port 3000-9999 range is sufficient for tunnel local ports
+
+## For Next Steps
+
+- User should review plan at: `thoughts/shared/plans/PLAN-ports-improvements-ssh-tunnels.md`
+- After approval, run `/implement_plan` with the plan path
+- Consider which tasks to prioritize (UI improvements vs tunnel feature)

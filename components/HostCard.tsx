@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, TextStyle, View, ViewStyle } from 'react-native';
-import { Box, Download, Terminal } from 'lucide-react-native';
+import { Download, Terminal } from 'lucide-react-native';
 import { AppText } from '@/components/AppText';
 import { Card } from '@/components/Card';
 import { PulsingDot } from '@/components/PulsingDot';
@@ -21,6 +21,8 @@ type HostCardStyles = {
   statusBadge: ViewStyle;
   statusDot: ViewStyle;
   statusText: TextStyle;
+  errorRow: ViewStyle;
+  errorText: TextStyle;
   stats: ViewStyle;
   updateRow: ViewStyle;
   updateText: TextStyle;
@@ -29,7 +31,6 @@ type HostCardStyles = {
   actions: ViewStyle;
   actionButton: ViewStyle;
   actionButtonTerminal: ViewStyle;
-  actionButtonDocker: ViewStyle;
   actionButtonUpdate: ViewStyle;
   actionButtonDisabled: ViewStyle;
   actionButtonText: TextStyle;
@@ -38,15 +39,14 @@ type HostCardStyles = {
 type HostCardProps = {
   host: Host;
   status: HostStatus;
-  sessionCount: number;
-  containerCount?: number;
   metrics?: { cpu?: number; ram?: number };
+  uptime?: number;
+  load?: number[];
   updateStatus?: UpdateStatus;
   isUpdating?: boolean;
   errorMessage?: string;
   onPress: () => void;
   onTerminal: () => void;
-  onDocker: () => void;
   onUpdate?: () => void;
 };
 
@@ -100,18 +100,27 @@ function getUpdateLabel(isUpdating: boolean, updateStatus?: UpdateStatus): strin
   return 'Update available';
 }
 
+function formatUptime(seconds?: number): string {
+  if (!seconds || seconds <= 0) return '-';
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  const mins = Math.floor((seconds % 3600) / 60);
+  if (days > 0) return `${days}d ${hours}h`;
+  if (hours > 0) return `${hours}h ${mins}m`;
+  return `${mins}m`;
+}
+
 export function HostCard({
   host,
   status,
-  sessionCount,
-  containerCount,
   metrics,
+  uptime,
+  load,
   updateStatus,
   isUpdating,
   errorMessage,
   onPress,
   onTerminal,
-  onDocker,
   onUpdate,
 }: HostCardProps): React.ReactElement {
   const { colors } = useTheme();
@@ -125,7 +134,6 @@ export function HostCard({
   const updateDisabled = !isOnline || Boolean(isUpdating);
   const updateAccent = updateDisabled ? colors.textMuted : colors.blue;
   const terminalColor = isOnline ? colors.accent : colors.textMuted;
-  const dockerColor = isOnline ? colors.blue : colors.textMuted;
 
   return (
     <Pressable onPress={onPress}>
@@ -163,45 +171,39 @@ export function HostCard({
         <View style={styles.stats}>
           <View style={styles.stat}>
             <AppText variant="caps" tone="muted">
-              Sessions
+              CPU
             </AppText>
             <AppText variant="mono" style={styles.statValue}>
-              {sessionCount}
+              {metrics?.cpu !== undefined ? `${metrics.cpu.toFixed(0)}%` : '-'}
             </AppText>
           </View>
 
-          {containerCount !== undefined && (
-            <View style={styles.stat}>
-              <AppText variant="caps" tone="muted">
-                Containers
-              </AppText>
-              <AppText variant="mono" style={styles.statValue}>
-                {containerCount}
-              </AppText>
-            </View>
-          )}
+          <View style={styles.stat}>
+            <AppText variant="caps" tone="muted">
+              RAM
+            </AppText>
+            <AppText variant="mono" style={styles.statValue}>
+              {metrics?.ram !== undefined ? `${metrics.ram.toFixed(0)}%` : '-'}
+            </AppText>
+          </View>
 
-          {metrics?.cpu !== undefined && (
-            <View style={styles.stat}>
-              <AppText variant="caps" tone="muted">
-                CPU
-              </AppText>
-              <AppText variant="mono" style={styles.statValue}>
-                {metrics.cpu.toFixed(0)}%
-              </AppText>
-            </View>
-          )}
+          <View style={styles.stat}>
+            <AppText variant="caps" tone="muted">
+              UP
+            </AppText>
+            <AppText variant="mono" style={styles.statValue}>
+              {formatUptime(uptime)}
+            </AppText>
+          </View>
 
-          {metrics?.ram !== undefined && (
-            <View style={styles.stat}>
-              <AppText variant="caps" tone="muted">
-                RAM
-              </AppText>
-              <AppText variant="mono" style={styles.statValue}>
-                {metrics.ram.toFixed(0)}%
-              </AppText>
-            </View>
-          )}
+          <View style={styles.stat}>
+            <AppText variant="caps" tone="muted">
+              LOAD
+            </AppText>
+            <AppText variant="mono" style={styles.statValue}>
+              {load?.[0] !== undefined ? load[0].toFixed(2) : '-'}
+            </AppText>
+          </View>
         </View>
 
         {showUpdate && (
@@ -261,27 +263,6 @@ export function HostCard({
               </AppText>
             </Pressable>
           )}
-
-          <Pressable
-            style={[styles.actionButton, styles.actionButtonDocker]}
-            onPress={(e) => {
-              e.stopPropagation();
-              onDocker();
-            }}
-            disabled={!isOnline}
-            hitSlop={4}
-          >
-            <Box size={16} color={dockerColor} />
-            <AppText
-              variant="caps"
-              style={[
-                styles.actionButtonText,
-                { color: dockerColor },
-              ]}
-            >
-              Docker
-            </AppText>
-          </Pressable>
         </View>
       </Card>
     </Pressable>
@@ -375,9 +356,6 @@ function createStyles(colors: ThemeColors): HostCardStyles {
     },
     actionButtonTerminal: {
       backgroundColor: withAlpha(colors.green, 0.12),
-    },
-    actionButtonDocker: {
-      backgroundColor: colors.cardPressed,
     },
     actionButtonUpdate: {
       backgroundColor: withAlpha(colors.blue, 0.12),

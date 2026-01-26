@@ -1,0 +1,54 @@
+---
+session: ter
+date: 2026-01-25
+status: complete
+outcome: SUCCEEDED
+---
+
+goal: Plan push notifications for usage limit resets
+now: Review plan and run /implement_plan to build the feature
+
+test: cd agent && npm run build
+
+done_this_session:
+  - task: Researched usage tracking architecture
+    files: [agent/src/usage.ts, agent/src/claude.ts, agent/src/cursor.ts, agent/src/state.ts]
+  - task: Analyzed existing push notification infrastructure
+    files: [agent/src/notifications/pause-monitor.ts, agent/src/notifications/push.ts, agent/src/notifications/registry.ts]
+  - task: Created implementation plan
+    files: [thoughts/shared/plans/PLAN-usage-reset-notifications.md]
+  - task: Created handoff document
+    files: [thoughts/handoffs/usage-reset-notifications/plan-usage-reset-notifications.md]
+
+blockers: []
+
+questions:
+  - Is 50% threshold the right default for reset notifications?
+  - Should notifications be per-provider configurable?
+
+decisions:
+  - server_side_detection: Reuse pause-monitor pattern - agent polls and detects resets, no client-side background tasks needed
+  - threshold_based: Only notify when usage was below 50% before reset to avoid spam
+  - existing_infrastructure: Leverage existing Expo Push setup, no new dependencies
+
+findings:
+  - usage_windows: Each provider returns session/weekly windows with percentLeft (0-100) and reset timestamp
+  - reset_formats: Claude OAuth returns ISO timestamps, CLI returns relative times like "5h 30m"
+  - notification_pattern: pause-monitor polls every 15s and detects state transitions - same pattern works for resets
+
+worked:
+  - Scout agents for codebase exploration
+  - Direct file reads for key implementation files
+
+failed: []
+
+next:
+  - Review plan at thoughts/shared/plans/PLAN-usage-reset-notifications.md
+  - Run /implement_plan to create reset-monitor.ts
+  - Test with actual usage data to verify reset detection
+
+files:
+  created:
+    - thoughts/shared/plans/PLAN-usage-reset-notifications.md
+    - thoughts/handoffs/usage-reset-notifications/plan-usage-reset-notifications.md
+  modified: []

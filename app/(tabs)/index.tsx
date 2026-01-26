@@ -255,15 +255,17 @@ export default function SessionsScreen() {
     allInsights.forEach((insights) => {
       const polled = insights.meta?.lastPolled ?? 0;
 
-      if (insights.claude && polled > claudePolled) {
+      // Only accept usage data that has complete session info (percentLeft)
+      // This prevents incomplete/loading data from overwriting valid data
+      if (insights.claude?.session?.percentLeft != null && polled > claudePolled) {
         claude = insights.claude;
         claudePolled = polled;
       }
-      if (insights.codex && polled > codexPolled) {
+      if (insights.codex?.session?.percentLeft != null && polled > codexPolled) {
         codex = insights.codex;
         codexPolled = polled;
       }
-      if (insights.copilot && polled > copilotPolled) {
+      if (insights.copilot?.session?.percentLeft != null && polled > copilotPolled) {
         copilot = insights.copilot;
         copilotPolled = polled;
       }
@@ -572,7 +574,7 @@ export default function SessionsScreen() {
                                   />
                                   <View style={styles.sessionTextContent}>
                                     <AppText variant="body" numberOfLines={1} style={styles.sessionName}>
-                                      {session.name}
+                                      {session.title || session.name}
                                     </AppText>
                                     {command && (
                                       <AppText

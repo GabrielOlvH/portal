@@ -423,6 +423,7 @@ export default function AiSessionsScreen() {
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
+          style={styles.hostRowContainer}
           contentContainerStyle={styles.hostRow}
         >
           {hosts.map((host, idx) => (
@@ -511,13 +512,20 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.accentText,
     fontSize: 11,
   },
+  hostRowContainer: {
+    flexGrow: 0,
+    flexShrink: 0,
+    marginBottom: theme.spacing.sm,
+  },
   hostRow: {
-    paddingBottom: theme.spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: theme.spacing.xs,
   },
   hostChip: {
     flexDirection: 'row',
     alignItems: 'center',
+    alignSelf: 'flex-start',
     gap: 6,
     paddingHorizontal: 12,
     paddingVertical: 8,

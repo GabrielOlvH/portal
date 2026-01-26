@@ -1,0 +1,69 @@
+---
+session: ter
+date: 2026-01-23
+status: partial
+outcome: PARTIAL_PLUS
+---
+
+goal: App layout revamp - Projects tab implemented, host page revamp in planning
+now: Complete host detail page revamp using findings in ~/.claude/plans/ agents' exploration
+test: pnpm typecheck && pnpm lint
+
+done_this_session:
+  - task: Implemented Projects tab replacing Docker tab
+    files: [app/(tabs)/projects.tsx, app/(tabs)/_layout.tsx]
+  - task: Added Docker section to host detail page
+    files: [app/hosts/[id]/index.tsx]
+  - task: Removed Projects from More tab
+    files: [app/(tabs)/more.tsx]
+  - task: Updated navigation references
+    files: [app/(tabs)/hosts.tsx]
+  - task: Deleted old Docker tab file
+    files: [app/(tabs)/docker.tsx]
+  - task: Removed Open Sessions from Projects tab
+    files: [app/(tabs)/projects.tsx]
+  - task: Explored host detail page structure for revamp
+    files: []
+
+blockers: []
+
+questions:
+  - Disk usage data not available from API - user wanted it but HostInfo lacks disk metrics
+  - Should Create Session section also be removed from host detail page?
+
+decisions:
+  - projects_tab_sections: Recent Launches + Projects List (removed Open Sessions per user request)
+  - docker_inline: Docker containers now inline on host detail pages, not a separate tab
+  - host_card_resources: User wants CPU/Memory%, Uptime/Load, and Disk (disk not available in API)
+
+findings:
+  - host_info_data: HostInfo has cpu.usage, memory.usedPercent, uptime, load[] - no disk data
+  - session_section_location: Sessions section at lines 495-506 in host detail, sessionCards useMemo at 243-291
+  - host_card_current: Shows sessionCount, containerCount, cpu%, ram% in stats row
+  - hooks_available: useHostLive returns sessions, hostInfo, docker in state object
+
+worked:
+  - Parallel agent orchestration for tab system changes
+  - Scout agents for codebase exploration
+  - User confirmation before file deletion
+
+failed: []
+
+next:
+  - Remove Sessions section from host detail page
+  - Remove Create Session section from host detail page
+  - Update HostCard to show CPU/Memory/Uptime/Load instead of session/container counts
+  - Remove Docker button from HostCard (Docker now on host detail page)
+  - Exit plan mode and implement host revamp
+
+files:
+  created:
+    - app/(tabs)/projects.tsx
+    - ~/.claude/plans/glittery-skipping-bear-agent-a2add1a.md
+  modified:
+    - app/(tabs)/_layout.tsx
+    - app/(tabs)/more.tsx
+    - app/(tabs)/hosts.tsx
+    - app/hosts/[id]/index.tsx
+  deleted:
+    - app/(tabs)/docker.tsx
