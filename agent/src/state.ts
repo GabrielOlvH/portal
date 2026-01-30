@@ -113,7 +113,7 @@ export const oauthCache: {
   cursor: { ts: 0, value: null, error: null },
 };
 
-export const sessionActivity: Map<string, { hash: string; lastChangedAt: number }> = new Map();
+export const sessionActivity: Map<string, { hash: string; lastChangedAt: number; idleConfirmedAt: number | null }> = new Map();
 
 export const usageInflight: {
   claudeCapture: Promise<string> | null;

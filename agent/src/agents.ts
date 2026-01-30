@@ -143,15 +143,28 @@ export function detectAgentState(
   idleWindowMs: number = IDLE_STOP_MS
 ): 'running' | 'idle' | 'stopped' {
   if (!processActive) return 'stopped';
+
   const now = Date.now();
   const hash = stablePreviewHash(lines);
   const previous = sessionActivity.get(sessionName);
   if (!previous || previous.hash !== hash) {
-    sessionActivity.set(sessionName, { hash, lastChangedAt: now });
+    sessionActivity.set(sessionName, { hash, lastChangedAt: now, idleConfirmedAt: null });
     return 'running';
   }
+
   const elapsed = now - previous.lastChangedAt;
-  return elapsed > idleWindowMs ? 'idle' : 'running';
+  if (elapsed <= idleWindowMs) {
+    return 'running';
+  }
+
+  // Hysteresis: require 2 consecutive "would be idle" checks
+  if (previous.idleConfirmedAt === null) {
+    sessionActivity.set(sessionName, { ...previous, idleConfirmedAt: now });
+    return 'running';
+  }
+
+  const idleElapsed = now - previous.idleConfirmedAt;
+  return idleElapsed > idleWindowMs ? 'idle' : 'running';
 }
 
 export async function getSessionInsights(name: string, preview?: string[]) {
@@ -168,6 +181,7 @@ export async function getSessionInsights(name: string, preview?: string[]) {
       activeAgent: agentInfo.agent,
       agentState,
       agentCommand: agentInfo.command,
+      cwd: agentInfo.cwd,
     },
   };
 }
