@@ -9,6 +9,7 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  TextInput,
   TextStyle,
   useWindowDimensions,
   ViewStyle,
@@ -28,6 +29,8 @@ import {
   Copy,
   ImageIcon,
   MoreHorizontal,
+  Send,
+  Type,
   X,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
@@ -76,12 +79,16 @@ type TerminalStyles = {
   helperRow: ViewStyle;
   helperScroll: ViewStyle;
   expandedRow: ViewStyle;
+  expandedInputRow: ViewStyle;
   helperContent: ViewStyle;
   helperKey: ViewStyle;
   helperText: TextStyle;
   doneKey: ViewStyle;
   expandKey: ViewStyle;
   keyPressed: ViewStyle;
+  dictationInput: TextStyle;
+  sendButton: ViewStyle;
+  sendButtonDisabled: ViewStyle;
 };
 
 const mainHelperKeys: HelperKey[] = [
@@ -138,6 +145,8 @@ export default function SessionTerminalScreen(): React.ReactElement {
   const [isAccessoryExpanded, setIsAccessoryExpanded] = useState(false);
   const [focusedSessionName, setFocusedSessionName] = useState<string | null>(null);
   const [appState, setAppState] = useState<AppStateStatus>(AppState.currentState);
+  const [inputText, setInputText] = useState('');
+  const [isTextInputMode, setIsTextInputMode] = useState(false);
   const keyboardVisibleRef = useRef(false);
   const webRefs = useRef<Record<string, WebView | null>>({});
   const sourceCache = useRef<Record<string, SourceCacheEntry>>({});
@@ -239,11 +248,11 @@ export default function SessionTerminalScreen(): React.ReactElement {
       if (!Keyboard.isVisible() || height <= 0) {
         keyboardVisibleRef.current = false;
         setKeyboardOffset(0);
-        setIsAccessoryExpanded(false);
+        if (!isTextInputMode) setIsAccessoryExpanded(false);
       }
     }, 120);
     return () => clearTimeout(timeout);
-  }, [appState, isFocused, keyboardOffset]);
+  }, [appState, isFocused, isTextInputMode, keyboardOffset]);
 
   useEffect(() => {
     if (!isFocused || appState !== 'active') return;
@@ -252,8 +261,8 @@ export default function SessionTerminalScreen(): React.ReactElement {
     if (keyboardOffset === 0) return;
     keyboardVisibleRef.current = false;
     setKeyboardOffset(0);
-    setIsAccessoryExpanded(false);
-  }, [appState, currentSessionName, isFocused, keyboardOffset]);
+    if (!isTextInputMode) setIsAccessoryExpanded(false);
+  }, [appState, currentSessionName, isFocused, isTextInputMode, keyboardOffset]);
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', setAppState);
@@ -265,6 +274,7 @@ export default function SessionTerminalScreen(): React.ReactElement {
       keyboardVisibleRef.current = false;
       setKeyboardOffset(0);
       setIsAccessoryExpanded(false);
+      setIsTextInputMode(false);
       setFocusedSessionName(null);
     }
   }, [isFocused]);
@@ -274,22 +284,23 @@ export default function SessionTerminalScreen(): React.ReactElement {
     keyboardVisibleRef.current = false;
     setKeyboardOffset(0);
     setIsAccessoryExpanded(false);
+    setIsTextInputMode(false);
     setFocusedSessionName(null);
   }, [appState]);
 
   useEffect(() => {
     if (appState !== 'active' || !currentSessionName) return;
-    setIsAccessoryExpanded(false);
+    if (!isTextInputMode) setIsAccessoryExpanded(false);
     const ref = webRefs.current[currentSessionName];
     if (!ref) return;
     const timeout = setTimeout(() => {
       ref.injectJavaScript(fitScript);
-      if (keyboardOffset > 0) {
+      if (keyboardOffset > 0 && !isTextInputMode) {
         ref.injectJavaScript('window.__focusTerminal && window.__focusTerminal(); true;');
       }
     }, 60);
     return () => clearTimeout(timeout);
-  }, [appState, currentSessionName, keyboardOffset]);
+  }, [appState, currentSessionName, isTextInputMode, keyboardOffset]);
 
   // Terminal helpers
   const sendToTerminal = useCallback((data: string) => {
@@ -298,6 +309,16 @@ export default function SessionTerminalScreen(): React.ReactElement {
       `window.__sendToTerminal && window.__sendToTerminal(${payload}); true;`
     );
   }, [currentSessionName]);
+
+  const handleSendInput = useCallback(() => {
+    if (!inputText.trim()) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    sendToTerminal(inputText);
+    setInputText('');
+    setIsTextInputMode(false);
+  }, [inputText, sendToTerminal]);
+
+  const textInputRef = useRef<React.ElementRef<typeof TextInput>>(null);
 
   const blurTerminal = useCallback(() => {
     keyboardVisibleRef.current = false;
@@ -461,11 +482,11 @@ export default function SessionTerminalScreen(): React.ReactElement {
       );
       setFocusedSessionName((prev) => (prev === previousSession ? null : prev));
     }
-    if (keyboardInset > 0) {
+    if (keyboardInset > 0 && !isTextInputMode) {
       focusTerminal(currentSessionName);
     }
     previousSessionRef.current = currentSessionName;
-  }, [currentSessionName, focusTerminal, keyboardInset]);
+  }, [currentSessionName, focusTerminal, isTextInputMode, keyboardInset]);
 
 
   if (!host) {
@@ -574,6 +595,8 @@ export default function SessionTerminalScreen(): React.ReactElement {
                               setFocusedSessionName(session.name);
                               return;
                             }
+                            // Don't reset keyboard state if we're in text input mode
+                            if (isTextInputMode) return;
                             setFocusedSessionName((prev) => (prev === session.name ? null : prev));
                             setKeyboardOffset(0);
                             setIsAccessoryExpanded(false);
@@ -627,52 +650,101 @@ export default function SessionTerminalScreen(): React.ReactElement {
               </Pressable>
             </ScrollView>
             {isAccessoryExpanded && (
-              <ScrollView
-                horizontal
-                directionalLockEnabled
-                alwaysBounceVertical={false}
-                showsHorizontalScrollIndicator={false}
-                style={styles.expandedRow}
-                contentContainerStyle={styles.helperContent}
-              >
-                <Pressable
-                  style={({ pressed }) => [styles.helperKey, pressed && styles.keyPressed]}
-                  onPress={async () => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    const text = await Clipboard.getStringAsync();
-                    if (text) sendToTerminal(text);
-                  }}
-                >
-                  <ClipboardPaste size={16} color={colors.terminalForeground} />
-                </Pressable>
-                <Pressable
-                  style={({ pressed }) => [styles.helperKey, pressed && styles.keyPressed]}
-                  onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    handleInsertImage();
-                  }}
-                >
-                  <ImageIcon size={16} color={colors.terminalForeground} />
-                </Pressable>
-                {expandedHelperKeys.map((item) => (
+              isTextInputMode ? (
+                <View style={styles.expandedInputRow}>
                   <Pressable
-                    key={item.label}
                     style={({ pressed }) => [styles.helperKey, pressed && styles.keyPressed]}
-                    onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); sendToTerminal(item.data); }}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      setIsTextInputMode(false);
+                      setInputText('');
+                    }}
                   >
-                    {item.icon ? <item.icon size={16} color={colors.terminalForeground} /> : <AppText variant="caps" style={styles.helperText}>{item.label}</AppText>}
+                    <X size={16} color={colors.terminalForeground} />
                   </Pressable>
-                ))}
-                {snippets.map((snippet) => (
+                  <TextInput
+                    ref={textInputRef}
+                    style={styles.dictationInput}
+                    value={inputText}
+                    onChangeText={setInputText}
+                    placeholder="Type or dictate..."
+                    placeholderTextColor={colors.terminalMuted}
+                    onSubmitEditing={handleSendInput}
+                    returnKeyType="send"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    blurOnSubmit={false}
+                  />
                   <Pressable
-                    key={snippet.id}
-                    style={({ pressed }) => [styles.helperKey, pressed && styles.keyPressed]}
-                    onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); sendToTerminal(snippet.command); }}
+                    style={({ pressed }) => [
+                      styles.sendButton,
+                      !inputText.trim() && styles.sendButtonDisabled,
+                      pressed && inputText.trim() && styles.keyPressed,
+                    ]}
+                    onPress={handleSendInput}
+                    disabled={!inputText.trim()}
                   >
-                    <AppText variant="caps" style={styles.helperText}>{snippet.label}</AppText>
+                    <Send size={16} color={inputText.trim() ? colors.terminalForeground : colors.terminalMuted} />
                   </Pressable>
-                ))}
-              </ScrollView>
+                </View>
+              ) : (
+                <ScrollView
+                  horizontal
+                  directionalLockEnabled
+                  alwaysBounceVertical={false}
+                  showsHorizontalScrollIndicator={false}
+                  style={styles.expandedRow}
+                  contentContainerStyle={styles.helperContent}
+                >
+                  <Pressable
+                    style={({ pressed }) => [styles.helperKey, pressed && styles.keyPressed]}
+                    onPress={async () => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      const text = await Clipboard.getStringAsync();
+                      if (text) sendToTerminal(text);
+                    }}
+                  >
+                    <ClipboardPaste size={16} color={colors.terminalForeground} />
+                  </Pressable>
+                  <Pressable
+                    style={({ pressed }) => [styles.helperKey, pressed && styles.keyPressed]}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      handleInsertImage();
+                    }}
+                  >
+                    <ImageIcon size={16} color={colors.terminalForeground} />
+                  </Pressable>
+                  <Pressable
+                    style={({ pressed }) => [styles.helperKey, pressed && styles.keyPressed]}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      setIsTextInputMode(true);
+                      setTimeout(() => textInputRef.current?.focus(), 100);
+                    }}
+                  >
+                    <Type size={16} color={colors.terminalForeground} />
+                  </Pressable>
+                  {expandedHelperKeys.map((item) => (
+                    <Pressable
+                      key={item.label}
+                      style={({ pressed }) => [styles.helperKey, pressed && styles.keyPressed]}
+                      onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); sendToTerminal(item.data); }}
+                    >
+                      {item.icon ? <item.icon size={16} color={colors.terminalForeground} /> : <AppText variant="caps" style={styles.helperText}>{item.label}</AppText>}
+                    </Pressable>
+                  ))}
+                  {snippets.map((snippet) => (
+                    <Pressable
+                      key={snippet.id}
+                      style={({ pressed }) => [styles.helperKey, pressed && styles.keyPressed]}
+                      onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); sendToTerminal(snippet.command); }}
+                    >
+                      <AppText variant="caps" style={styles.helperText}>{snippet.label}</AppText>
+                    </Pressable>
+                  ))}
+                </ScrollView>
+              )
             )}
           </View>
         </View>
@@ -810,6 +882,35 @@ function createStyles(colors: ThemeColors): TerminalStyles {
     },
     keyPressed: {
       backgroundColor: colors.cardPressed,
+    },
+    expandedInputRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 12,
+      gap: 8,
+      marginTop: 8,
+    },
+    dictationInput: {
+      flex: 1,
+      backgroundColor: colors.terminalPressed,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: colors.terminalBorder,
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      color: colors.terminalForeground,
+      fontSize: 14,
+    },
+    sendButton: {
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      borderRadius: 10,
+      backgroundColor: colors.terminalPressed,
+      borderWidth: 1,
+      borderColor: colors.terminalBorder,
+    },
+    sendButtonDisabled: {
+      opacity: 0.5,
     },
   });
 }
