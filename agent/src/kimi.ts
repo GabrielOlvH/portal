@@ -35,8 +35,8 @@ type KimiUsageResponse = {
 
 async function getKimiTokenFromShell(): Promise<string | null> {
   try {
-    // Try to read from bash environment
-    const { stdout } = await execFileAsync('bash', ['-c', 'echo "$KIMI_AUTH_TOKEN"'], {
+    // Try to read from bash environment (source profile for login shell vars)
+    const { stdout } = await execFileAsync('bash', ['-lc', 'echo "$KIMI_AUTH_TOKEN"'], {
       timeout: 5000,
       encoding: 'utf8',
     });
