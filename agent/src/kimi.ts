@@ -1,5 +1,9 @@
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import type { ProviderUsage } from './state';
 import { oauthCache } from './state';
+
+const execFileAsync = promisify(execFile);
 
 type KimiUsageDetail = {
   limit: string;
@@ -26,9 +30,32 @@ type KimiUsageResponse = {
   usages: KimiUsage[];
 };
 
-function getKimiToken(): string | null {
-  // Check environment variable
-  return process.env.KIMI_AUTH_TOKEN || null;
+async function getKimiTokenFromShell(): Promise<string | null> {
+  try {
+    // Source login shell to get vars from ~/.profile
+    const { stdout } = await execFileAsync('bash', ['-lc', 'echo "$KIMI_AUTH_TOKEN"'], {
+      timeout: 5000,
+      encoding: 'utf8',
+    });
+    const token = stdout.trim();
+    if (token && token !== '$KIMI_AUTH_TOKEN') {
+      return token;
+    }
+  } catch {
+    // Ignore errors
+  }
+  return null;
+}
+
+async function getKimiToken(): Promise<string | null> {
+  // Check environment variable first
+  const envToken = process.env.KIMI_AUTH_TOKEN;
+  if (envToken) {
+    return envToken;
+  }
+
+  // Try to read from shell environment (for systemd user services)
+  return getKimiTokenFromShell();
 }
 
 function decodeJWT(jwt: string): { device_id?: string; ssid?: string; sub?: string } | null {
@@ -172,9 +199,9 @@ export async function getKimiStatus(): Promise<ProviderUsage | { error: string }
     return { error: oauthCache.kimi.error };
   }
   
-  const token = getKimiToken();
+  const token = await getKimiToken();
   if (!token) {
-    const error = 'kimi auth token not configured. Set KIMI_AUTH_TOKEN environment variable.';
+    const error = 'kimi auth token not configured. Set KIMI_AUTH_TOKEN in ~/.profile or environment.';
     oauthCache.kimi = { ts: now, value: null, error };
     return { error };
   }
