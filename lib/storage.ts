@@ -24,6 +24,7 @@ function normalizePreferences(raw: Partial<AppPreferences> | null): AppPreferenc
   const usageCards: Partial<AppPreferences['usageCards']> = raw?.usageCards ?? {};
   const notifications: Partial<AppPreferences['notifications']> = raw?.notifications ?? {};
   const terminal: Partial<AppPreferences['terminal']> = raw?.terminal ?? {};
+  const github: Partial<AppPreferences['github']> = raw?.github ?? {};
   const validThemes = ['light', 'dark', 'system'] as const;
   const validFonts = ['JetBrains Mono', 'Fira Code', 'Source Code Pro', 'SF Mono', 'Menlo'] as const;
   const theme = raw?.theme && validThemes.includes(raw.theme) ? raw.theme : defaults.theme;
@@ -52,6 +53,9 @@ function normalizePreferences(raw: Partial<AppPreferences> | null): AppPreferenc
         typeof terminal.fontSize === 'number' && terminal.fontSize >= 10 && terminal.fontSize <= 16
           ? terminal.fontSize
           : defaults.terminal.fontSize,
+    },
+    github: {
+      enabled: typeof github.enabled === 'boolean' ? github.enabled : defaults.github.enabled,
     },
   };
 }

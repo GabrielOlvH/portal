@@ -58,6 +58,7 @@ export type AppPreferences = {
     liveEnabled: boolean;
   };
   terminal: TerminalSettings;
+  github: GitHubPreferences;
 };
 
 export type HostStatus = 'unknown' | 'checking' | 'online' | 'offline';
@@ -306,4 +307,26 @@ export type AiSessionListResponse = {
   sessions: AiSession[];
   total: number;
   hasMore: boolean;
+};
+
+// GitHub CI Status Types
+
+export type GitHubCommitStatus = {
+  projectId: string;
+  hostId: string;
+  repo: string; // "owner/repo"
+  branch: string;
+  sha: string;
+  state: 'pending' | 'success' | 'failure' | 'error';
+  contexts: Array<{
+    context: string;
+    state: string;
+    description?: string;
+    targetUrl?: string;
+  }>;
+  updatedAt: number;
+};
+
+export type GitHubPreferences = {
+  enabled: boolean;
 };

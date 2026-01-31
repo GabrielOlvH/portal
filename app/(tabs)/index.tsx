@@ -12,14 +12,17 @@ import { hostColors, systemColors } from '@/lib/colors';
 import { useHostsLive } from '@/lib/live';
 import { useTaskLiveUpdates } from '@/lib/task-live-updates';
 import { useStore } from '@/lib/store';
+import { useProjects } from '@/lib/projects-store';
+import { useGitHubStatus, groupStatusesByProject, getStatusSummary } from '@/lib/queries/github';
 import { theme } from '@/lib/theme';
 import { ThemeColors, useTheme } from '@/lib/useTheme';
-import { Host, HostInfo, HostStatus, ProviderUsage, Session, SessionInsights } from '@/lib/types';
+import { Host, HostInfo, HostStatus, ProviderUsage, Session, SessionInsights, GitHubCommitStatus } from '@/lib/types';
 import { useRouter } from 'expo-router';
 import { useIsFocused } from '@react-navigation/native';
-import { Cpu, GitBranch, MemoryStick, Pencil, Plus, Trash2 } from 'lucide-react-native';
+import { Cpu, GitBranch, MemoryStick, Pencil, Plus, Trash2, Github, Check, X, Clock, ChevronDown, ChevronUp } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Pressable,
   RefreshControl,
@@ -188,6 +191,135 @@ const compactUsageStyles = StyleSheet.create({
 });
 
 type SessionWithHost = Session & { host: Host; hostStatus: HostStatus };
+
+// GitHub CI Status Section Component
+type GitHubStatusSectionProps = {
+  colors: ThemeColors;
+  styles: ReturnType<typeof createStyles>;
+};
+
+function GitHubStatusSection({ colors, styles }: GitHubStatusSectionProps) {
+  const { preferences, hosts } = useStore();
+  const { projects } = useProjects();
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  const { data: statuses, isLoading } = useGitHubStatus(
+    hosts,
+    projects,
+    preferences.github.enabled && projects.length > 0
+  );
+
+  if (!preferences.github.enabled || projects.length === 0) {
+    return null;
+  }
+
+  const grouped = statuses ? groupStatusesByProject(statuses) : new Map();
+  const summary = statuses ? getStatusSummary(statuses) : { total: 0, success: 0, failure: 0, pending: 0, error: 0 };
+  const hasFailures = summary.failure > 0 || summary.error > 0;
+  const hasPending = summary.pending > 0;
+
+  const getStatusIcon = (state: GitHubCommitStatus['state']) => {
+    switch (state) {
+      case 'success':
+        return <Check size={14} color={colors.green} />;
+      case 'failure':
+      case 'error':
+        return <X size={14} color={colors.red} />;
+      case 'pending':
+        return <Clock size={14} color={colors.orange} />;
+      default:
+        return <Clock size={14} color={colors.textMuted} />;
+    }
+  };
+
+  const formatTimeAgo = (timestamp: number) => {
+    const diff = Date.now() - timestamp;
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+
+    if (minutes < 1) return 'now';
+    if (minutes < 60) return `${minutes}m ago`;
+    if (hours < 24) return `${hours}h ago`;
+    return `${days}d ago`;
+  };
+
+  return (
+    <FadeIn>
+      <Card style={[styles.ciCard, hasFailures && styles.ciCardError]}>
+        <Pressable
+          onPress={() => setIsExpanded(!isExpanded)}
+          style={styles.ciHeader}
+        >
+          <View style={styles.ciHeaderLeft}>
+            <Github size={18} color={hasFailures ? colors.red : hasPending ? colors.orange : colors.green} />
+            <AppText variant="subtitle" style={styles.ciTitle}>
+              CI Status
+            </AppText>
+            {isLoading && <ActivityIndicator size="small" color={colors.textSecondary} style={styles.ciLoader} />}
+          </View>
+          <View style={styles.ciHeaderRight}>
+            <AppText variant="label" tone="muted">
+              {summary.total > 0
+                ? `${projects.length} proj, ${summary.total} branch${summary.total !== 1 ? 'es' : ''}`
+                : 'No CI data'}
+            </AppText>
+            {isExpanded ? (
+              <ChevronUp size={16} color={colors.textSecondary} />
+            ) : (
+              <ChevronDown size={16} color={colors.textSecondary} />
+            )}
+          </View>
+        </Pressable>
+
+        {isExpanded && (
+          <View style={styles.ciContent}>
+            {statuses && statuses.length > 0 ? (
+              <View style={styles.ciProjects}>
+                {projects.map((project) => {
+                  const projectStatuses = grouped.get(project.id) || [];
+                  if (projectStatuses.length === 0) return null;
+
+                  return (
+                    <View key={project.id} style={styles.ciProject}>
+                      <AppText variant="label" style={styles.ciProjectName}>
+                        {project.name}
+                      </AppText>
+                      <View style={styles.ciBranches}>
+                        {projectStatuses.map((status: GitHubCommitStatus) => (
+                          <View key={`${status.projectId}-${status.branch}`} style={styles.ciBranch}>
+                            <View style={styles.ciBranchLeft}>
+                              {getStatusIcon(status.state)}
+                              <AppText variant="mono" style={styles.ciBranchName}>
+                                {status.branch}
+                              </AppText>
+                            </View>
+                            <AppText variant="label" tone="muted" style={styles.ciTime}>
+                              {formatTimeAgo(status.updatedAt)}
+                            </AppText>
+                          </View>
+                        ))}
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
+            ) : (
+              <View style={styles.ciEmpty}>
+                <AppText variant="label" tone="muted">
+                  {isLoading ? 'Loading...' : 'No CI status available'}
+                </AppText>
+                <AppText variant="label" tone="muted" style={styles.ciEmptyHint}>
+                  Run "gh auth login" on your host
+                </AppText>
+              </View>
+            )}
+          </View>
+        )}
+      </Card>
+    </FadeIn>
+  );
+}
 
 export default function SessionsScreen() {
   const router = useRouter();
@@ -471,6 +603,9 @@ export default function SessionsScreen() {
               </View>
             </FadeIn>
           )}
+
+          {/* GitHub CI Status */}
+          <GitHubStatusSection colors={colors} styles={styles} />
 
           {isBooting ? (
             <FadeIn delay={100}>
@@ -836,6 +971,79 @@ const createStyles = (colors: ThemeColors, _isDark: boolean) => {
   },
   gitPillText: {
     fontSize: 10,
+  },
+  // CI Status styles
+  ciCard: {
+    padding: 0,
+    overflow: 'hidden',
+  },
+  ciCardError: {
+    borderLeftWidth: 3,
+    borderLeftColor: colors.red,
+  },
+  ciHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 14,
+  },
+  ciHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  ciHeaderRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  ciTitle: {
+    fontWeight: '600',
+  },
+  ciLoader: {
+    marginLeft: 8,
+  },
+  ciContent: {
+    paddingHorizontal: 14,
+    paddingBottom: 14,
+  },
+  ciProjects: {
+    gap: 12,
+  },
+  ciProject: {
+    gap: 6,
+  },
+  ciProjectName: {
+    fontWeight: '600',
+    fontSize: 13,
+  },
+  ciBranches: {
+    gap: 4,
+  },
+  ciBranch: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingLeft: 20,
+  },
+  ciBranchLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  ciBranchName: {
+    fontSize: 12,
+  },
+  ciTime: {
+    fontSize: 11,
+  },
+  ciEmpty: {
+    alignItems: 'center',
+    paddingVertical: 20,
+    gap: 4,
+  },
+  ciEmptyHint: {
+    fontSize: 11,
   },
   });
 };

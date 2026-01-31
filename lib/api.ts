@@ -11,6 +11,7 @@ import {
   SessionInsights,
   Tunnel,
   TunnelCreate,
+  GitHubCommitStatus,
 } from '@/lib/types';
 
 const DEFAULT_TIMEOUT_MS = 6000;
@@ -655,4 +656,42 @@ export function createUpdateStream(
     cancelled = true;
     clearInterval(progressInterval);
   };
+}
+
+// GitHub CI Status API
+
+export type GitHubStatusResponse = {
+  authenticated: boolean;
+  statuses: GitHubCommitStatus[];
+  error?: string;
+};
+
+export type GitHubConfigResponse = {
+  authenticated: boolean;
+};
+
+export async function getGitHubStatus(
+  host: Host,
+  projects: Array<{ id: string; hostId: string; path: string }>,
+  branches?: Record<string, string[]>
+): Promise<GitHubStatusResponse> {
+  return request(host, '/github/status', {
+    method: 'POST',
+    body: JSON.stringify({ projects, branches }),
+  });
+}
+
+export async function refreshGitHubStatus(
+  host: Host,
+  projects: Array<{ id: string; hostId: string; path: string }>,
+  branches?: Record<string, string[]>
+): Promise<GitHubStatusResponse> {
+  return request(host, '/github/refresh', {
+    method: 'POST',
+    body: JSON.stringify({ projects, branches }),
+  });
+}
+
+export async function getGitHubConfig(host: Host): Promise<GitHubConfigResponse> {
+  return request(host, '/github/config', { method: 'GET' });
 }

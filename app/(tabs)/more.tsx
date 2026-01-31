@@ -305,6 +305,14 @@ export default function MoreTabScreen() {
             styles={styles}
             chevronColor={colors.textSecondary}
           />
+          <View style={styles.separator} />
+          <MenuItem
+            title="GitHub CI Status"
+            subtitle={preferences.github.enabled ? 'CI monitoring enabled' : 'Configure CI status monitoring'}
+            onPress={() => router.push('/github/settings')}
+            styles={styles}
+            chevronColor={colors.textSecondary}
+          />
         </Card>
 
         <Card style={styles.card}>

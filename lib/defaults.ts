@@ -30,5 +30,8 @@ export function defaultPreferences(): AppPreferences {
       fontFamily: 'JetBrains Mono',
       fontSize: 12,
     },
+    github: {
+      enabled: false,
+    },
   };
 }
