@@ -268,6 +268,30 @@ export type TunnelCreate = {
 
 // GitHub CI Status Types
 
+export type GitHubCheckStep = {
+  name: string;
+  status: string;
+  conclusion?: string;
+  number: number;
+  startedAt?: string;
+  completedAt?: string;
+};
+
+export type GitHubCommitStatusContext = {
+  context: string;
+  state: string;
+  description?: string;
+  targetUrl?: string;
+  // Enhanced CI data from Checks API
+  workflowName?: string;
+  jobName?: string;
+  runId?: number;
+  checkSuiteId?: number;
+  startedAt?: string;
+  completedAt?: string;
+  steps?: GitHubCheckStep[];
+};
+
 export type GitHubCommitStatus = {
   projectId: string;
   hostId: string;
@@ -275,12 +299,7 @@ export type GitHubCommitStatus = {
   branch: string;
   sha: string;
   state: 'pending' | 'success' | 'failure' | 'error';
-  contexts: Array<{
-    context: string;
-    state: string;
-    description?: string;
-    targetUrl?: string;
-  }>;
+  contexts: GitHubCommitStatusContext[];
   updatedAt: number;
 };
 

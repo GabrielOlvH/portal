@@ -13,6 +13,21 @@ export type CommitStatusContext = {
   state: string;
   description?: string;
   targetUrl?: string;
+  // Enhanced CI data from Checks API
+  workflowName?: string;
+  jobName?: string;
+  runId?: number;
+  checkSuiteId?: number;
+  startedAt?: string;
+  completedAt?: string;
+  steps?: Array<{
+    name: string;
+    status: string;
+    conclusion?: string;
+    number: number;
+    startedAt?: string;
+    completedAt?: string;
+  }>;
 };
 
 export type CommitStatus = {
@@ -122,37 +137,173 @@ export async function getCommitStatus(
   sha: string
 ): Promise<{ state: CommitStatus['state']; contexts: CommitStatusContext[] } | null> {
   try {
-    const { stdout } = await execFileAsync(
-      'gh',
-      [
-        'api',
-        `-H`,
-        'Accept: application/vnd.github+json',
-        `-H`,
-        'X-GitHub-Api-Version: 2022-11-28',
-        `/repos/${repo.owner}/${repo.repo}/commits/${sha}/status`,
-      ],
-      { timeout: 10000 }
-    );
-    
-    const data = JSON.parse(stdout) as {
-      state: string;
-      statuses: Array<{
-        context: string;
+    // Fetch both legacy status and new check runs
+    const [statusResult, checkRunsResult] = await Promise.all([
+      // Legacy Status API
+      execFileAsync(
+        'gh',
+        [
+          'api',
+          `-H`,
+          'Accept: application/vnd.github+json',
+          `-H`,
+          'X-GitHub-Api-Version: 2022-11-28',
+          `/repos/${repo.owner}/${repo.repo}/commits/${sha}/status`,
+        ],
+        { timeout: 10000 }
+      ).catch(() => null),
+      // New Checks API
+      execFileAsync(
+        'gh',
+        [
+          'api',
+          `-H`,
+          'Accept: application/vnd.github+json',
+          `-H`,
+          'X-GitHub-Api-Version: 2022-11-28',
+          `/repos/${repo.owner}/${repo.repo}/commits/${sha}/check-runs`,
+        ],
+        { timeout: 10000 }
+      ).catch(() => null),
+    ]);
+
+    // Parse check runs for enhanced data
+    const checkRunsMap = new Map<string, CommitStatusContext>();
+    if (checkRunsResult) {
+      const checkRunsData = JSON.parse(checkRunsResult.stdout) as {
+        check_runs: Array<{
+          id: number;
+          name: string;
+          status: string;
+          conclusion: string | null;
+          details_url?: string;
+          started_at?: string;
+          completed_at?: string;
+          check_suite?: {
+            id: number;
+          };
+          app?: {
+            slug?: string;
+            name?: string;
+          };
+          steps?: Array<{
+            name: string;
+            status: string;
+            conclusion?: string;
+            number: number;
+            started_at?: string;
+            completed_at?: string;
+          }>;
+        }>;
+      };
+
+      for (const check of checkRunsData.check_runs || []) {
+        // Use check name as key, prefer GitHub Actions checks
+        const isGitHubActions = check.app?.slug === 'github-actions';
+        const key = check.name;
+
+        const existing = checkRunsMap.get(key);
+        if (existing && !isGitHubActions) continue; // Prefer GitHub Actions
+
+        // Map check status to state
+        let state: CommitStatus['state'];
+        if (check.status === 'completed') {
+          if (check.conclusion === 'success') state = 'success';
+          else if (check.conclusion === 'failure') state = 'failure';
+          else if (check.conclusion === 'cancelled') state = 'error';
+          else if (check.conclusion === 'timed_out') state = 'error';
+          else if (check.conclusion === 'skipped') state = 'success';
+          else state = 'error';
+        } else {
+          state = 'pending';
+        }
+
+        // Extract workflow name from check name if it contains " / "
+        // GitHub Actions format: "Workflow Name / Job Name"
+        let workflowName: string | undefined;
+        let jobName = check.name;
+        const separatorIndex = check.name.indexOf(' / ');
+        if (separatorIndex > 0) {
+          workflowName = check.name.substring(0, separatorIndex);
+          jobName = check.name.substring(separatorIndex + 3);
+        }
+
+        checkRunsMap.set(key, {
+          context: check.name,
+          state,
+          description: check.conclusion
+            ? `${check.status}: ${check.conclusion}`
+            : check.status,
+          targetUrl: check.details_url,
+          workflowName,
+          jobName,
+          runId: check.id,
+          checkSuiteId: check.check_suite?.id,
+          startedAt: check.started_at,
+          completedAt: check.completed_at,
+          steps: check.steps?.map((step) => ({
+            name: step.name,
+            status: step.status,
+            conclusion: step.conclusion,
+            number: step.number,
+            startedAt: step.started_at,
+            completedAt: step.completed_at,
+          })),
+        });
+      }
+    }
+
+    // Parse legacy status
+    let state: CommitStatus['state'] = 'pending';
+    const contexts: CommitStatusContext[] = [];
+
+    if (statusResult) {
+      const data = JSON.parse(statusResult.stdout) as {
         state: string;
-        description?: string;
-        target_url?: string;
-      }>;
-    };
-    
-    const state = data.state as CommitStatus['state'];
-    const contexts = data.statuses.map((s) => ({
-      context: s.context,
-      state: s.state,
-      description: s.description,
-      targetUrl: s.target_url,
-    }));
-    
+        statuses: Array<{
+          context: string;
+          state: string;
+          description?: string;
+          target_url?: string;
+        }>;
+      };
+
+      state = data.state as CommitStatus['state'];
+
+      for (const s of data.statuses) {
+        // Check if we have enhanced data from check runs
+        const enhanced = checkRunsMap.get(s.context);
+        if (enhanced) {
+          contexts.push(enhanced);
+          checkRunsMap.delete(s.context); // Remove used check
+        } else {
+          contexts.push({
+            context: s.context,
+            state: s.state,
+            description: s.description,
+            targetUrl: s.target_url,
+          });
+        }
+      }
+    }
+
+    // Add remaining check runs that weren't in legacy status
+    for (const [, checkContext] of checkRunsMap) {
+      contexts.push(checkContext);
+    }
+
+    // If no legacy status but we have check runs, determine state from checks
+    if (!statusResult && checkRunsResult) {
+      const hasPending = contexts.some((c) => c.state === 'pending');
+      const hasFailure = contexts.some((c) => c.state === 'failure');
+      const hasError = contexts.some((c) => c.state === 'error');
+
+      if (hasFailure) state = 'failure';
+      else if (hasError) state = 'error';
+      else if (hasPending) state = 'pending';
+      else if (contexts.length > 0) state = 'success';
+    }
+
     return { state, contexts };
   } catch {
     return null;
