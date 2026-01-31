@@ -5,6 +5,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import type { ProviderUsage } from './state';
 import { oauthCache } from './state';
+import { extractKimiAuthToken } from './browser-cookies';
 
 const execFileAsync = promisify(execFile);
 
@@ -61,6 +62,12 @@ async function getKimiToken(): Promise<string | null> {
   const shellToken = await getKimiTokenFromShell();
   if (shellToken) {
     return shellToken;
+  }
+  
+  // Try to extract from browser cookies
+  const browserToken = await extractKimiAuthToken();
+  if (browserToken) {
+    return browserToken;
   }
   
   return null;
