@@ -6,9 +6,11 @@ import { claudeSession } from './state';
 import { logStartup } from './log';
 import { startPauseMonitor } from './notifications/pause-monitor';
 import { startResetMonitor } from './notifications/reset-monitor';
+import { startHealthMonitoring } from './service/health';
 
 startServer();
 logStartup();
+startHealthMonitoring();
 
 if (USAGE_POLL_INTERVAL > 0) {
   startUsageRefresh();

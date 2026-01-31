@@ -2,7 +2,6 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { TOKEN } from '../config';
 import { registerAiSessionRoutes } from './routes/ai-sessions';
-import { registerCliAssetRoutes } from './routes/cli-assets';
 import { registerCopilotRoutes } from './routes/copilot';
 import { registerCoreRoutes } from './routes/core';
 import { registerDockerRoutes } from './routes/docker';
@@ -11,8 +10,7 @@ import { registerNotificationRoutes } from './routes/notifications';
 import { registerPortRoutes } from './routes/ports';
 import { registerSessionRoutes } from './routes/sessions';
 import { registerTunnelRoutes } from './routes/tunnels';
-import { registerServiceRoutes } from './routes/service';
-import { registerUpdateRoutes } from './routes/update';
+import { registerSystemRoutes } from './routes/system';
 
 export function buildApp() {
   const app = new Hono();
@@ -21,8 +19,10 @@ export function buildApp() {
 
   app.use('*', async (c, next) => {
     if (!TOKEN) return next();
+    // Check header first, then query param (for SSE)
     const header = c.req.header('authorization') || c.req.header('x-api-key') || '';
-    const token = header.replace(/^Bearer\s+/i, '').trim();
+    const queryToken = c.req.query('token') || '';
+    const token = header.replace(/^Bearer\s+/i, '').trim() || queryToken;
     if (token !== TOKEN) {
       return c.json({ error: 'Unauthorized' }, 401);
     }
@@ -30,7 +30,6 @@ export function buildApp() {
   });
 
   registerAiSessionRoutes(app);
-  registerCliAssetRoutes(app);
   registerCoreRoutes(app);
   registerDockerRoutes(app);
   registerFileRoutes(app);
@@ -38,8 +37,7 @@ export function buildApp() {
   registerPortRoutes(app);
   registerSessionRoutes(app);
   registerTunnelRoutes(app);
-  registerServiceRoutes(app);
-  registerUpdateRoutes(app);
+  registerSystemRoutes(app);
   registerCopilotRoutes(app);
 
   return app;
