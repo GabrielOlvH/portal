@@ -97,7 +97,6 @@ function NavigationRoot() {
               <Stack.Screen name="projects/index" />
               <Stack.Screen name="projects/new" />
               <Stack.Screen name="snippets/index" />
-              <Stack.Screen name="cli-assets/index" />
               <Stack.Screen name="ports/index" />
               <Stack.Screen name="session/[hostId]/[name]/index" />
             </Stack>

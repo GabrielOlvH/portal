@@ -112,33 +112,52 @@ function HostStep({
   return (
     <View style={styles.stepContainer}>
       <AppText variant="body" tone="muted" style={styles.stepInstruction}>
-        Select a host
+        Choose a host
       </AppText>
-      <View style={styles.chipsGrid}>
-        {hosts.map((host, idx) => (
-          <Pressable
-            key={host.id}
-            style={[
-              styles.chip,
-              selectedHostId === host.id && styles.chipSelected,
-            ]}
-            onPress={() => onSelect(host.id)}
-          >
-            <View
+      <View style={styles.hostsGrid}>
+        {hosts.map((host, idx) => {
+          const isSelected = selectedHostId === host.id;
+          const hostColor = host.color || hostColors[idx % hostColors.length];
+          return (
+            <Pressable
+              key={host.id}
               style={[
-                styles.chipDot,
-                { backgroundColor: host.color || hostColors[idx % hostColors.length] },
-                selectedHostId === host.id && styles.chipDotSelected,
+                styles.hostCard,
+                isSelected && styles.hostCardSelected,
+                { borderLeftColor: hostColor, borderLeftWidth: 4 },
               ]}
-            />
-            <AppText
-              variant="label"
-              style={selectedHostId === host.id ? styles.chipTextSelected : undefined}
+              onPress={() => onSelect(host.id)}
             >
-              {host.name}
-            </AppText>
-          </Pressable>
-        ))}
+              <View style={styles.hostCardContent}>
+                <View style={[styles.hostIcon, { backgroundColor: String(hostColor) + '20' }]}>
+                  <AppText variant="subtitle" style={{ color: hostColor, fontSize: 18 }}>
+                    {host.name.charAt(0).toUpperCase()}
+                  </AppText>
+                </View>
+                <View style={styles.hostInfo}>
+                  <AppText
+                    variant="label"
+                    numberOfLines={1}
+                    style={[
+                      styles.hostName,
+                      isSelected && styles.hostNameSelected,
+                    ]}
+                  >
+                    {host.name}
+                  </AppText>
+                  <AppText variant="mono" tone="muted" style={styles.hostMeta} numberOfLines={1}>
+                    {host.baseUrl}
+                  </AppText>
+                </View>
+              </View>
+              {isSelected && (
+                <View style={[styles.selectedIndicator, { backgroundColor: colors.accent }]}>
+                  <AppText variant="label" style={styles.selectedIndicatorText}>✓</AppText>
+                </View>
+              )}
+            </Pressable>
+          );
+        })}
       </View>
     </View>
   );
@@ -165,42 +184,56 @@ function ProjectStep({
   return (
     <View style={styles.stepContainer}>
       <AppText variant="body" tone="muted" style={styles.stepInstruction}>
-        Select a project
+        Choose a project
       </AppText>
-      <View style={styles.chipsGrid}>
+      <View style={styles.projectsGrid}>
         {projects.map((project) => {
-          const count = sessionCounts.get(project.id) || 0;
+          const hasSessions = (sessionCounts.get(project.id) || 0) > 0;
           const isSelected = selectedProjectId === project.id;
           return (
             <Pressable
               key={project.id}
               style={[
-                styles.chip,
-                isSelected && styles.chipSelected,
+                styles.projectCard,
+                isSelected && styles.projectCardSelected,
               ]}
               onPress={() => onSelect(project.id)}
             >
-              <AppText
-                variant="label"
-                style={isSelected ? styles.chipTextSelected : undefined}
-              >
-                {project.name}
-              </AppText>
-              {count > 0 && (
-                <View style={[styles.sessionBadge, isSelected && styles.sessionBadgeSelected]}>
-                  <AppText variant="caps" style={[styles.sessionBadgeText, isSelected && styles.sessionBadgeTextSelected]}>
-                    {count}
+              <View style={styles.projectCardContent}>
+                <View style={[styles.projectIcon, { backgroundColor: colors.accent + '20' }]}>
+                  <AppText variant="subtitle" style={{ color: colors.accent, fontSize: 18 }}>
+                    {project.name.charAt(0).toUpperCase()}
                   </AppText>
                 </View>
+                <View style={styles.projectInfo}>
+                  <AppText
+                    variant="label"
+                    numberOfLines={1}
+                    style={[
+                      styles.projectName,
+                      isSelected && styles.projectNameSelected,
+                    ]}
+                  >
+                    {project.name}
+                  </AppText>
+                  <AppText variant="mono" tone="muted" style={styles.projectPath} numberOfLines={1}>
+                    {project.path.split('/').pop()}
+                  </AppText>
+                </View>
+              </View>
+              {hasSessions && (
+                <View style={[styles.sessionIndicator, isSelected && styles.sessionIndicatorSelected]} />
               )}
             </Pressable>
           );
         })}
       </View>
       <Pressable style={styles.blankSessionButton} onPress={onBlankSession}>
-        <TerminalIcon size={16} color={colors.textSecondary} />
+        <View style={[styles.projectIcon, { backgroundColor: colors.textMuted + '20' }]}>
+          <TerminalIcon size={16} color={colors.textSecondary} />
+        </View>
         <AppText variant="label" tone="muted">
-          Blank Session
+          Start without a project
         </AppText>
       </Pressable>
     </View>
@@ -251,16 +284,16 @@ function CommandStep({
         {/* Resume AI Session Button */}
         <Pressable onPress={onViewAiSessions}>
           <Card style={styles.aiSessionCard}>
-            <View style={styles.aiSessionIcon}>
-              <AppText variant="subtitle" style={styles.aiSessionIconText}>AI</AppText>
+            <View style={[styles.aiSessionIcon, sessionCount > 0 && styles.aiSessionIconActive]}>
+              <AppText variant="subtitle" style={[styles.aiSessionIconText, sessionCount > 0 && styles.aiSessionIconTextActive]}>AI</AppText>
             </View>
             <View style={styles.commandContent}>
               <AppText variant="label">Resume AI Session</AppText>
               <AppText variant="mono" tone="muted" style={styles.commandText}>
-                {sessionCount > 0 ? `${sessionCount} sessions in this project` : 'Browse all sessions'}
+                {sessionCount > 0 ? 'Continue where you left off' : 'Start a new AI session'}
               </AppText>
             </View>
-            <View style={[styles.launchIcon, { backgroundColor: colors.textMuted }]}>
+            <View style={[styles.launchIcon, sessionCount > 0 ? { backgroundColor: colors.accent } : { backgroundColor: colors.textMuted }]}>
               <AppText variant="label" style={styles.launchIconText}>→</AppText>
             </View>
           </Card>
@@ -445,6 +478,8 @@ const createStepStyles = (colors: ThemeColors) =>
     stepInstruction: {
       textAlign: 'center',
       marginBottom: theme.spacing.lg,
+      fontSize: 15,
+      opacity: 0.7,
     },
     chipsGrid: {
       flexDirection: 'row',
@@ -481,15 +516,130 @@ const createStepStyles = (colors: ThemeColors) =>
       color: colors.accentText,
       fontWeight: '600',
     },
+    // Host Card Styles
+    hostsGrid: {
+      gap: theme.spacing.sm,
+    },
+    hostCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: theme.spacing.md,
+      borderRadius: theme.radii.lg,
+      backgroundColor: colors.card,
+      borderWidth: 1,
+      borderColor: colors.separator,
+    },
+    hostCardSelected: {
+      backgroundColor: colors.accent + '15',
+      borderColor: colors.accent,
+    },
+    hostCardContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: theme.spacing.md,
+      flex: 1,
+    },
+    hostIcon: {
+      width: 44,
+      height: 44,
+      borderRadius: 12,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    hostInfo: {
+      flex: 1,
+      gap: 2,
+    },
+    hostName: {
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    hostNameSelected: {
+      color: colors.accent,
+    },
+    hostMeta: {
+      fontSize: 12,
+    },
+    selectedIndicator: {
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginLeft: theme.spacing.sm,
+    },
+    selectedIndicatorText: {
+      color: colors.accentText,
+      fontSize: 12,
+      fontWeight: '700',
+    },
+    // Project Card Styles
+    projectsGrid: {
+      gap: theme.spacing.sm,
+    },
+    projectCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: theme.spacing.md,
+      borderRadius: theme.radii.lg,
+      backgroundColor: colors.card,
+      borderWidth: 1,
+      borderColor: colors.separator,
+    },
+    projectCardSelected: {
+      backgroundColor: colors.accent + '15',
+      borderColor: colors.accent,
+    },
+    projectCardContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: theme.spacing.md,
+      flex: 1,
+    },
+    projectIcon: {
+      width: 44,
+      height: 44,
+      borderRadius: 12,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    projectInfo: {
+      flex: 1,
+      gap: 2,
+    },
+    projectName: {
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    projectNameSelected: {
+      color: colors.accent,
+    },
+    projectPath: {
+      fontSize: 12,
+    },
+    sessionIndicator: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+      backgroundColor: colors.accent,
+      marginLeft: theme.spacing.sm,
+    },
+    sessionIndicatorSelected: {
+      backgroundColor: colors.accentText,
+    },
     blankSessionButton: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      gap: 8,
+      gap: 12,
       marginTop: theme.spacing.xl,
-      paddingVertical: theme.spacing.md,
-      borderTopWidth: 1,
-      borderTopColor: colors.separator,
+      padding: theme.spacing.md,
+      borderRadius: theme.radii.lg,
+      borderWidth: 1,
+      borderColor: colors.separator,
+      borderStyle: 'dashed',
     },
     sessionBadge: {
       backgroundColor: colors.textMuted,
@@ -561,14 +711,20 @@ const createStepStyles = (colors: ThemeColors) =>
       width: 32,
       height: 32,
       borderRadius: 8,
-      backgroundColor: colors.accent,
+      backgroundColor: colors.textMuted + '30',
       alignItems: 'center',
       justifyContent: 'center',
     },
+    aiSessionIconActive: {
+      backgroundColor: colors.accent,
+    },
     aiSessionIconText: {
-      color: colors.accentText,
+      color: colors.textSecondary,
       fontSize: 12,
       fontWeight: '700',
+    },
+    aiSessionIconTextActive: {
+      color: colors.accentText,
     },
     launchButton: {
       flexDirection: 'row',

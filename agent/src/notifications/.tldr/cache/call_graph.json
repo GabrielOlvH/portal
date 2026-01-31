@@ -1,0 +1,122 @@
+{
+  "edges": [
+    {
+      "from_file": "registry.ts",
+      "from_func": "removeNotificationDevice",
+      "to_file": "registry.ts",
+      "to_func": "loadRegistry"
+    },
+    {
+      "from_file": "registry.ts",
+      "from_func": "upsertNotificationDevice",
+      "to_file": "registry.ts",
+      "to_func": "saveRegistry"
+    },
+    {
+      "from_file": "registry.ts",
+      "from_func": "listNotificationDevices",
+      "to_file": "registry.ts",
+      "to_func": "loadRegistry"
+    },
+    {
+      "from_file": "registry.ts",
+      "from_func": "removeNotificationDevice",
+      "to_file": "registry.ts",
+      "to_func": "saveRegistry"
+    },
+    {
+      "from_file": "reset-monitor.ts",
+      "from_func": "buildResetMessages",
+      "to_file": "reset-monitor.ts",
+      "to_func": "formatProviderName"
+    },
+    {
+      "from_file": "reset-monitor.ts",
+      "from_func": "pollOnce",
+      "to_file": "push.ts",
+      "to_func": "sendExpoPushMessages"
+    },
+    {
+      "from_file": "reset-monitor.ts",
+      "from_func": "pollOnce",
+      "to_file": "registry.ts",
+      "to_func": "listNotificationDevices"
+    },
+    {
+      "from_file": "reset-monitor.ts",
+      "from_func": "detectResets",
+      "to_file": "reset-monitor.ts",
+      "to_func": "detectProviderResets"
+    },
+    {
+      "from_file": "pause-monitor.ts",
+      "from_func": "pollOnce",
+      "to_file": "push.ts",
+      "to_func": "sendExpoPushMessages"
+    },
+    {
+      "from_file": "pause-monitor.ts",
+      "from_func": "pollOnce",
+      "to_file": "registry.ts",
+      "to_func": "listNotificationDevices"
+    },
+    {
+      "from_file": "reset-monitor.ts",
+      "from_func": "startResetMonitor",
+      "to_file": "reset-monitor.ts",
+      "to_func": "pollOnce"
+    },
+    {
+      "from_file": "reset-monitor.ts",
+      "from_func": "detectWindowReset",
+      "to_file": "reset-monitor.ts",
+      "to_func": "makeKey"
+    },
+    {
+      "from_file": "pause-monitor.ts",
+      "from_func": "pollOnce",
+      "to_file": "pause-monitor.ts",
+      "to_func": "buildMessages"
+    },
+    {
+      "from_file": "reset-monitor.ts",
+      "from_func": "pollOnce",
+      "to_file": "reset-monitor.ts",
+      "to_func": "detectResets"
+    },
+    {
+      "from_file": "push.ts",
+      "from_func": "sendExpoPushMessages",
+      "to_file": "push.ts",
+      "to_func": "chunkMessages"
+    },
+    {
+      "from_file": "registry.ts",
+      "from_func": "upsertNotificationDevice",
+      "to_file": "registry.ts",
+      "to_func": "loadRegistry"
+    },
+    {
+      "from_file": "pause-monitor.ts",
+      "from_func": "startPauseMonitor",
+      "to_file": "pause-monitor.ts",
+      "to_func": "pollOnce"
+    },
+    {
+      "from_file": "reset-monitor.ts",
+      "from_func": "pollOnce",
+      "to_file": "reset-monitor.ts",
+      "to_func": "buildResetMessages"
+    },
+    {
+      "from_file": "reset-monitor.ts",
+      "from_func": "detectProviderResets",
+      "to_file": "reset-monitor.ts",
+      "to_func": "detectWindowReset"
+    }
+  ],
+  "languages": [
+    "typescript"
+  ],
+  "timestamp": 1769779917.2602842
+}

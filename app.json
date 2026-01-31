@@ -15,13 +15,13 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.portal.app",
+      "bundleIdentifier": "systems.kaia.portal",
       "infoPlist": {
         "NSLocalNetworkUsageDescription": "Find tmux agents on your local network."
       }
     },
     "android": {
-      "package": "com.portal.app",
+      "package": "systems.kaia.portal",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#1a365d"
@@ -51,7 +51,7 @@
               "appExtensions": [
                 {
                   "targetName": "LiveActivity",
-                  "bundleIdentifier": "com.portal.app.LiveActivity",
+                  "bundleIdentifier": "systems.kaia.portal.LiveActivity",
                   "entitlements": {}
                 }
               ]

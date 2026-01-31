@@ -16,24 +16,13 @@ type ResetEvent = {
 
 const lastResets = new Map<ResetKey, string>();
 const lastPercents = new Map<ResetKey, number>();
+const lastNotified = new Map<ResetKey, number>();
 let inflight: Promise<void> | null = null;
+
+const COOLDOWN_MS = 4 * 60 * 60 * 1000; // 4 hours between notifications for same provider/window
 
 function makeKey(provider: string, window: WindowType): ResetKey {
   return `${provider}:${window}`;
-}
-
-function parseResetTime(reset: string | undefined): number | null {
-  if (!reset) return null;
-
-  // Try ISO timestamp first
-  const date = new Date(reset);
-  if (!isNaN(date.getTime())) {
-    return date.getTime();
-  }
-
-  // Relative times like "5h 30m" - we can't compare these numerically
-  // but we can detect when they change significantly
-  return null;
 }
 
 function detectWindowReset(
@@ -42,6 +31,9 @@ function detectWindowReset(
   window: UsageWindow | undefined
 ): ResetEvent | null {
   if (!window) return null;
+
+  // Only notify on weekly resets - session resets are too frequent
+  if (windowType !== 'weekly') return null;
 
   const key = makeKey(provider, windowType);
   const currentPercent = window.percentLeft ?? 100;
@@ -61,19 +53,25 @@ function detectWindowReset(
     return null;
   }
 
-  // Check if reset happened:
-  // 1. Reset time changed (new cycle started)
-  // 2. Percent jumped up significantly (from low to high)
-  const resetTimeChanged = previousReset !== currentReset && currentReset !== undefined;
-  const percentJumpedUp = currentPercent > previousPercent + 20; // 20% jump threshold
+  // Check cooldown - don't spam same provider/window
+  const lastNotifiedAt = lastNotified.get(key);
+  if (lastNotifiedAt && Date.now() - lastNotifiedAt < COOLDOWN_MS) {
+    return null;
+  }
+
+  // Detect reset: percent jumped significantly (from low to high)
+  // Using 30% jump to avoid false positives from API fluctuations
+  const percentJumpedUp = currentPercent > previousPercent + 30;
 
   // Only notify if:
-  // - Reset appears to have happened (time changed OR significant percent increase)
+  // - Significant percent increase detected
   // - Previous usage was below threshold (user was actually constrained)
+  // - Current percent is high (actually reset, not just fluctuation)
   const wasConstrained = previousPercent < RESET_NOTIFY_THRESHOLD;
-  const resetDetected = resetTimeChanged || percentJumpedUp;
+  const isNowAvailable = currentPercent >= 80;
 
-  if (resetDetected && wasConstrained) {
+  if (percentJumpedUp && wasConstrained && isNowAvailable) {
+    lastNotified.set(key, Date.now());
     return {
       provider,
       window: windowType,
@@ -186,8 +184,10 @@ export const _testing = {
   buildResetMessages,
   lastResets,
   lastPercents,
+  lastNotified,
   clearState: () => {
     lastResets.clear();
     lastPercents.clear();
+    lastNotified.clear();
   },
 };

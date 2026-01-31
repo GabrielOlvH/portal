@@ -1,0 +1,3602 @@
+{
+  "edges": [
+    {
+      "from_file": "lib/api.ts",
+      "from_func": "getServiceLogs",
+      "to_file": "lib/api.ts",
+      "to_func": "request"
+    },
+    {
+      "from_file": "agent/src/http/routes/ai-sessions.ts",
+      "from_func": "registerAiSessionRoutes",
+      "to_file": "agent/src/http/routes/ai-sessions.ts",
+      "to_func": "getAllSessions"
+    },
+    {
+      "from_file": "agent/src/http/routes/service.ts",
+      "from_func": "getWindowsLogs",
+      "to_file": "agent/src/http/routes/service.ts",
+      "to_func": "resolveInstallDir"
+    },
+    {
+      "from_file": "lib/api.ts",
+      "from_func": "request",
+      "to_file": "lib/api.ts",
+      "to_func": "buildHeaders"
+    },
+    {
+      "from_file": "lib/notifications.ts",
+      "from_func": "registerNotificationsForHostsWithResult",
+      "to_file": "lib/api.ts",
+      "to_func": "registerNotificationDevice"
+    },
+    {
+      "from_file": "agent/src/http/routes/tunnels.ts",
+      "from_func": "registerTunnelRoutes",
+      "to_file": "agent/src/http/errors.ts",
+      "to_func": "jsonError"
+    },
+    {
+      "from_file": "components/SessionCard.tsx",
+      "from_func": "getStateColors",
+      "to_file": "components/SessionCard.tsx",
+      "to_func": "withAlpha"
+    },
+    {
+      "from_file": "agent/src/claude.ts",
+      "from_func": "finish",
+      "to_file": "agent/src/claude.ts",
+      "to_func": "cleanup"
+    },
+    {
+      "from_file": "lib/ongoing-notifications.ts",
+      "from_func": "updateOngoingNotification",
+      "to_file": "lib/ongoing-notifications.ts",
+      "to_func": "getNotifee"
+    },
+    {
+      "from_file": "agent/src/http/routes/service.ts",
+      "from_func": "getGitVersion",
+      "to_file": "agent/src/http/routes/service.ts",
+      "to_func": "exec"
+    },
+    {
+      "from_file": "lib/projects-store.tsx",
+      "from_func": "ProjectsProvider",
+      "to_file": "lib/projects-store.tsx",
+      "to_func": "saveRecentLaunches"
+    },
+    {
+      "from_file": "agent/scripts/update.ts",
+      "from_func": "restartOpenRC",
+      "to_file": "agent/scripts/update.ts",
+      "to_func": "restartManual"
+    },
+    {
+      "from_file": "agent/src/http/routes/sessions.ts",
+      "from_func": "registerSessionRoutes",
+      "to_file": "agent/src/tmux.ts",
+      "to_func": "capturePane"
+    },
+    {
+      "from_file": "agent/scripts/install.ts",
+      "from_func": "main",
+      "to_file": "agent/scripts/install.ts",
+      "to_func": "printSuccess"
+    },
+    {
+      "from_file": "lib/live-activity.ts",
+      "from_func": "endTaskLiveActivity",
+      "to_file": "lib/live-activity.ts",
+      "to_func": "getModule"
+    },
+    {
+      "from_file": "agent/src/claude.ts",
+      "from_func": "getClaudeStatus",
+      "to_file": "agent/src/claude.ts",
+      "to_func": "getClaudeOAuthStatus"
+    },
+    {
+      "from_file": "agent/src/agents.ts",
+      "from_func": "getAgentFromPid",
+      "to_file": "agent/src/agents.ts",
+      "to_func": "execFileAsync"
+    },
+    {
+      "from_file": "app/session/[hostId]/[name]/terminal.tsx",
+      "from_func": "SessionTerminalScreen",
+      "to_file": "app/session/[hostId]/[name]/terminal.tsx",
+      "to_func": "takePhoto"
+    },
+    {
+      "from_file": "app/session/[hostId]/[name]/terminal.tsx",
+      "from_func": "SessionTerminalScreen",
+      "to_file": "app/session/[hostId]/[name]/terminal.tsx",
+      "to_func": "sendToTerminal"
+    },
+    {
+      "from_file": "agent/src/http/routes/cli-assets.ts",
+      "from_func": "upsertMcpAsset",
+      "to_file": "agent/src/http/routes/cli-assets.ts",
+      "to_func": "extractMcpServers"
+    },
+    {
+      "from_file": "agent/src/usage.ts",
+      "from_func": "getUsageSnapshot",
+      "to_file": "agent/src/usage.ts",
+      "to_func": "withUsageMeta"
+    },
+    {
+      "from_file": "agent/scripts/update.ts",
+      "from_func": "update",
+      "to_file": "agent/scripts/update.ts",
+      "to_func": "restoreStash"
+    },
+    {
+      "from_file": "agent/src/ports.ts",
+      "from_func": "listPortsWithLsof",
+      "to_file": "agent/src/ports.ts",
+      "to_func": "getConnectionCounts"
+    },
+    {
+      "from_file": "agent/src/http/app.ts",
+      "from_func": "buildApp",
+      "to_file": "agent/src/http/routes/files.ts",
+      "to_func": "registerFileRoutes"
+    },
+    {
+      "from_file": "agent/src/http/routes/service.ts",
+      "from_func": "getServiceLogs",
+      "to_file": "agent/src/http/routes/service.ts",
+      "to_func": "getOpenRCLogs"
+    },
+    {
+      "from_file": "agent/src/http/routes/ai-sessions.ts",
+      "from_func": "parseCodexSessions",
+      "to_file": "agent/src/http/routes/ai-sessions.ts",
+      "to_func": "toDayTimestamp"
+    },
+    {
+      "from_file": "agent/src/claude.ts",
+      "from_func": "getClaudeTokenUsage",
+      "to_file": "agent/src/claude.ts",
+      "to_func": "scanJsonlFile"
+    },
+    {
+      "from_file": "agent/src/http/routes/core.ts",
+      "from_func": "registerCoreRoutes",
+      "to_file": "agent/src/http/errors.ts",
+      "to_func": "jsonError"
+    },
+    {
+      "from_file": "lib/api.ts",
+      "from_func": "killPorts",
+      "to_file": "lib/api.ts",
+      "to_func": "request"
+    },
+    {
+      "from_file": "agent/src/http/live.ts",
+      "from_func": "getLiveSnapshot",
+      "to_file": "agent/src/http/live.ts",
+      "to_func": "getCacheTtl"
+    },
+    {
+      "from_file": "agent/src/http/routes/ai-sessions.ts",
+      "from_func": "parseOpenCodeSessions",
+      "to_file": "agent/src/http/routes/ai-sessions.ts",
+      "to_func": "safeReadDir"
+    },
+    {
+      "from_file": "agent/src/codex.ts",
+      "from_func": "getCodexTokenUsage",
+      "to_file": "agent/src/codex.ts",
+      "to_func": "scanJsonlFile"
+    },
+    {
+      "from_file": "lib/api.ts",
+      "from_func": "registerNotificationDevice",
+      "to_file": "lib/api.ts",
+      "to_func": "request"
+    },
+    {
+      "from_file": "lib/store.tsx",
+      "from_func": "StoreProvider",
+      "to_file": "lib/storage.ts",
+      "to_func": "loadHosts"
+    },
+    {
+      "from_file": "agent/scripts/uninstall.ts",
+      "from_func": "stopService",
+      "to_file": "agent/scripts/uninstall.ts",
+      "to_func": "stopSystemd"
+    },
+    {
+      "from_file": "agent/src/usage.ts",
+      "from_func": "buildUsageSnapshot",
+      "to_file": "agent/src/usage.ts",
+      "to_func": "ensureTokenRefresh"
+    },
+    {
+      "from_file": "lib/live-activity.ts",
+      "from_func": "startTaskLiveActivity",
+      "to_file": "lib/live-activity.ts",
+      "to_func": "getModule"
+    },
+    {
+      "from_file": "agent/scripts/update.ts",
+      "from_func": "stashChanges",
+      "to_file": "agent/scripts/update.ts",
+      "to_func": "exec"
+    },
+    {
+      "from_file": "agent/src/http/routes/core.ts",
+      "from_func": "registerCoreRoutes",
+      "to_file": "agent/src/usage.ts",
+      "to_func": "getUsageSnapshot"
+    },
+    {
+      "from_file": "agent/scripts/update.ts",
+      "from_func": "detectInitSystem",
+      "to_file": "agent/scripts/update.ts",
+      "to_func": "exec"
+    },
+    {
+      "from_file": "lib/notifications.ts",
+      "from_func": "registerNotificationsForHostsWithResult",
+      "to_file": "lib/notifications.ts",
+      "to_func": "loadRegistry"
+    },
+    {
+      "from_file": "agent/src/http/routes/ai-sessions.ts",
+      "from_func": "parseCodexSessions",
+      "to_file": "agent/src/http/routes/ai-sessions.ts",
+      "to_func": "extractCodexMeta"
+    },
+    {
+      "from_file": "agent/src/http/routes/service.ts",
+      "from_func": "restartService",
+      "to_file": "agent/src/http/routes/service.ts",
+      "to_func": "resolveInstallDir"
+    },
+    {
+      "from_file": "agent/src/docker.ts",
+      "from_func": "runDockerContainerAction",
+      "to_file": "agent/src/docker.ts",
+      "to_func": "execFileAsync"
+    },
+    {
+      "from_file": "agent/src/http/routes/tunnels.ts",
+      "from_func": "registerTunnelRoutes",
+      "to_file": "agent/src/tunnels.ts",
+      "to_func": "closeTunnel"
+    },
+    {
+      "from_file": "lib/ongoing-notifications.ts",
+      "from_func": "clearOngoingNotification",
+      "to_file": "lib/ongoing-notifications.ts",
+      "to_func": "getNotifee"
+    },
+    {
+      "from_file": "agent/src/http/routes/cli-assets.ts",
+      "from_func": "listFlatFileAssets",
+      "to_file": "agent/src/http/routes/cli-assets.ts",
+      "to_func": "resolveAssetDir"
+    },
+    {
+      "from_file": "agent/scripts/install.ts",
+      "from_func": "setupLaunchd",
+      "to_file": "agent/scripts/install.ts",
+      "to_func": "getCommandPath"
+    },
+    {
+      "from_file": "lib/live.tsx",
+      "from_func": "useHostsLive",
+      "to_file": "lib/live.tsx",
+      "to_func": "formatProbeError"
+    },
+    {
+      "from_file": "lib/api.ts",
+      "from_func": "sendKeys",
+      "to_file": "lib/api.ts",
+      "to_func": "request"
+    },
+    {
+      "from_file": "agent/src/sessions.ts",
+      "from_func": "getPaneTitle",
+      "to_file": "agent/src/tmux.ts",
+      "to_func": "sessionTarget"
+    },
+    {
+      "from_file": "agent/scripts/install.ts",
+      "from_func": "setupTaskScheduler",
+      "to_file": "agent/scripts/install.ts",
+      "to_func": "getCommandPath"
+    },
+    {
+      "from_file": "agent/scripts/install.ts",
+      "from_func": "printSuccess",
+      "to_file": "agent/scripts/install.ts",
+      "to_func": "getLocalIP"
+    },
+    {
+      "from_file": "agent/scripts/update.ts",
+      "from_func": "update",
+      "to_file": "agent/scripts/update.ts",
+      "to_func": "stashChanges"
+    },
+    {
+      "from_file": "agent/src/claude.ts",
+      "from_func": "getClaudeStatus",
+      "to_file": "agent/src/claude.ts",
+      "to_func": "runClaudeUsageCapture"
+    },
+    {
+      "from_file": "agent/src/codex.ts",
+      "from_func": "getCodexTokenUsage",
+      "to_file": "agent/src/codex.ts",
+      "to_func": "listCodexFiles"
+    },
+    {
+      "from_file": "lib/snippets-store.tsx",
+      "from_func": "load",
+      "to_file": "lib/snippets-store.tsx",
+      "to_func": "buildDefaultSnippets"
+    },
+    {
+      "from_file": "agent/src/docker.ts",
+      "from_func": "buildDockerSnapshot",
+      "to_file": "agent/src/docker.ts",
+      "to_func": "toDockerError"
+    },
+    {
+      "from_file": "agent/src/codex.ts",
+      "from_func": "listCodexFiles",
+      "to_file": "agent/src/codex.ts",
+      "to_func": "dayFolder"
+    },
+    {
+      "from_file": "agent/src/codex.ts",
+      "from_func": "getCodexStatusRPC",
+      "to_file": "agent/src/codex.ts",
+      "to_func": "request"
+    },
+    {
+      "from_file": "agent/src/cursor.ts",
+      "from_func": "getCursorStatus",
+      "to_file": "agent/src/cursor.ts",
+      "to_func": "resolveCursorCookieHeader"
+    },
+    {
+      "from_file": "agent/scripts/install.ts",
+      "from_func": "setupOpenRC",
+      "to_file": "agent/scripts/install.ts",
+      "to_func": "startManual"
+    },
+    {
+      "from_file": "lib/live.tsx",
+      "from_func": "useHostsLive",
+      "to_file": "lib/live.tsx",
+      "to_func": "startErrorProbe"
+    },
+    {
+      "from_file": "agent/src/http/ws.ts",
+      "from_func": "attachWebSocketServers",
+      "to_file": "agent/src/http/ws.ts",
+      "to_func": "scheduleRefresh"
+    },
+    {
+      "from_file": "agent/src/http/routes/service.ts",
+      "from_func": "registerServiceRoutes",
+      "to_file": "agent/src/http/routes/service.ts",
+      "to_func": "getServiceLogs"
+    },
+    {
+      "from_file": "lib/api.ts",
+      "from_func": "probeHealth",
+      "to_file": "lib/api.ts",
+      "to_func": "normalizeBaseUrl"
+    },
+    {
+      "from_file": "agent/src/http/routes/service.ts",
+      "from_func": "registerServiceRoutes",
+      "to_file": "agent/src/http/routes/service.ts",
+      "to_func": "getGitVersion"
+    },
+    {
+      "from_file": "lib/ansi.ts",
+      "from_func": "parseAnsi",
+      "to_file": "lib/ansi.ts",
+      "to_func": "applyColorFromCode"
+    },
+    {
+      "from_file": "agent/src/http/routes/copilot.ts",
+      "from_func": "registerCopilotRoutes",
+      "to_file": "agent/src/copilot-oauth.ts",
+      "to_func": "startDeviceFlow"
+    },
+    {
+      "from_file": "lib/projects-store.tsx",
+      "from_func": "ProjectsProvider",
+      "to_file": "lib/projects-store.tsx",
+      "to_func": "loadRecentLaunches"
+    },
+    {
+      "from_file": "app/(tabs)/hosts.tsx",
+      "from_func": "checkUpdates",
+      "to_file": "lib/api.ts",
+      "to_func": "checkForUpdate"
+    },
+    {
+      "from_file": "agent/scripts/uninstall.ts",
+      "from_func": "main",
+      "to_file": "agent/scripts/uninstall.ts",
+      "to_func": "stopService"
+    },
+    {
+      "from_file": "lib/task-live-updates.ts",
+      "from_func": "useTaskLiveUpdates",
+      "to_file": "lib/task-live-updates.ts",
+      "to_func": "getAgentState"
+    },
+    {
+      "from_file": "agent/src/http/routes/ai-sessions.ts",
+      "from_func": "getSessionDetail",
+      "to_file": "agent/src/http/routes/ai-sessions.ts",
+      "to_func": "isCacheValid"
+    },
+    {
+      "from_file": "agent/src/agents.ts",
+      "from_func": "getSessionAgentInfo",
+      "to_file": "agent/src/agents.ts",
+      "to_func": "getAgentFromPid"
+    },
+    {
+      "from_file": "lib/api.ts",
+      "from_func": "createTunnel",
+      "to_file": "lib/api.ts",
+      "to_func": "request"
+    },
+    {
+      "from_file": "agent/src/http/app.ts",
+      "from_func": "buildApp",
+      "to_file": "agent/src/http/routes/tunnels.ts",
+      "to_func": "registerTunnelRoutes"
+    },
+    {
+      "from_file": "agent/src/http/ws.ts",
+      "from_func": "attachWebSocketServers",
+      "to_file": "agent/src/http/ws.ts",
+      "to_func": "parseDimension"
+    },
+    {
+      "from_file": "agent/src/http/routes/notifications.ts",
+      "from_func": "registerNotificationRoutes",
+      "to_file": "agent/src/notifications/registry.ts",
+      "to_func": "listNotificationDevices"
+    },
+    {
+      "from_file": "agent/src/codex.ts",
+      "from_func": "getCodexStatus",
+      "to_file": "agent/src/binaries.ts",
+      "to_func": "resolveBinary"
+    },
+    {
+      "from_file": "agent/src/http/routes/core.ts",
+      "from_func": "registerCoreRoutes",
+      "to_file": "agent/src/tmux.ts",
+      "to_func": "runTmux"
+    },
+    {
+      "from_file": "lib/projects-store.tsx",
+      "from_func": "ProjectsProvider",
+      "to_file": "lib/projects-store.tsx",
+      "to_func": "load"
+    },
+    {
+      "from_file": "agent/src/notifications/reset-monitor.ts",
+      "from_func": "pollOnce",
+      "to_file": "agent/src/notifications/push.ts",
+      "to_func": "sendExpoPushMessages"
+    },
+    {
+      "from_file": "lib/live.tsx",
+      "from_func": "useHostLive",
+      "to_file": "lib/live.tsx",
+      "to_func": "refreshHost"
+    },
+    {
+      "from_file": "agent/src/http/routes/cli-assets.ts",
+      "from_func": "listSkillAssets",
+      "to_file": "agent/src/http/routes/cli-assets.ts",
+      "to_func": "resolveAssetDir"
+    },
+    {
+      "from_file": "lib/snippets-store.tsx",
+      "from_func": "SnippetsProvider",
+      "to_file": "lib/snippets-store.tsx",
+      "to_func": "loadSnippets"
+    },
+    {
+      "from_file": "agent/scripts/install.ts",
+      "from_func": "main",
+      "to_file": "agent/scripts/install.ts",
+      "to_func": "printBanner"
+    },
+    {
+      "from_file": "lib/discovery.ts",
+      "from_func": "deriveTargets",
+      "to_file": "lib/discovery.ts",
+      "to_func": "parseIPv4"
+    },
+    {
+      "from_file": "agent/src/http/routes/cli-assets.ts",
+      "from_func": "listMcpAssets",
+      "to_file": "agent/src/http/routes/cli-assets.ts",
+      "to_func": "resolveMcpFile"
+    },
+    {
+      "from_file": "lib/api.ts",
+      "from_func": "getAiSessionDetail",
+      "to_file": "lib/api.ts",
+      "to_func": "request"
+    },
+    {
+      "from_file": "agent/scripts/uninstall.ts",
+      "from_func": "stopService",
+      "to_file": "agent/scripts/uninstall.ts",
+      "to_func": "stopTaskScheduler"
+    },
+    {
+      "from_file": "agent/src/notifications/pause-monitor.ts",
+      "from_func": "pollOnce",
+      "to_file": "agent/src/agents.ts",
+      "to_func": "getSessionInsights"
+    },
+    {
+      "from_file": "lib/api.ts",
+      "from_func": "killSession",
+      "to_file": "lib/api.ts",
+      "to_func": "request"
+    },
+    {
+      "from_file": "agent/scripts/install.ts",
+      "from_func": "main",
+      "to_file": "agent/scripts/install.ts",
+      "to_func": "verifyRunning"
+    },
+    {
+      "from_file": "agent/src/notifications/pause-monitor.ts",
+      "from_func": "pollOnce",
+      "to_file": "agent/src/notifications/push.ts",
+      "to_func": "sendExpoPushMessages"
+    },
+    {
+      "from_file": "agent/src/http/live.ts",
+      "from_func": "buildLiveSnapshot",
+      "to_file": "agent/src/docker.ts",
+      "to_func": "getDockerSnapshot"
+    },
+    {
+      "from_file": "lib/live.tsx",
+      "from_func": "formatProbeError",
+      "to_file": "lib/live.tsx",
+      "to_func": "describeNoAgentMessage"
+    },
+    {
+      "from_file": "lib/notifications.ts",
+      "from_func": "unregisterNotificationsForHosts",
+      "to_file": "lib/notifications.ts",
+      "to_func": "loadRegistry"
+    },
+    {
+      "from_file": "agent/src/http/routes/cli-assets.ts",
+      "from_func": "resolveMcpFile",
+      "to_file": "agent/src/http/routes/cli-assets.ts",
+      "to_func": "resolveFirstExisting"
+    },
+    {
+      "from_file": "agent/src/docker.ts",
+      "from_func": "buildDockerSnapshot",
+      "to_file": "agent/src/docker.ts",
+      "to_func": "parsePercent"
+    },
+    {
+      "from_file": "agent/src/agents.ts",
+      "from_func": "getSessionAgentInfo",
+      "to_file": "agent/src/agents.ts",
+      "to_func": "execFileAsync"
+    },
+    {
+      "from_file": "agent/scripts/install.ts",
+      "from_func": "setupService",
+      "to_file": "agent/scripts/install.ts",
+      "to_func": "startManual"
+    },
+    {
+      "from_file": "agent/src/usage.ts",
+      "from_func": "primeTokenRefresh",
+      "to_file": "agent/src/usage.ts",
+      "to_func": "ensureTokenRefresh"
+    },
+    {
+      "from_file": "lib/storage.ts",
+      "from_func": "normalizePreferences",
+      "to_file": "lib/defaults.ts",
+      "to_func": "defaultPreferences"
+    },
+    {
+      "from_file": "app/session/[hostId]/[name]/terminal.tsx",
+      "from_func": "SessionTerminalScreen",
+      "to_file": "lib/live.tsx",
+      "to_func": "useHostLive"
+    },
+    {
+      "from_file": "agent/src/http/ws.ts",
+      "from_func": "sendSnapshot",
+      "to_file": "agent/src/http/live.ts",
+      "to_func": "getLiveSnapshot"
+    },
+    {
+      "from_file": "agent/src/http/routes/service.ts",
+      "from_func": "getServiceStatus",
+      "to_file": "agent/src/http/routes/service.ts",
+      "to_func": "detectPlatform"
+    },
+    {
+      "from_file": "agent/src/http/routes/cli-assets.ts",
+      "from_func": "upsertSkillAsset",
+      "to_file": "agent/src/http/routes/cli-assets.ts",
+      "to_func": "sanitizeAssetName"
+    },
+    {
+      "from_file": "agent/src/http/routes/ai-sessions.ts",
+      "from_func": "getAllSessions",
+      "to_file": "agent/src/http/routes/ai-sessions.ts",
+      "to_func": "parseOpenCodeSessions"
+    },
+    {
+      "from_file": "lib/api.ts",
+      "from_func": "getPorts",
+      "to_file": "lib/api.ts",
+      "to_func": "request"
+    },
+    {
+      "from_file": "agent/src/http/routes/cli-assets.ts",
+      "from_func": "registerCliAssetRoutes",
+      "to_file": "agent/src/http/routes/cli-assets.ts",
+      "to_func": "deleteSkillAsset"
+    },
+    {
+      "from_file": "agent/src/notifications/registry.ts",
+      "from_func": "upsertNotificationDevice",
+      "to_file": "agent/src/notifications/registry.ts",
+      "to_func": "loadRegistry"
+    },
+    {
+      "from_file": "agent/src/http/ws.ts",
+      "from_func": "attachWebSocketServers",
+      "to_file": "agent/src/http/ws.ts",
+      "to_func": "cleanup"
+    },
+    {
+      "from_file": "agent/src/http/routes/service.ts",
+      "from_func": "registerServiceRoutes",
+      "to_file": "agent/src/http/errors.ts",
+      "to_func": "jsonError"
+    },
+    {
+      "from_file": "agent/src/http/routes/cli-assets.ts",
+      "from_func": "listSkillAssets",
+      "to_file": "agent/src/http/routes/cli-assets.ts",
+      "to_func": "parseFrontmatter"
+    },
+    {
+      "from_file": "agent/src/http/routes/ai-sessions.ts",
+      "from_func": "getSessionDetail",
+      "to_file": "agent/src/http/routes/ai-sessions.ts",
+      "to_func": "safeReadFile"
+    },
+    {
+      "from_file": "agent/scripts/update.ts",
+      "from_func": "determineBranch",
+      "to_file": "agent/scripts/update.ts",
+      "to_func": "exec"
+    },
+    {
+      "from_file": "agent/src/http/routes/cli-assets.ts",
+      "from_func": "registerCliAssetRoutes",
+      "to_file": "agent/src/http/routes/cli-assets.ts",
+      "to_func": "listFlatFileAssets"
+    },
+    {
+      "from_file": "agent/src/docker.ts",
+      "from_func": "parseMemoryUsage",
+      "to_file": "agent/src/docker.ts",
+      "to_func": "parseBytes"
+    },
+    {
+      "from_file": "lib/notifications.ts",
+      "from_func": "registerNotificationsForHostsWithResult",
+      "to_file": "lib/notifications.ts",
+      "to_func": "saveRegistry"
+    },
+    {
+      "from_file": "agent/src/claude.ts",
+      "from_func": "runClaudeUsageCapture",
+      "to_file": "agent/src/claude.ts",
+      "to_func": "cleanup"
+    },
+    {
+      "from_file": "agent/src/http/routes/service.ts",
+      "from_func": "restartService",
+      "to_file": "agent/src/http/routes/service.ts",
+      "to_func": "exec"
+    },
+    {
+      "from_file": "agent/scripts/update.ts",
+      "from_func": "restartSystemdSystem",
+      "to_file": "agent/scripts/update.ts",
+      "to_func": "exec"
+    },
+    {
+      "from_file": "lib/api.ts",
+      "from_func": "getSessions",
+      "to_file": "lib/api.ts",
+      "to_func": "request"
+    },
+    {
+      "from_file": "agent/src/claude.ts",
+      "from_func": "getClaudeStatus",
+      "to_file": "agent/src/binaries.ts",
+      "to_func": "resolveBinary"
+    },
+    {
+      "from_file": "lib/api.ts",
+      "from_func": "renameSession",
+      "to_file": "lib/api.ts",
+      "to_func": "request"
+    },
+    {
+      "from_file": "agent/src/copilot-oauth.ts",
+      "from_func": "pollForToken",
+      "to_file": "agent/src/copilot-oauth.ts",
+      "to_func": "sleep"
+    },
+    {
+      "from_file": "agent/src/http/ws.ts",
+      "from_func": "attachWebSocketServers",
+      "to_file": "agent/src/http/live.ts",
+      "to_func": "getLiveSnapshot"
+    },
+    {
+      "from_file": "agent/src/tmux.ts",
+      "from_func": "getCursorInfo",
+      "to_file": "agent/src/tmux.ts",
+      "to_func": "sessionTarget"
+    },
+    {
+      "from_file": "lib/live.tsx",
+      "from_func": "startErrorProbe",
+      "to_file": "lib/live.tsx",
+      "to_func": "formatProbeError"
+    },
+    {
+      "from_file": "app/session/[hostId]/[name]/terminal.tsx",
+      "from_func": "SessionTerminalScreen",
+      "to_file": "app/session/[hostId]/[name]/terminal.tsx",
+      "to_func": "buildWsUrl"
+    },
+    {
+      "from_file": "agent/src/claude.ts",
+      "from_func": "getClaudeTokenUsage",
+      "to_file": "agent/src/claude.ts",
+      "to_func": "toInt"
+    },
+    {
+      "from_file": "agent/src/http/sessions.ts",
+      "from_func": "fetchSessions",
+      "to_file": "agent/src/sessions.ts",
+      "to_func": "listSessions"
+    },
+    {
+      "from_file": "agent/src/http/routes/files.ts",
+      "from_func": "registerFileRoutes",
+      "to_file": "agent/src/http/routes/files.ts",
+      "to_func": "isErrnoException"
+    },
+    {
+      "from_file": "agent/src/codex.ts",
+      "from_func": "getCodexStatusRPC",
+      "to_file": "agent/src/codex.ts",
+      "to_func": "finish"
+    },
+    {
+      "from_file": "agent/src/http/ws.ts",
+      "from_func": "attachWebSocketServers",
+      "to_file": "agent/src/http/ws.ts",
+      "to_func": "attachPtyBridge"
+    },
+    {
+      "from_file": "agent/src/codex.ts",
+      "from_func": "getCodexTokenUsage",
+      "to_file": "agent/src/codex.ts",
+      "to_func": "toInt"
+    },
+    {
+      "from_file": "agent/src/notifications/reset-monitor.ts",
+      "from_func": "pollOnce",
+      "to_file": "agent/src/notifications/reset-monitor.ts",
+      "to_func": "buildResetMessages"
+    },
+    {
+      "from_file": "agent/scripts/install.ts",
+      "from_func": "main",
+      "to_file": "agent/scripts/install.ts",
+      "to_func": "runWizard"
+    },
+    {
+      "from_file": "lib/storage.ts",
+      "from_func": "loadPreferences",
+      "to_file": "lib/defaults.ts",
+      "to_func": "defaultPreferences"
+    },
+    {
+      "from_file": "agent/src/http/routes/cli-assets.ts",
+      "from_func": "listMcpAssets",
+      "to_file": "agent/src/http/routes/cli-assets.ts",
+      "to_func": "extractMcpServers"
+    },
+    {
+      "from_file": "app/hosts/[id]/docker/[containerId]/logs.tsx",
+      "from_func": "DockerLogsScreen",
+      "to_file": "lib/terminal-html.ts",
+      "to_func": "buildTerminalHtml"
+    },
+    {
+      "from_file": "app/hosts/[id]/index.tsx",
+      "from_func": "fetchServiceStatus",
+      "to_file": "lib/api.ts",
+      "to_func": "getServiceStatus"
+    },
+    {
+      "from_file": "lib/api.ts",
+      "from_func": "checkForUpdate",
+      "to_file": "lib/api.ts",
+      "to_func": "request"
+    },
+    {
+      "from_file": "agent/src/http/routes/cli-assets.ts",
+      "from_func": "resolveAssetDir",
+      "to_file": "agent/src/http/routes/cli-assets.ts",
+      "to_func": "toAbsolutePath"
+    },
+    {
+      "from_file": "lib/task-live-updates.ts",
+      "from_func": "useTaskLiveUpdates",
+      "to_file": "lib/live-activity.ts",
+      "to_func": "startTaskLiveActivity"
+    },
+    {
+      "from_file": "agent/src/usage.ts",
+      "from_func": "buildUsageSnapshot",
+      "to_file": "agent/src/codex.ts",
+      "to_func": "getCodexStatus"
+    },
+    {
+      "from_file": "agent/scripts/update.ts",
+      "from_func": "update",
+      "to_file": "agent/scripts/update.ts",
+      "to_func": "log"
+    },
+    {
+      "from_file": "agent/src/http/ws.ts",
+      "from_func": "attachPtyBridge",
+      "to_file": "agent/src/http/ws.ts",
+      "to_func": "maybePause"
+    },
+    {
+      "from_file": "agent/scripts/update.ts",
+      "from_func": "restoreStash",
+      "to_file": "agent/scripts/update.ts",
+      "to_func": "log"
+    },
+    {
+      "from_file": "agent/src/http/ws.ts",
+      "from_func": "scheduleRefresh",
+      "to_file": "agent/src/http/ws.ts",
+      "to_func": "sendSnapshot"
+    },
+    {
+      "from_file": "agent/src/http/routes/service.ts",
+      "from_func": "getServiceStatus",
+      "to_file": "agent/src/http/routes/service.ts",
+      "to_func": "detectInitSystem"
+    },
+    {
+      "from_file": "agent/src/http/live.ts",
+      "from_func": "buildLiveSnapshot",
+      "to_file": "agent/src/http/sessions.ts",
+      "to_func": "fetchSessions"
+    },
+    {
+      "from_file": "agent/src/copilot-oauth.ts",
+      "from_func": "startDeviceFlow",
+      "to_file": "agent/src/copilot-oauth.ts",
+      "to_func": "requestDeviceCode"
+    },
+    {
+      "from_file": "agent/src/claude.ts",
+      "from_func": "startClaudeSession",
+      "to_file": "agent/src/claude.ts",
+      "to_func": "cleanupClaudeListeners"
+    },
+    {
+      "from_file": "agent/src/copilot.ts",
+      "from_func": "getCopilotStatus",
+      "to_file": "agent/src/copilot.ts",
+      "to_func": "getStoredToken"
+    },
+    {
+      "from_file": "agent/src/copilot.ts",
+      "from_func": "getCopilotStatus",
+      "to_file": "agent/src/copilot.ts",
+      "to_func": "copilotWindow"
+    },
+    {
+      "from_file": "agent/src/pty-runner.ts",
+      "from_func": "runPtyCommand",
+      "to_file": "agent/src/pty-runner.ts",
+      "to_func": "scheduleIdle"
+    },
+    {
+      "from_file": "agent/src/sessions.ts",
+      "from_func": "listSessions",
+      "to_file": "agent/src/tmux.ts",
+      "to_func": "runTmux"
+    },
+    {
+      "from_file": "agent/src/http/sessions.ts",
+      "from_func": "fetchSessions",
+      "to_file": "agent/src/sessions.ts",
+      "to_func": "getPaneTitle"
+    },
+    {
+      "from_file": "agent/src/http/routes/cli-assets.ts",
+      "from_func": "deleteMcpAsset",
+      "to_file": "agent/src/http/routes/cli-assets.ts",
+      "to_func": "resolveMcpFile"
+    },
+    {
+      "from_file": "agent/src/http/routes/cli-assets.ts",
+      "from_func": "deleteMcpAsset",
+      "to_file": "agent/src/http/routes/cli-assets.ts",
+      "to_func": "tryParseJson"
+    },
+    {
+      "from_file": "agent/src/tmux.ts",
+      "from_func": "capturePane",
+      "to_file": "agent/src/tmux.ts",
+      "to_func": "sessionTarget"
+    },
+    {
+      "from_file": "agent/src/usage.ts",
+      "from_func": "buildUsageSnapshot",
+      "to_file": "agent/src/claude.ts",
+      "to_func": "getClaudeStatus"
+    },
+    {
+      "from_file": "agent/src/http/routes/ai-sessions.ts",
+      "from_func": "registerAiSessionRoutes",
+      "to_file": "agent/src/http/errors.ts",
+      "to_func": "jsonError"
+    },
+    {
+      "from_file": "agent/src/usage.ts",
+      "from_func": "buildUsageSnapshot",
+      "to_file": "agent/src/cursor.ts",
+      "to_func": "getCursorStatus"
+    },
+    {
+      "from_file": "agent/scripts/uninstall.ts",
+      "from_func": "stopService",
+      "to_file": "agent/scripts/uninstall.ts",
+      "to_func": "stopLaunchd"
+    },
+    {
+      "from_file": "lib/notifications.ts",
+      "from_func": "getOrCreateDeviceId",
+      "to_file": "lib/defaults.ts",
+      "to_func": "createId"
+    },
+    {
+      "from_file": "lib/store.tsx",
+      "from_func": "StoreProvider",
+      "to_file": "lib/store.tsx",
+      "to_func": "load"
+    },
+    {
+      "from_file": "lib/projects-store.tsx",
+      "from_func": "ProjectsProvider",
+      "to_file": "lib/projects-store.tsx",
+      "to_func": "loadProjects"
+    },
+    {
+      "from_file": "agent/src/http/routes/service.ts",
+      "from_func": "getSystemdStatus",
+      "to_file": "agent/src/http/routes/service.ts",
+      "to_func": "exec"
+    },
+    {
+      "from_file": "agent/scripts/install.ts",
+      "from_func": "main",
+      "to_file": "agent/scripts/install.ts",
+      "to_func": "checkPrerequisites"
+    },
+    {
+      "from_file": "agent/src/docker.ts",
+      "from_func": "buildDockerSnapshot",
+      "to_file": "agent/src/docker.ts",
+      "to_func": "runDockerJson"
+    },
+    {
+      "from_file": "lib/api.ts",
+      "from_func": "deleteCliAsset",
+      "to_file": "lib/api.ts",
+      "to_func": "request"
+    },
+    {
+      "from_file": "agent/scripts/install.ts",
+      "from_func": "setupService",
+      "to_file": "agent/scripts/install.ts",
+      "to_func": "setupTaskScheduler"
+    },
+    {
+      "from_file": "agent/src/notifications/pause-monitor.ts",
+      "from_func": "pollOnce",
+      "to_file": "agent/src/sessions.ts",
+      "to_func": "listSessions"
+    },
+    {
+      "from_file": "agent/scripts/install.ts",
+      "from_func": "runWizard",
+      "to_file": "agent/scripts/install.ts",
+      "to_func": "detectPlatform"
+    },
+    {
+      "from_file": "agent/scripts/install.ts",
+      "from_func": "setupService",
+      "to_file": "agent/scripts/install.ts",
+      "to_func": "setupLaunchd"
+    },
+    {
+      "from_file": "app/hosts/[id]/index.tsx",
+      "from_func": "HostDetailScreen",
+      "to_file": "app/hosts/[id]/index.tsx",
+      "to_func": "isContainerRunning"
+    },
+    {
+      "from_file": "agent/src/http/routes/service.ts",
+      "from_func": "getLaunchdStatus",
+      "to_file": "agent/src/http/routes/service.ts",
+      "to_func": "exec"
+    },
+    {
+      "from_file": "agent/src/codex.ts",
+      "from_func": "getCodexTokenUsage",
+      "to_file": "agent/src/codex.ts",
+      "to_func": "cachedKey"
+    },
+    {
+      "from_file": "agent/src/copilot-oauth.ts",
+      "from_func": "completeDeviceFlow",
+      "to_file": "agent/src/copilot-oauth.ts",
+      "to_func": "pollForToken"
+    },
+    {
+      "from_file": "agent/src/notifications/reset-monitor.ts",
+      "from_func": "detectProviderResets",
+      "to_file": "agent/src/notifications/reset-monitor.ts",
+      "to_func": "detectWindowReset"
+    },
+    {
+      "from_file": "agent/src/http/routes/ai-sessions.ts",
+      "from_func": "registerAiSessionRoutes",
+      "to_file": "agent/src/http/routes/ai-sessions.ts",
+      "to_func": "getSessionDetail"
+    },
+    {
+      "from_file": "agent/scripts/update.ts",
+      "from_func": "exec",
+      "to_file": "agent/scripts/update.ts",
+      "to_func": "execFileAsync"
+    },
+    {
+      "from_file": "agent/src/docker.ts",
+      "from_func": "runDockerJson",
+      "to_file": "agent/src/docker.ts",
+      "to_func": "execFileAsync"
+    },
+    {
+      "from_file": "lib/projects-store.tsx",
+      "from_func": "load",
+      "to_file": "lib/projects-store.tsx",
+      "to_func": "loadProjects"
+    },
+    {
+      "from_file": "agent/src/notifications/reset-monitor.ts",
+      "from_func": "detectWindowReset",
+      "to_file": "agent/src/notifications/reset-monitor.ts",
+      "to_func": "makeKey"
+    },
+    {
+      "from_file": "agent/src/notifications/registry.ts",
+      "from_func": "upsertNotificationDevice",
+      "to_file": "agent/src/notifications/registry.ts",
+      "to_func": "saveRegistry"
+    },
+    {
+      "from_file": "agent/src/http/app.ts",
+      "from_func": "buildApp",
+      "to_file": "agent/src/http/routes/docker.ts",
+      "to_func": "registerDockerRoutes"
+    },
+    {
+      "from_file": "agent/src/claude.ts",
+      "from_func": "getClaudeOAuthStatus",
+      "to_file": "agent/src/claude.ts",
+      "to_func": "makeClaudeRateWindow"
+    },
+    {
+      "from_file": "agent/scripts/update.ts",
+      "from_func": "restartManual",
+      "to_file": "agent/scripts/update.ts",
+      "to_func": "log"
+    },
+    {
+      "from_file": "app/session/[hostId]/[name]/terminal.tsx",
+      "from_func": "openCamera",
+      "to_file": "app/session/[hostId]/[name]/terminal.tsx",
+      "to_func": "takePhoto"
+    },
+    {
+      "from_file": "agent/scripts/install.ts",
+      "from_func": "main",
+      "to_file": "agent/scripts/install.ts",
+      "to_func": "createEnvFile"
+    },
+    {
+      "from_file": "agent/src/claude.ts",
+      "from_func": "getClaudeTokenUsage",
+      "to_file": "agent/src/claude.ts",
+      "to_func": "listClaudeFiles"
+    },
+    {
+      "from_file": "agent/src/http/routes/files.ts",
+      "from_func": "registerFileRoutes",
+      "to_file": "agent/src/http/routes/files.ts",
+      "to_func": "normalizeExtension"
+    },
+    {
+      "from_file": "agent/src/http/routes/files.ts",
+      "from_func": "registerFileRoutes",
+      "to_file": "agent/src/http/routes/files.ts",
+      "to_func": "sanitizeFilename"
+    },
+    {
+      "from_file": "agent/scripts/update.ts",
+      "from_func": "restartManual",
+      "to_file": "agent/scripts/update.ts",
+      "to_func": "sleep"
+    },
+    {
+      "from_file": "agent/src/pty-runner.ts",
+      "from_func": "runPtyCommand",
+      "to_file": "agent/src/pty-runner.ts",
+      "to_func": "finish"
+    },
+    {
+      "from_file": "agent/src/claude.ts",
+      "from_func": "extractResetAfterLabel",
+      "to_file": "agent/src/claude.ts",
+      "to_func": "resetFromLine"
+    },
+    {
+      "from_file": "agent/src/docker.ts",
+      "from_func": "buildDockerSnapshot",
+      "to_file": "agent/src/docker.ts",
+      "to_func": "parseMemoryUsage"
+    },
+    {
+      "from_file": "agent/src/binaries.ts",
+      "from_func": "resolveBinary",
+      "to_file": "agent/src/binaries.ts",
+      "to_func": "execFileAsync"
+    },
+    {
+      "from_file": "lib/ansi.ts",
+      "from_func": "parseAnsi",
+      "to_file": "lib/ansi.ts",
+      "to_func": "xtermColor"
+    },
+    {
+      "from_file": "agent/src/claude.ts",
+      "from_func": "cleanupClaudeListeners",
+      "to_file": "agent/src/claude.ts",
+      "to_func": "cleanup"
+    },
+    {
+      "from_file": "agent/src/usage.ts",
+      "from_func": "getUsageSnapshot",
+      "to_file": "agent/src/usage.ts",
+      "to_func": "startUsageRefresh"
+    },
+    {
+      "from_file": "agent/src/agents.ts",
+      "from_func": "detectAgentState",
+      "to_file": "agent/src/agents.ts",
+      "to_func": "stablePreviewHash"
+    },
+    {
+      "from_file": "lib/live.tsx",
+      "from_func": "useHostsLive",
+      "to_file": "lib/live.tsx",
+      "to_func": "refreshHost"
+    },
+    {
+      "from_file": "agent/src/agents.ts",
+      "from_func": "stablePreviewHash",
+      "to_file": "agent/src/utils.ts",
+      "to_func": "stripAnsi"
+    },
+    {
+      "from_file": "lib/projects-store.tsx",
+      "from_func": "ProjectsProvider",
+      "to_file": "lib/projects-store.tsx",
+      "to_func": "persistRecentLaunches"
+    },
+    {
+      "from_file": "agent/src/http/routes/docker.ts",
+      "from_func": "registerDockerRoutes",
+      "to_file": "agent/src/docker.ts",
+      "to_func": "runDockerContainerAction"
+    },
+    {
+      "from_file": "app/session/[hostId]/[name]/index.tsx",
+      "from_func": "SessionDetailScreen",
+      "to_file": "lib/api.ts",
+      "to_func": "killSession"
+    },
+    {
+      "from_file": "lib/live-activity.ts",
+      "from_func": "updateTaskLiveActivity",
+      "to_file": "lib/live-activity.ts",
+      "to_func": "getModule"
+    },
+    {
+      "from_file": "agent/src/ports.ts",
+      "from_func": "getCommandsForPids",
+      "to_file": "agent/src/ports.ts",
+      "to_func": "extractFriendlyCommand"
+    },
+    {
+      "from_file": "agent/src/http/ws.ts",
+      "from_func": "sendOrQueue",
+      "to_file": "agent/src/http/ws.ts",
+      "to_func": "maybePause"
+    },
+    {
+      "from_file": "agent/src/http/routes/cli-assets.ts",
+      "from_func": "upsertFlatFileAsset",
+      "to_file": "agent/src/http/routes/cli-assets.ts",
+      "to_func": "resolveAssetDir"
+    },
+    {
+      "from_file": "agent/src/sessions.ts",
+      "from_func": "getPaneTitle",
+      "to_file": "agent/src/tmux.ts",
+      "to_func": "runTmux"
+    },
+    {
+      "from_file": "agent/src/http/routes/sessions.ts",
+      "from_func": "registerSessionRoutes",
+      "to_file": "agent/src/http/sessions.ts",
+      "to_func": "fetchSessions"
+    },
+    {
+      "from_file": "lib/api.ts",
+      "from_func": "getCopilotAuthStatus",
+      "to_file": "lib/api.ts",
+      "to_func": "request"
+    },
+    {
+      "from_file": "agent/src/http/ws.ts",
+      "from_func": "attachPtyBridge",
+      "to_file": "agent/src/http/ws.ts",
+      "to_func": "flushQueue"
+    },
+    {
+      "from_file": "agent/src/http/routes/cli-assets.ts",
+      "from_func": "deleteMcpAsset",
+      "to_file": "agent/src/http/routes/cli-assets.ts",
+      "to_func": "extractMcpServers"
+    },
+    {
+      "from_file": "agent/src/http/routes/core.ts",
+      "from_func": "registerCoreRoutes",
+      "to_file": "agent/src/diagnostics.ts",
+      "to_func": "getEventLoopLagSnapshot"
+    },
+    {
+      "from_file": "agent/src/http/ws.ts",
+      "from_func": "flushQueue",
+      "to_file": "agent/src/http/ws.ts",
+      "to_func": "maybeResume"
+    },
+    {
+      "from_file": "lib/snippets-store.tsx",
+      "from_func": "SnippetsProvider",
+      "to_file": "lib/snippets-store.tsx",
+      "to_func": "saveSnippets"
+    },
+    {
+      "from_file": "lib/storage.ts",
+      "from_func": "loadPreferences",
+      "to_file": "lib/storage.ts",
+      "to_func": "normalizePreferences"
+    },
+    {
+      "from_file": "agent/src/http/routes/cli-assets.ts",
+      "from_func": "registerCliAssetRoutes",
+      "to_file": "agent/src/http/routes/cli-assets.ts",
+      "to_func": "upsertFlatFileAsset"
+    },
+    {
+      "from_file": "lib/live.tsx",
+      "from_func": "useHostsLive",
+      "to_file": "lib/live.tsx",
+      "to_func": "buildOptionsKey"
+    },
+    {
+      "from_file": "lib/api.ts",
+      "from_func": "probePing",
+      "to_file": "lib/api.ts",
+      "to_func": "normalizeBaseUrl"
+    },
+    {
+      "from_file": "agent/src/http/routes/service.ts",
+      "from_func": "getTaskSchedulerStatus",
+      "to_file": "agent/src/http/routes/service.ts",
+      "to_func": "exec"
+    },
+    {
+      "from_file": "agent/scripts/install.ts",
+      "from_func": "checkPrerequisites",
+      "to_file": "agent/scripts/install.ts",
+      "to_func": "detectPlatform"
+    },
+    {
+      "from_file": "agent/src/server.ts",
+      "from_func": "startServer",
+      "to_file": "agent/src/http/ws.ts",
+      "to_func": "attachWebSocketServers"
+    },
+    {
+      "from_file": "lib/task-live-updates.ts",
+      "from_func": "useTaskLiveUpdates",
+      "to_file": "lib/ongoing-notifications.ts",
+      "to_func": "updateOngoingNotification"
+    },
+    {
+      "from_file": "agent/src/claude.ts",
+      "from_func": "runClaudeUsageCapture",
+      "to_file": "agent/src/claude.ts",
+      "to_func": "ensureClaudeProbeDir"
+    },
+    {
+      "from_file": "agent/src/claude.ts",
+      "from_func": "getClaudeOAuthStatus",
+      "to_file": "agent/src/claude.ts",
+      "to_func": "fetchClaudeOAuthUsage"
+    },
+    {
+      "from_file": "agent/src/agents.ts",
+      "from_func": "getSessionInsights",
+      "to_file": "agent/src/git.ts",
+      "to_func": "getGitStatus"
+    },
+    {
+      "from_file": "agent/src/http/routes/cli-assets.ts",
+      "from_func": "registerCliAssetRoutes",
+      "to_file": "agent/src/http/errors.ts",
+      "to_func": "jsonError"
+    },
+    {
+      "from_file": "agent/src/agents.ts",
+      "from_func": "getSessionInsights",
+      "to_file": "agent/src/usage.ts",
+      "to_func": "getUsageSnapshot"
+    },
+    {
+      "from_file": "agent/src/copilot-oauth.ts",
+      "from_func": "requestDeviceCode",
+      "to_file": "agent/src/utils.ts",
+      "to_func": "formatOAuthError"
+    },
+    {
+      "from_file": "agent/src/http/routes/service.ts",
+      "from_func": "getServiceStatus",
+      "to_file": "agent/src/http/routes/service.ts",
+      "to_func": "resolveInstallDir"
+    },
+    {
+      "from_file": "agent/scripts/update.ts",
+      "from_func": "update",
+      "to_file": "agent/scripts/update.ts",
+      "to_func": "logError"
+    },
+    {
+      "from_file": "agent/scripts/update.ts",
+      "from_func": "restartTaskScheduler",
+      "to_file": "agent/scripts/update.ts",
+      "to_func": "log"
+    },
+    {
+      "from_file": "lib/ongoing-notifications.ts",
+      "from_func": "updateOngoingNotification",
+      "to_file": "lib/ongoing-notifications.ts",
+      "to_func": "ensureChannel"
+    },
+    {
+      "from_file": "lib/store.tsx",
+      "from_func": "StoreProvider",
+      "to_file": "lib/storage.ts",
+      "to_func": "loadPreferences"
+    },
+    {
+      "from_file": "agent/src/http/ws.ts",
+      "from_func": "attachWebSocketServers",
+      "to_file": "agent/src/tmux.ts",
+      "to_func": "runTmux"
+    },
+    {
+      "from_file": "lib/api.ts",
+      "from_func": "uploadImage",
+      "to_file": "lib/api.ts",
+      "to_func": "request"
+    },
+    {
+      "from_file": "agent/src/http/routes/ai-sessions.ts",
+      "from_func": "getAllSessions",
+      "to_file": "agent/src/http/routes/ai-sessions.ts",
+      "to_func": "parseClaudeSessions"
+    },
+    {
+      "from_file": "lib/api.ts",
+      "from_func": "probeHealth",
+      "to_file": "lib/api.ts",
+      "to_func": "buildHeaders"
+    },
+    {
+      "from_file": "agent/src/http/ws.ts",
+      "from_func": "attachWebSocketServers",
+      "to_file": "agent/src/http/ws.ts",
+      "to_func": "sendSnapshot"
+    },
+    {
+      "from_file": "agent/src/ports.ts",
+      "from_func": "getConnectionCounts",
+      "to_file": "agent/src/ports.ts",
+      "to_func": "execFileAsync"
+    },
+    {
+      "from_file": "agent/src/http/routes/copilot.ts",
+      "from_func": "registerCopilotRoutes",
+      "to_file": "agent/src/copilot-oauth.ts",
+      "to_func": "pollForToken"
+    },
+    {
+      "from_file": "agent/src/http/routes/service.ts",
+      "from_func": "getServiceLogs",
+      "to_file": "agent/src/http/routes/service.ts",
+      "to_func": "getSystemdLogs"
+    },
+    {
+      "from_file": "components/TerminalWebView.tsx",
+      "from_func": "TerminalWebView",
+      "to_file": "components/TerminalWebView.tsx",
+      "to_func": "handleDimensionRequest"
+    },
+    {
+      "from_file": "agent/src/usage.ts",
+      "from_func": "startUsageRefresh",
+      "to_file": "agent/src/usage.ts",
+      "to_func": "buildUsageSnapshot"
+    },
+    {
+      "from_file": "agent/src/http/routes/service.ts",
+      "from_func": "exec",
+      "to_file": "agent/src/http/routes/service.ts",
+      "to_func": "execFileAsync"
+    },
+    {
+      "from_file": "agent/src/http/app.ts",
+      "from_func": "buildApp",
+      "to_file": "agent/src/http/routes/ports.ts",
+      "to_func": "registerPortRoutes"
+    },
+    {
+      "from_file": "agent/src/http/app.ts",
+      "from_func": "buildApp",
+      "to_file": "agent/src/http/routes/core.ts",
+      "to_func": "registerCoreRoutes"
+    },
+    {
+      "from_file": "agent/src/http/routes/cli-assets.ts",
+      "from_func": "deleteFlatFileAsset",
+      "to_file": "agent/src/http/routes/cli-assets.ts",
+      "to_func": "resolveAssetDir"
+    },
+    {
+      "from_file": "agent/src/copilot-oauth.ts",
+      "from_func": "pollOnce",
+      "to_file": "agent/src/utils.ts",
+      "to_func": "formatOAuthError"
+    },
+    {
+      "from_file": "lib/api.ts",
+      "from_func": "getServiceStatus",
+      "to_file": "lib/api.ts",
+      "to_func": "request"
+    },
+    {
+      "from_file": "agent/src/usage.ts",
+      "from_func": "buildUsageSnapshot",
+      "to_file": "agent/src/copilot.ts",
+      "to_func": "getCopilotStatus"
+    },
+    {
+      "from_file": "agent/scripts/update.ts",
+      "from_func": "update",
+      "to_file": "agent/scripts/update.ts",
+      "to_func": "pullChanges"
+    },
+    {
+      "from_file": "agent/src/claude.ts",
+      "from_func": "runClaudeUsageCapture",
+      "to_file": "agent/src/claude.ts",
+      "to_func": "watchClaudeOutput"
+    },
+    {
+      "from_file": "agent/scripts/install.ts",
+      "from_func": "setupService",
+      "to_file": "agent/scripts/install.ts",
+      "to_func": "setupOpenRC"
+    },
+    {
+      "from_file": "lib/store.tsx",
+      "from_func": "StoreProvider",
+      "to_file": "lib/store.tsx",
+      "to_func": "persistHosts"
+    },
+    {
+      "from_file": "agent/src/usage.ts",
+      "from_func": "ensureTokenRefresh",
+      "to_file": "agent/src/codex.ts",
+      "to_func": "getCodexTokenUsage"
+    },
+    {
+      "from_file": "agent/src/http/sessions.ts",
+      "from_func": "fetchSessions",
+      "to_file": "agent/src/agents.ts",
+      "to_func": "getSessionInsights"
+    },
+    {
+      "from_file": "agent/src/http/app.ts",
+      "from_func": "buildApp",
+      "to_file": "agent/src/http/routes/ai-sessions.ts",
+      "to_func": "registerAiSessionRoutes"
+    },
+    {
+      "from_file": "agent/src/http/routes/service.ts",
+      "from_func": "getServiceStatus",
+      "to_file": "agent/src/http/routes/service.ts",
+      "to_func": "getTaskSchedulerStatus"
+    },
+    {
+      "from_file": "lib/projects-store.tsx",
+      "from_func": "load",
+      "to_file": "lib/projects-store.tsx",
+      "to_func": "loadRecentLaunches"
+    },
+    {
+      "from_file": "agent/src/http/routes/cli-assets.ts",
+      "from_func": "resolveFirstExisting",
+      "to_file": "agent/src/http/routes/cli-assets.ts",
+      "to_func": "toAbsolutePath"
+    },
+    {
+      "from_file": "agent/scripts/update.ts",
+      "from_func": "restartTaskScheduler",
+      "to_file": "agent/scripts/update.ts",
+      "to_func": "restartManual"
+    },
+    {
+      "from_file": "lib/api.ts",
+      "from_func": "restartService",
+      "to_file": "lib/api.ts",
+      "to_func": "request"
+    },
+    {
+      "from_file": "agent/scripts/install.ts",
+      "from_func": "main",
+      "to_file": "agent/scripts/install.ts",
+      "to_func": "cloneOrUpdateRepo"
+    },
+    {
+      "from_file": "agent/src/http/routes/service.ts",
+      "from_func": "getOpenRCLogs",
+      "to_file": "agent/src/http/routes/service.ts",
+      "to_func": "exec"
+    },
+    {
+      "from_file": "lib/terminal-html.ts",
+      "from_func": "buildTerminalHtml",
+      "to_file": "lib/terminal-html.ts",
+      "to_func": "buildConfig"
+    },
+    {
+      "from_file": "lib/discovery.ts",
+      "from_func": "scanForAgents",
+      "to_file": "lib/discovery.ts",
+      "to_func": "buildExistingHostSet"
+    },
+    {
+      "from_file": "app/hosts/[id]/docker/[containerId]/terminal.tsx",
+      "from_func": "DockerTerminalScreen",
+      "to_file": "app/hosts/[id]/docker/[containerId]/terminal.tsx",
+      "to_func": "buildDockerWsUrl"
+    },
+    {
+      "from_file": "agent/src/notifications/reset-monitor.ts",
+      "from_func": "pollOnce",
+      "to_file": "agent/src/notifications/reset-monitor.ts",
+      "to_func": "detectResets"
+    },
+    {
+      "from_file": "components/PortGroup.tsx",
+      "from_func": "PortGroup",
+      "to_file": "components/PortGroup.tsx",
+      "to_func": "createStyles"
+    },
+    {
+      "from_file": "agent/src/http/routes/sessions.ts",
+      "from_func": "registerSessionRoutes",
+      "to_file": "agent/src/tmux.ts",
+      "to_func": "requireName"
+    },
+    {
+      "from_file": "app/hosts/[id]/index.tsx",
+      "from_func": "HostDetailScreen",
+      "to_file": "lib/api.ts",
+      "to_func": "restartService"
+    },
+    {
+      "from_file": "agent/src/http/routes/ai-sessions.ts",
+      "from_func": "getSessionDetail",
+      "to_file": "agent/src/http/routes/ai-sessions.ts",
+      "to_func": "safeReadDir"
+    },
+    {
+      "from_file": "app/session/[hostId]/[name]/terminal.tsx",
+      "from_func": "SessionTerminalScreen",
+      "to_file": "app/session/[hostId]/[name]/terminal.tsx",
+      "to_func": "openCamera"
+    },
+    {
+      "from_file": "lib/snippets-store.tsx",
+      "from_func": "load",
+      "to_file": "lib/snippets-store.tsx",
+      "to_func": "loadSnippets"
+    },
+    {
+      "from_file": "agent/src/tmux.ts",
+      "from_func": "getCursorInfo",
+      "to_file": "agent/src/tmux.ts",
+      "to_func": "runTmux"
+    },
+    {
+      "from_file": "lib/api.ts",
+      "from_func": "fetchDirectoryListing",
+      "to_file": "lib/api.ts",
+      "to_func": "request"
+    },
+    {
+      "from_file": "app/hosts/[id]/index.tsx",
+      "from_func": "HostDetailScreen",
+      "to_file": "app/hosts/[id]/index.tsx",
+      "to_func": "fetchServiceStatus"
+    },
+    {
+      "from_file": "app/session/[hostId]/[name]/terminal.tsx",
+      "from_func": "SessionTerminalScreen",
+      "to_file": "app/session/[hostId]/[name]/terminal.tsx",
+      "to_func": "updateCurrentSession"
+    },
+    {
+      "from_file": "agent/scripts/update.ts",
+      "from_func": "installDependencies",
+      "to_file": "agent/scripts/update.ts",
+      "to_func": "log"
+    },
+    {
+      "from_file": "agent/scripts/update.ts",
+      "from_func": "update",
+      "to_file": "agent/scripts/update.ts",
+      "to_func": "getChangedFiles"
+    },
+    {
+      "from_file": "lib/notifications.ts",
+      "from_func": "registerNotificationsForHostsWithResult",
+      "to_file": "lib/notifications.ts",
+      "to_func": "setupNotifications"
+    },
+    {
+      "from_file": "components/SectionHeader.tsx",
+      "from_func": "SectionHeader",
+      "to_file": "components/SectionHeader.tsx",
+      "to_func": "createStyles"
+    },
+    {
+      "from_file": "agent/scripts/update.ts",
+      "from_func": "restartLaunchd",
+      "to_file": "agent/scripts/update.ts",
+      "to_func": "log"
+    },
+    {
+      "from_file": "lib/snippets-store.tsx",
+      "from_func": "SnippetsProvider",
+      "to_file": "lib/snippets-store.tsx",
+      "to_func": "load"
+    },
+    {
+      "from_file": "agent/src/http/live.ts",
+      "from_func": "buildLiveSnapshot",
+      "to_file": "agent/src/host.ts",
+      "to_func": "getHostInfo"
+    },
+    {
+      "from_file": "lib/store.tsx",
+      "from_func": "StoreProvider",
+      "to_file": "lib/defaults.ts",
+      "to_func": "defaultPreferences"
+    },
+    {
+      "from_file": "app/hosts/[id]/docker/[containerId]/logs.tsx",
+      "from_func": "DockerLogsScreen",
+      "to_file": "app/hosts/[id]/docker/[containerId]/logs.tsx",
+      "to_func": "buildLogsWsUrl"
+    },
+    {
+      "from_file": "app/session/[hostId]/[name]/index.tsx",
+      "from_func": "SessionDetailScreen",
+      "to_file": "lib/api.ts",
+      "to_func": "renameSession"
+    },
+    {
+      "from_file": "agent/src/http/routes/ports.ts",
+      "from_func": "registerPortRoutes",
+      "to_file": "agent/src/http/errors.ts",
+      "to_func": "jsonError"
+    },
+    {
+      "from_file": "agent/scripts/update.ts",
+      "from_func": "restartSystemdUser",
+      "to_file": "agent/scripts/update.ts",
+      "to_func": "log"
+    },
+    {
+      "from_file": "agent/src/http/routes/cli-assets.ts",
+      "from_func": "registerCliAssetRoutes",
+      "to_file": "agent/src/http/routes/cli-assets.ts",
+      "to_func": "upsertSkillAsset"
+    },
+    {
+      "from_file": "lib/docker-hooks.ts",
+      "from_func": "useAllDocker",
+      "to_file": "lib/live.tsx",
+      "to_func": "useHostsLive"
+    },
+    {
+      "from_file": "agent/scripts/update.ts",
+      "from_func": "restoreStash",
+      "to_file": "agent/scripts/update.ts",
+      "to_func": "exec"
+    },
+    {
+      "from_file": "agent/src/usage.ts",
+      "from_func": "ensureTokenRefresh",
+      "to_file": "agent/src/claude.ts",
+      "to_func": "getClaudeTokenUsage"
+    },
+    {
+      "from_file": "agent/src/codex.ts",
+      "from_func": "getCodexStatusRPC",
+      "to_file": "agent/src/codex.ts",
+      "to_func": "send"
+    },
+    {
+      "from_file": "agent/src/docker.ts",
+      "from_func": "runDockerJson",
+      "to_file": "agent/src/docker.ts",
+      "to_func": "parseJsonLines"
+    },
+    {
+      "from_file": "agent/scripts/install.ts",
+      "from_func": "setupSystemd",
+      "to_file": "agent/scripts/install.ts",
+      "to_func": "getCommandPath"
+    },
+    {
+      "from_file": "agent/src/http/routes/service.ts",
+      "from_func": "getSystemdLogs",
+      "to_file": "agent/src/http/routes/service.ts",
+      "to_func": "exec"
+    },
+    {
+      "from_file": "agent/src/http/routes/sessions.ts",
+      "from_func": "registerSessionRoutes",
+      "to_file": "agent/src/tmux.ts",
+      "to_func": "sessionTarget"
+    },
+    {
+      "from_file": "agent/src/http/routes/update.ts",
+      "from_func": "registerUpdateRoutes",
+      "to_file": "agent/src/http/routes/update.ts",
+      "to_func": "resolveInstallDir"
+    },
+    {
+      "from_file": "agent/scripts/install.ts",
+      "from_func": "checkPrerequisites",
+      "to_file": "agent/scripts/install.ts",
+      "to_func": "commandExists"
+    },
+    {
+      "from_file": "agent/src/agents.ts",
+      "from_func": "getSessionInsights",
+      "to_file": "agent/src/agents.ts",
+      "to_func": "getSessionAgentInfo"
+    },
+    {
+      "from_file": "agent/src/http/sessions.ts",
+      "from_func": "fetchSessions",
+      "to_file": "agent/src/tmux.ts",
+      "to_func": "capturePane"
+    },
+    {
+      "from_file": "app/hosts/[id]/index.tsx",
+      "from_func": "HostDetailScreen",
+      "to_file": "lib/api.ts",
+      "to_func": "getServiceStatus"
+    },
+    {
+      "from_file": "agent/src/claude.ts",
+      "from_func": "getClaudeStatus",
+      "to_file": "agent/src/claude.ts",
+      "to_func": "extractPercentAfterLabel"
+    },
+    {
+      "from_file": "lib/ansi.ts",
+      "from_func": "xtermColor",
+      "to_file": "lib/ansi.ts",
+      "to_func": "rgbToHex"
+    },
+    {
+      "from_file": "agent/src/http/routes/sessions.ts",
+      "from_func": "registerSessionRoutes",
+      "to_file": "agent/src/agents.ts",
+      "to_func": "getSessionInsights"
+    },
+    {
+      "from_file": "lib/api.ts",
+      "from_func": "getSessionInsights",
+      "to_file": "lib/api.ts",
+      "to_func": "request"
+    },
+    {
+      "from_file": "agent/src/notifications/registry.ts",
+      "from_func": "listNotificationDevices",
+      "to_file": "agent/src/notifications/registry.ts",
+      "to_func": "loadRegistry"
+    },
+    {
+      "from_file": "agent/src/http/routes/notifications.ts",
+      "from_func": "registerNotificationRoutes",
+      "to_file": "agent/src/notifications/registry.ts",
+      "to_func": "removeNotificationDevice"
+    },
+    {
+      "from_file": "agent/src/http/routes/ai-sessions.ts",
+      "from_func": "parseCodexSessions",
+      "to_file": "agent/src/http/routes/ai-sessions.ts",
+      "to_func": "safeReadDir"
+    },
+    {
+      "from_file": "lib/notifications.ts",
+      "from_func": "sendTestNotification",
+      "to_file": "lib/notifications.ts",
+      "to_func": "ensureNotificationHandler"
+    },
+    {
+      "from_file": "agent/src/tmux.ts",
+      "from_func": "capturePane",
+      "to_file": "agent/src/tmux.ts",
+      "to_func": "runTmux"
+    },
+    {
+      "from_file": "lib/discovery.ts",
+      "from_func": "scanForAgents",
+      "to_file": "lib/discovery.ts",
+      "to_func": "deriveTargets"
+    },
+    {
+      "from_file": "lib/notifications.ts",
+      "from_func": "registerNotificationsForHosts",
+      "to_file": "lib/notifications.ts",
+      "to_func": "registerNotificationsForHostsWithResult"
+    },
+    {
+      "from_file": "agent/src/http/routes/ai-sessions.ts",
+      "from_func": "parseClaudeSessions",
+      "to_file": "agent/src/http/routes/ai-sessions.ts",
+      "to_func": "safeReadFile"
+    },
+    {
+      "from_file": "lib/store.tsx",
+      "from_func": "StoreProvider",
+      "to_file": "lib/defaults.ts",
+      "to_func": "pickHostAccent"
+    },
+    {
+      "from_file": "agent/scripts/update.ts",
+      "from_func": "update",
+      "to_file": "agent/scripts/update.ts",
+      "to_func": "detectInitSystem"
+    },
+    {
+      "from_file": "agent/src/notifications/reset-monitor.ts",
+      "from_func": "detectResets",
+      "to_file": "agent/src/usage.ts",
+      "to_func": "getUsageSnapshot"
+    },
+    {
+      "from_file": "app/hosts/[id]/docker/[containerId]/logs.tsx",
+      "from_func": "DockerLogsScreen",
+      "to_file": "app/hosts/[id]/docker/[containerId]/logs.tsx",
+      "to_func": "clearLogs"
+    },
+    {
+      "from_file": "agent/src/http/routes/cli-assets.ts",
+      "from_func": "upsertFlatFileAsset",
+      "to_file": "agent/src/http/routes/cli-assets.ts",
+      "to_func": "ensureExtension"
+    },
+    {
+      "from_file": "agent/src/http/app.ts",
+      "from_func": "buildApp",
+      "to_file": "agent/src/http/routes/service.ts",
+      "to_func": "registerServiceRoutes"
+    },
+    {
+      "from_file": "agent/scripts/update.ts",
+      "from_func": "restartLaunchd",
+      "to_file": "agent/scripts/update.ts",
+      "to_func": "restartManual"
+    },
+    {
+      "from_file": "components/TerminalWebView.tsx",
+      "from_func": "TerminalWebView",
+      "to_file": "components/TerminalWebView.tsx",
+      "to_func": "triggerDimensionRequest"
+    },
+    {
+      "from_file": "agent/scripts/update.ts",
+      "from_func": "stashChanges",
+      "to_file": "agent/scripts/update.ts",
+      "to_func": "hasLocalChanges"
+    },
+    {
+      "from_file": "lib/api.ts",
+      "from_func": "getUsage",
+      "to_file": "lib/api.ts",
+      "to_func": "request"
+    },
+    {
+      "from_file": "agent/src/agents.ts",
+      "from_func": "hasActiveProcess",
+      "to_file": "agent/src/agents.ts",
+      "to_func": "getChildCommands"
+    },
+    {
+      "from_file": "lib/api.ts",
+      "from_func": "getHealth",
+      "to_file": "lib/api.ts",
+      "to_func": "request"
+    },
+    {
+      "from_file": "lib/snippets-store.tsx",
+      "from_func": "SnippetsProvider",
+      "to_file": "lib/snippets-store.tsx",
+      "to_func": "persistSnippets"
+    },
+    {
+      "from_file": "agent/src/http/routes/ai-sessions.ts",
+      "from_func": "parseCodexSessions",
+      "to_file": "agent/src/http/routes/ai-sessions.ts",
+      "to_func": "fileExists"
+    },
+    {
+      "from_file": "app/snippets/index.tsx",
+      "from_func": "handleSaveSnippet",
+      "to_file": "app/snippets/index.tsx",
+      "to_func": "resetForm"
+    },
+    {
+      "from_file": "agent/src/usage.ts",
+      "from_func": "buildUsageSnapshot",
+      "to_file": "agent/src/cache.ts",
+      "to_func": "shouldRefresh"
+    },
+    {
+      "from_file": "lib/task-live-updates.ts",
+      "from_func": "useTaskLiveUpdates",
+      "to_file": "lib/task-live-updates.ts",
+      "to_func": "buildSubtitle"
+    },
+    {
+      "from_file": "agent/src/claude.ts",
+      "from_func": "runClaudeUsageCapture",
+      "to_file": "agent/src/claude.ts",
+      "to_func": "sendUsage"
+    },
+    {
+      "from_file": "lib/notifications.ts",
+      "from_func": "setupNotifications",
+      "to_file": "lib/notifications.ts",
+      "to_func": "getProjectId"
+    },
+    {
+      "from_file": "lib/store.tsx",
+      "from_func": "StoreProvider",
+      "to_file": "lib/defaults.ts",
+      "to_func": "createId"
+    },
+    {
+      "from_file": "agent/src/http/routes/cli-assets.ts",
+      "from_func": "resolveMcpFile",
+      "to_file": "agent/src/http/routes/cli-assets.ts",
+      "to_func": "toAbsolutePath"
+    },
+    {
+      "from_file": "agent/src/http/routes/cli-assets.ts",
+      "from_func": "deleteSkillAsset",
+      "to_file": "agent/src/http/routes/cli-assets.ts",
+      "to_func": "sanitizeAssetName"
+    },
+    {
+      "from_file": "components/Field.tsx",
+      "from_func": "Field",
+      "to_file": "components/Field.tsx",
+      "to_func": "createStyles"
+    },
+    {
+      "from_file": "agent/src/http/app.ts",
+      "from_func": "buildApp",
+      "to_file": "agent/src/http/routes/notifications.ts",
+      "to_func": "registerNotificationRoutes"
+    },
+    {
+      "from_file": "agent/src/http/ws.ts",
+      "from_func": "handleMessage",
+      "to_file": "agent/src/http/ws.ts",
+      "to_func": "flushQueue"
+    },
+    {
+      "from_file": "agent/src/http/routes/service.ts",
+      "from_func": "getServiceStatus",
+      "to_file": "agent/src/http/routes/service.ts",
+      "to_func": "getSystemdStatus"
+    },
+    {
+      "from_file": "agent/src/codex.ts",
+      "from_func": "getCodexStatus",
+      "to_file": "agent/src/codex.ts",
+      "to_func": "getCodexStatusRPC"
+    },
+    {
+      "from_file": "agent/src/http/app.ts",
+      "from_func": "buildApp",
+      "to_file": "agent/src/http/routes/sessions.ts",
+      "to_func": "registerSessionRoutes"
+    },
+    {
+      "from_file": "agent/src/tmux.ts",
+      "from_func": "runTmux",
+      "to_file": "agent/src/tmux.ts",
+      "to_func": "execFileAsync"
+    },
+    {
+      "from_file": "agent/src/codex.ts",
+      "from_func": "getCodexStatus",
+      "to_file": "agent/src/codex.ts",
+      "to_func": "percentLeftFromLine"
+    },
+    {
+      "from_file": "agent/src/http/ws.ts",
+      "from_func": "attachPtyBridge",
+      "to_file": "agent/src/http/ws.ts",
+      "to_func": "parseClientPayload"
+    },
+    {
+      "from_file": "agent/src/http/app.ts",
+      "from_func": "buildApp",
+      "to_file": "agent/src/http/routes/copilot.ts",
+      "to_func": "registerCopilotRoutes"
+    },
+    {
+      "from_file": "components/LaunchSheet.tsx",
+      "from_func": "loadScripts",
+      "to_file": "lib/api.ts",
+      "to_func": "fetchProjectScripts"
+    },
+    {
+      "from_file": "agent/src/http/routes/notifications.ts",
+      "from_func": "registerNotificationRoutes",
+      "to_file": "agent/src/notifications/push.ts",
+      "to_func": "sendExpoPushMessages"
+    },
+    {
+      "from_file": "agent/scripts/uninstall.ts",
+      "from_func": "main",
+      "to_file": "agent/scripts/uninstall.ts",
+      "to_func": "removeInstallDir"
+    },
+    {
+      "from_file": "agent/scripts/update.ts",
+      "from_func": "update",
+      "to_file": "agent/scripts/update.ts",
+      "to_func": "restartService"
+    },
+    {
+      "from_file": "agent/src/http/routes/cli-assets.ts",
+      "from_func": "upsertMcpAsset",
+      "to_file": "agent/src/http/routes/cli-assets.ts",
+      "to_func": "tryParseJson"
+    },
+    {
+      "from_file": "agent/src/http/routes/sessions.ts",
+      "from_func": "registerSessionRoutes",
+      "to_file": "agent/src/tmux.ts",
+      "to_func": "getCursorInfo"
+    },
+    {
+      "from_file": "app/session/[hostId]/[name]/terminal.tsx",
+      "from_func": "SessionTerminalScreen",
+      "to_file": "app/session/[hostId]/[name]/terminal.tsx",
+      "to_func": "copyFromTerminal"
+    },
+    {
+      "from_file": "agent/scripts/install.ts",
+      "from_func": "startManual",
+      "to_file": "agent/scripts/install.ts",
+      "to_func": "getCommandPath"
+    },
+    {
+      "from_file": "app/hosts/new.tsx",
+      "from_func": "NewHostScreen",
+      "to_file": "app/hosts/new.tsx",
+      "to_func": "createStyles"
+    },
+    {
+      "from_file": "lib/live.tsx",
+      "from_func": "useHostLive",
+      "to_file": "lib/live.tsx",
+      "to_func": "useHostsLive"
+    },
+    {
+      "from_file": "agent/scripts/update.ts",
+      "from_func": "getChangedFiles",
+      "to_file": "agent/scripts/update.ts",
+      "to_func": "exec"
+    },
+    {
+      "from_file": "agent/src/claude.ts",
+      "from_func": "runClaudeUsageCapture",
+      "to_file": "agent/src/claude.ts",
+      "to_func": "finish"
+    },
+    {
+      "from_file": "lib/docker-hooks.ts",
+      "from_func": "useAllDocker",
+      "to_file": "lib/docker-hooks.ts",
+      "to_func": "isContainerRunning"
+    },
+    {
+      "from_file": "agent/src/ports.ts",
+      "from_func": "listPortsWithLsof",
+      "to_file": "agent/src/ports.ts",
+      "to_func": "getCommandsForPids"
+    },
+    {
+      "from_file": "agent/src/ports.ts",
+      "from_func": "listPortsWithSs",
+      "to_file": "agent/src/ports.ts",
+      "to_func": "execFileAsync"
+    },
+    {
+      "from_file": "agent/src/notifications/registry.ts",
+      "from_func": "removeNotificationDevice",
+      "to_file": "agent/src/notifications/registry.ts",
+      "to_func": "loadRegistry"
+    },
+    {
+      "from_file": "agent/scripts/update.ts",
+      "from_func": "pullChanges",
+      "to_file": "agent/scripts/update.ts",
+      "to_func": "exec"
+    },
+    {
+      "from_file": "agent/src/notifications/pause-monitor.ts",
+      "from_func": "pollOnce",
+      "to_file": "agent/src/notifications/pause-monitor.ts",
+      "to_func": "buildMessages"
+    },
+    {
+      "from_file": "app/hosts/[id]/index.tsx",
+      "from_func": "HostDetailScreen",
+      "to_file": "lib/live.tsx",
+      "to_func": "useHostLive"
+    },
+    {
+      "from_file": "app/session/[hostId]/[name]/terminal.tsx",
+      "from_func": "SessionTerminalScreen",
+      "to_file": "app/session/[hostId]/[name]/terminal.tsx",
+      "to_func": "updateKeyboardOffset"
+    },
+    {
+      "from_file": "agent/src/claude.ts",
+      "from_func": "getClaudeStatus",
+      "to_file": "agent/src/claude.ts",
+      "to_func": "extractResetAfterLabel"
+    },
+    {
+      "from_file": "agent/src/http/routes/tunnels.ts",
+      "from_func": "registerTunnelRoutes",
+      "to_file": "agent/src/tunnels.ts",
+      "to_func": "listTunnels"
+    },
+    {
+      "from_file": "lib/store.tsx",
+      "from_func": "load",
+      "to_file": "lib/storage.ts",
+      "to_func": "loadHosts"
+    },
+    {
+      "from_file": "agent/src/http/ws.ts",
+      "from_func": "attachPtyBridge",
+      "to_file": "agent/src/http/ws.ts",
+      "to_func": "cleanup"
+    },
+    {
+      "from_file": "app/session/[hostId]/[name]/terminal.tsx",
+      "from_func": "SessionTerminalScreen",
+      "to_file": "app/session/[hostId]/[name]/terminal.tsx",
+      "to_func": "openLibrary"
+    },
+    {
+      "from_file": "agent/src/notifications/reset-monitor.ts",
+      "from_func": "buildResetMessages",
+      "to_file": "agent/src/notifications/reset-monitor.ts",
+      "to_func": "formatProviderName"
+    },
+    {
+      "from_file": "agent/src/codex.ts",
+      "from_func": "getCodexTokenUsage",
+      "to_file": "agent/src/codex.ts",
+      "to_func": "inputKey"
+    },
+    {
+      "from_file": "agent/src/utils.ts",
+      "from_func": "canExecute",
+      "to_file": "agent/src/utils.ts",
+      "to_func": "execFileAsync"
+    },
+    {
+      "from_file": "agent/src/http/routes/cli-assets.ts",
+      "from_func": "deleteFlatFileAsset",
+      "to_file": "agent/src/http/routes/cli-assets.ts",
+      "to_func": "ensureExtension"
+    },
+    {
+      "from_file": "agent/scripts/update.ts",
+      "from_func": "restartOpenRC",
+      "to_file": "agent/scripts/update.ts",
+      "to_func": "log"
+    },
+    {
+      "from_file": "agent/scripts/install.ts",
+      "from_func": "main",
+      "to_file": "agent/scripts/install.ts",
+      "to_func": "detectPlatform"
+    },
+    {
+      "from_file": "agent/src/http/app.ts",
+      "from_func": "buildApp",
+      "to_file": "agent/src/http/routes/update.ts",
+      "to_func": "registerUpdateRoutes"
+    },
+    {
+      "from_file": "agent/src/agents.ts",
+      "from_func": "getSessionAgentInfo",
+      "to_file": "agent/src/agents.ts",
+      "to_func": "hasActiveProcess"
+    },
+    {
+      "from_file": "agent/src/http/routes/cli-assets.ts",
+      "from_func": "upsertSkillAsset",
+      "to_file": "agent/src/http/routes/cli-assets.ts",
+      "to_func": "resolveAssetDir"
+    },
+    {
+      "from_file": "agent/src/http/routes/service.ts",
+      "from_func": "registerServiceRoutes",
+      "to_file": "agent/src/http/routes/service.ts",
+      "to_func": "getServiceStatus"
+    },
+    {
+      "from_file": "agent/src/http/routes/cli-assets.ts",
+      "from_func": "registerCliAssetRoutes",
+      "to_file": "agent/src/http/routes/cli-assets.ts",
+      "to_func": "listMcpAssets"
+    },
+    {
+      "from_file": "app/session/[hostId]/[name]/index.tsx",
+      "from_func": "SessionDetailScreen",
+      "to_file": "lib/live.tsx",
+      "to_func": "useHostLive"
+    },
+    {
+      "from_file": "lib/api.ts",
+      "from_func": "getTunnels",
+      "to_file": "lib/api.ts",
+      "to_func": "request"
+    },
+    {
+      "from_file": "app/hosts/[id]/index.tsx",
+      "from_func": "HostDetailScreen",
+      "to_file": "lib/api.ts",
+      "to_func": "dockerContainerAction"
+    },
+    {
+      "from_file": "lib/store.tsx",
+      "from_func": "StoreProvider",
+      "to_file": "lib/storage.ts",
+      "to_func": "saveHosts"
+    },
+    {
+      "from_file": "agent/scripts/update.ts",
+      "from_func": "update",
+      "to_file": "agent/scripts/update.ts",
+      "to_func": "determineBranch"
+    },
+    {
+      "from_file": "agent/scripts/install.ts",
+      "from_func": "setupOpenRC",
+      "to_file": "agent/scripts/install.ts",
+      "to_func": "getCommandPath"
+    },
+    {
+      "from_file": "lib/live.tsx",
+      "from_func": "useHostsLive",
+      "to_file": "lib/api.ts",
+      "to_func": "probeHealth"
+    },
+    {
+      "from_file": "agent/src/copilot-oauth.ts",
+      "from_func": "pollForToken",
+      "to_file": "agent/src/copilot-oauth.ts",
+      "to_func": "pollOnce"
+    },
+    {
+      "from_file": "agent/src/notifications/pause-monitor.ts",
+      "from_func": "pollOnce",
+      "to_file": "agent/src/notifications/registry.ts",
+      "to_func": "listNotificationDevices"
+    },
+    {
+      "from_file": "agent/scripts/update.ts",
+      "from_func": "restartTaskScheduler",
+      "to_file": "agent/scripts/update.ts",
+      "to_func": "exec"
+    },
+    {
+      "from_file": "agent/src/docker.ts",
+      "from_func": "getDockerSnapshot",
+      "to_file": "agent/src/docker.ts",
+      "to_func": "toDockerError"
+    },
+    {
+      "from_file": "agent/src/agents.ts",
+      "from_func": "getSessionInsights",
+      "to_file": "agent/src/tmux.ts",
+      "to_func": "capturePane"
+    },
+    {
+      "from_file": "agent/src/http/ws.ts",
+      "from_func": "attachPtyBridge",
+      "to_file": "agent/src/http/ws.ts",
+      "to_func": "maybeResume"
+    },
+    {
+      "from_file": "agent/src/http/routes/ai-sessions.ts",
+      "from_func": "getSessionDetail",
+      "to_file": "agent/src/http/routes/ai-sessions.ts",
+      "to_func": "getAllSessions"
+    },
+    {
+      "from_file": "agent/scripts/uninstall.ts",
+      "from_func": "main",
+      "to_file": "agent/scripts/uninstall.ts",
+      "to_func": "printSuccess"
+    },
+    {
+      "from_file": "lib/api.ts",
+      "from_func": "request",
+      "to_file": "lib/api.ts",
+      "to_func": "normalizeBaseUrl"
+    },
+    {
+      "from_file": "lib/api.ts",
+      "from_func": "sendText",
+      "to_file": "lib/api.ts",
+      "to_func": "request"
+    },
+    {
+      "from_file": "agent/src/http/routes/service.ts",
+      "from_func": "registerServiceRoutes",
+      "to_file": "agent/src/http/routes/service.ts",
+      "to_func": "resolveInstallDir"
+    },
+    {
+      "from_file": "agent/src/http/routes/service.ts",
+      "from_func": "getServiceLogs",
+      "to_file": "agent/src/http/routes/service.ts",
+      "to_func": "getWindowsLogs"
+    },
+    {
+      "from_file": "agent/src/notifications/push.ts",
+      "from_func": "sendExpoPushMessages",
+      "to_file": "agent/src/notifications/push.ts",
+      "to_func": "chunkMessages"
+    },
+    {
+      "from_file": "agent/src/http/routes/ai-sessions.ts",
+      "from_func": "getSessionDetail",
+      "to_file": "agent/src/http/routes/ai-sessions.ts",
+      "to_func": "parseJsonlLines"
+    },
+    {
+      "from_file": "lib/live.tsx",
+      "from_func": "useHostsLive",
+      "to_file": "lib/live.tsx",
+      "to_func": "connectHost"
+    },
+    {
+      "from_file": "lib/notifications.ts",
+      "from_func": "sendTestNotification",
+      "to_file": "lib/notifications.ts",
+      "to_func": "ensureAndroidChannel"
+    },
+    {
+      "from_file": "agent/src/http/live.ts",
+      "from_func": "getLiveSnapshot",
+      "to_file": "agent/src/http/live.ts",
+      "to_func": "buildLiveSnapshot"
+    },
+    {
+      "from_file": "agent/src/http/routes/ai-sessions.ts",
+      "from_func": "getAllSessions",
+      "to_file": "agent/src/http/routes/ai-sessions.ts",
+      "to_func": "isCacheValid"
+    },
+    {
+      "from_file": "components/Skeleton.tsx",
+      "from_func": "useSkeletonStyles",
+      "to_file": "components/Skeleton.tsx",
+      "to_func": "createStyles"
+    },
+    {
+      "from_file": "agent/src/http/sessions.ts",
+      "from_func": "fetchSessions",
+      "to_file": "agent/src/usage.ts",
+      "to_func": "getUsageSnapshot"
+    },
+    {
+      "from_file": "agent/scripts/uninstall.ts",
+      "from_func": "stopService",
+      "to_file": "agent/scripts/uninstall.ts",
+      "to_func": "stopManual"
+    },
+    {
+      "from_file": "agent/src/server.ts",
+      "from_func": "startServer",
+      "to_file": "agent/src/http/app.ts",
+      "to_func": "buildApp"
+    },
+    {
+      "from_file": "lib/api.ts",
+      "from_func": "probePing",
+      "to_file": "lib/api.ts",
+      "to_func": "buildHeaders"
+    },
+    {
+      "from_file": "agent/src/binaries.ts",
+      "from_func": "resolveBinary",
+      "to_file": "agent/src/utils.ts",
+      "to_func": "canExecute"
+    },
+    {
+      "from_file": "agent/src/http/app.ts",
+      "from_func": "buildApp",
+      "to_file": "agent/src/http/routes/cli-assets.ts",
+      "to_func": "registerCliAssetRoutes"
+    },
+    {
+      "from_file": "lib/api.ts",
+      "from_func": "fetchProjectScripts",
+      "to_file": "lib/api.ts",
+      "to_func": "request"
+    },
+    {
+      "from_file": "lib/discovery.ts",
+      "from_func": "scanForAgents",
+      "to_file": "lib/api.ts",
+      "to_func": "probeHealth"
+    },
+    {
+      "from_file": "app/session/[hostId]/[name]/terminal.tsx",
+      "from_func": "SessionTerminalScreen",
+      "to_file": "app/session/[hostId]/[name]/terminal.tsx",
+      "to_func": "focusTerminal"
+    },
+    {
+      "from_file": "agent/src/notifications/pause-monitor.ts",
+      "from_func": "startPauseMonitor",
+      "to_file": "agent/src/notifications/pause-monitor.ts",
+      "to_func": "pollOnce"
+    },
+    {
+      "from_file": "lib/ansi.ts",
+      "from_func": "rgbToHex",
+      "to_file": "lib/ansi.ts",
+      "to_func": "clamp"
+    },
+    {
+      "from_file": "agent/scripts/update.ts",
+      "from_func": "restartService",
+      "to_file": "agent/scripts/update.ts",
+      "to_func": "restartOpenRC"
+    },
+    {
+      "from_file": "agent/src/http/routes/sessions.ts",
+      "from_func": "registerSessionRoutes",
+      "to_file": "agent/src/http/errors.ts",
+      "to_func": "jsonError"
+    },
+    {
+      "from_file": "agent/scripts/update.ts",
+      "from_func": "restartService",
+      "to_file": "agent/scripts/update.ts",
+      "to_func": "restartLaunchd"
+    },
+    {
+      "from_file": "agent/src/git.ts",
+      "from_func": "getGitStatus",
+      "to_file": "agent/src/git.ts",
+      "to_func": "execFileAsync"
+    },
+    {
+      "from_file": "agent/src/http/routes/ports.ts",
+      "from_func": "registerPortRoutes",
+      "to_file": "agent/src/ports.ts",
+      "to_func": "listPorts"
+    },
+    {
+      "from_file": "agent/scripts/uninstall.ts",
+      "from_func": "stopService",
+      "to_file": "agent/scripts/uninstall.ts",
+      "to_func": "stopOpenRC"
+    },
+    {
+      "from_file": "agent/src/claude.ts",
+      "from_func": "getClaudeOAuthStatus",
+      "to_file": "agent/src/claude.ts",
+      "to_func": "loadClaudeOAuthCredentials"
+    },
+    {
+      "from_file": "agent/scripts/update.ts",
+      "from_func": "hasLocalChanges",
+      "to_file": "agent/scripts/update.ts",
+      "to_func": "exec"
+    },
+    {
+      "from_file": "agent/src/http/routes/cli-assets.ts",
+      "from_func": "tryParseJson",
+      "to_file": "agent/src/http/routes/cli-assets.ts",
+      "to_func": "stripJsonComments"
+    },
+    {
+      "from_file": "lib/snippets-store.tsx",
+      "from_func": "SnippetsProvider",
+      "to_file": "lib/snippets-store.tsx",
+      "to_func": "buildDefaultSnippets"
+    },
+    {
+      "from_file": "lib/snippets-store.tsx",
+      "from_func": "load",
+      "to_file": "lib/snippets-store.tsx",
+      "to_func": "saveSnippets"
+    },
+    {
+      "from_file": "app/(tabs)/more.tsx",
+      "from_func": "handleCopilotDisconnect",
+      "to_file": "lib/api.ts",
+      "to_func": "logoutCopilot"
+    },
+    {
+      "from_file": "agent/src/http/live.ts",
+      "from_func": "getLiveSnapshot",
+      "to_file": "agent/src/http/live.ts",
+      "to_func": "buildCacheKey"
+    },
+    {
+      "from_file": "agent/src/http/routes/ai-sessions.ts",
+      "from_func": "parseOpenCodeSessions",
+      "to_file": "agent/src/http/routes/ai-sessions.ts",
+      "to_func": "safeReadFile"
+    },
+    {
+      "from_file": "components/LaunchSheet.tsx",
+      "from_func": "loadHostSessions",
+      "to_file": "lib/api.ts",
+      "to_func": "getAiSessions"
+    },
+    {
+      "from_file": "agent/src/http/routes/tunnels.ts",
+      "from_func": "registerTunnelRoutes",
+      "to_file": "agent/src/tunnels.ts",
+      "to_func": "createTunnel"
+    },
+    {
+      "from_file": "agent/src/http/routes/copilot.ts",
+      "from_func": "registerCopilotRoutes",
+      "to_file": "agent/src/copilot.ts",
+      "to_func": "clearToken"
+    },
+    {
+      "from_file": "lib/snippets-store.tsx",
+      "from_func": "buildDefaultSnippets",
+      "to_file": "lib/defaults.ts",
+      "to_func": "createId"
+    },
+    {
+      "from_file": "agent/src/http/routes/cli-assets.ts",
+      "from_func": "deleteSkillAsset",
+      "to_file": "agent/src/http/routes/cli-assets.ts",
+      "to_func": "resolveAssetDir"
+    },
+    {
+      "from_file": "lib/live.tsx",
+      "from_func": "useHostsLive",
+      "to_file": "lib/live.tsx",
+      "to_func": "buildEventsUrl"
+    },
+    {
+      "from_file": "agent/src/http/routes/ai-sessions.ts",
+      "from_func": "parseOpenCodeSessions",
+      "to_file": "agent/src/http/routes/ai-sessions.ts",
+      "to_func": "fileExists"
+    },
+    {
+      "from_file": "agent/scripts/install.ts",
+      "from_func": "main",
+      "to_file": "agent/scripts/install.ts",
+      "to_func": "installDependencies"
+    },
+    {
+      "from_file": "agent/src/notifications/registry.ts",
+      "from_func": "removeNotificationDevice",
+      "to_file": "agent/src/notifications/registry.ts",
+      "to_func": "saveRegistry"
+    },
+    {
+      "from_file": "lib/projects-store.tsx",
+      "from_func": "ProjectsProvider",
+      "to_file": "lib/projects-store.tsx",
+      "to_func": "persistProjects"
+    },
+    {
+      "from_file": "agent/src/usage.ts",
+      "from_func": "buildUsageSnapshot",
+      "to_file": "agent/src/cache.ts",
+      "to_func": "snapshot"
+    },
+    {
+      "from_file": "lib/api.ts",
+      "from_func": "closeTunnel",
+      "to_file": "lib/api.ts",
+      "to_func": "request"
+    },
+    {
+      "from_file": "agent/src/ports.ts",
+      "from_func": "listPortsWithLsof",
+      "to_file": "agent/src/ports.ts",
+      "to_func": "execFileAsync"
+    },
+    {
+      "from_file": "app/session/[hostId]/[name]/terminal.tsx",
+      "from_func": "SessionTerminalScreen",
+      "to_file": "app/session/[hostId]/[name]/terminal.tsx",
+      "to_func": "pickFromLibrary"
+    },
+    {
+      "from_file": "agent/src/http/routes/service.ts",
+      "from_func": "getServiceLogs",
+      "to_file": "agent/src/http/routes/service.ts",
+      "to_func": "detectInitSystem"
+    },
+    {
+      "from_file": "agent/src/http/routes/service.ts",
+      "from_func": "registerServiceRoutes",
+      "to_file": "agent/src/http/routes/service.ts",
+      "to_func": "detectPlatform"
+    },
+    {
+      "from_file": "agent/src/ports.ts",
+      "from_func": "killProcesses",
+      "to_file": "agent/src/ports.ts",
+      "to_func": "execFileAsync"
+    },
+    {
+      "from_file": "lib/store.tsx",
+      "from_func": "StoreProvider",
+      "to_file": "lib/storage.ts",
+      "to_func": "savePreferences"
+    },
+    {
+      "from_file": "agent/src/http/routes/notifications.ts",
+      "from_func": "registerNotificationRoutes",
+      "to_file": "agent/src/http/errors.ts",
+      "to_func": "jsonError"
+    },
+    {
+      "from_file": "agent/scripts/update.ts",
+      "from_func": "installDependencies",
+      "to_file": "agent/scripts/update.ts",
+      "to_func": "exec"
+    },
+    {
+      "from_file": "agent/scripts/update.ts",
+      "from_func": "restartLaunchd",
+      "to_file": "agent/scripts/update.ts",
+      "to_func": "exec"
+    },
+    {
+      "from_file": "agent/src/http/routes/files.ts",
+      "from_func": "registerFileRoutes",
+      "to_file": "agent/src/http/errors.ts",
+      "to_func": "jsonError"
+    },
+    {
+      "from_file": "agent/scripts/update.ts",
+      "from_func": "update",
+      "to_file": "agent/scripts/update.ts",
+      "to_func": "getCurrentAndRemoteCommits"
+    },
+    {
+      "from_file": "agent/src/cursor.ts",
+      "from_func": "getCursorStatus",
+      "to_file": "agent/src/cursor.ts",
+      "to_func": "fetchCursorUsage"
+    },
+    {
+      "from_file": "agent/src/http/routes/update.ts",
+      "from_func": "registerUpdateRoutes",
+      "to_file": "agent/src/http/errors.ts",
+      "to_func": "jsonError"
+    },
+    {
+      "from_file": "agent/scripts/update.ts",
+      "from_func": "restartSystemdUser",
+      "to_file": "agent/scripts/update.ts",
+      "to_func": "exec"
+    },
+    {
+      "from_file": "agent/scripts/update.ts",
+      "from_func": "stashChanges",
+      "to_file": "agent/scripts/update.ts",
+      "to_func": "log"
+    },
+    {
+      "from_file": "agent/src/pty-runner.ts",
+      "from_func": "scheduleIdle",
+      "to_file": "agent/src/pty-runner.ts",
+      "to_func": "finish"
+    },
+    {
+      "from_file": "agent/src/tunnels.ts",
+      "from_func": "createTunnel",
+      "to_file": "agent/src/tunnels.ts",
+      "to_func": "isPortInUse"
+    },
+    {
+      "from_file": "agent/src/notifications/reset-monitor.ts",
+      "from_func": "detectResets",
+      "to_file": "agent/src/notifications/reset-monitor.ts",
+      "to_func": "detectProviderResets"
+    },
+    {
+      "from_file": "lib/live.tsx",
+      "from_func": "useHostsLive",
+      "to_file": "lib/live.tsx",
+      "to_func": "updateState"
+    },
+    {
+      "from_file": "app/session/[hostId]/[name]/terminal.tsx",
+      "from_func": "SessionTerminalScreen",
+      "to_file": "lib/api.ts",
+      "to_func": "uploadImage"
+    },
+    {
+      "from_file": "lib/api.ts",
+      "from_func": "unregisterNotificationDevice",
+      "to_file": "lib/api.ts",
+      "to_func": "request"
+    },
+    {
+      "from_file": "agent/src/codex.ts",
+      "from_func": "getCodexTokenUsage",
+      "to_file": "agent/src/codex.ts",
+      "to_func": "outputKey"
+    },
+    {
+      "from_file": "lib/api.ts",
+      "from_func": "upsertCliAsset",
+      "to_file": "lib/api.ts",
+      "to_func": "request"
+    },
+    {
+      "from_file": "agent/src/notifications/reset-monitor.ts",
+      "from_func": "startResetMonitor",
+      "to_file": "agent/src/notifications/reset-monitor.ts",
+      "to_func": "pollOnce"
+    },
+    {
+      "from_file": "agent/src/codex.ts",
+      "from_func": "request",
+      "to_file": "agent/src/codex.ts",
+      "to_func": "send"
+    },
+    {
+      "from_file": "lib/live.tsx",
+      "from_func": "startErrorProbe",
+      "to_file": "lib/api.ts",
+      "to_func": "probeHealth"
+    },
+    {
+      "from_file": "agent/src/http/routes/cli-assets.ts",
+      "from_func": "registerCliAssetRoutes",
+      "to_file": "agent/src/http/routes/cli-assets.ts",
+      "to_func": "upsertMcpAsset"
+    },
+    {
+      "from_file": "agent/src/http/routes/ai-sessions.ts",
+      "from_func": "parseCodexSessions",
+      "to_file": "agent/src/http/routes/ai-sessions.ts",
+      "to_func": "safeStat"
+    },
+    {
+      "from_file": "agent/scripts/install.ts",
+      "from_func": "main",
+      "to_file": "agent/scripts/install.ts",
+      "to_func": "setupService"
+    },
+    {
+      "from_file": "agent/scripts/install.ts",
+      "from_func": "setupService",
+      "to_file": "agent/scripts/install.ts",
+      "to_func": "setupSystemd"
+    },
+    {
+      "from_file": "agent/scripts/uninstall.ts",
+      "from_func": "main",
+      "to_file": "agent/scripts/uninstall.ts",
+      "to_func": "printBanner"
+    },
+    {
+      "from_file": "agent/src/http/routes/sessions.ts",
+      "from_func": "registerSessionRoutes",
+      "to_file": "agent/src/tmux.ts",
+      "to_func": "runTmux"
+    },
+    {
+      "from_file": "lib/api.ts",
+      "from_func": "applyUpdate",
+      "to_file": "lib/api.ts",
+      "to_func": "request"
+    },
+    {
+      "from_file": "app/session/[hostId]/[name]/terminal.tsx",
+      "from_func": "SessionTerminalScreen",
+      "to_file": "lib/terminal-html.ts",
+      "to_func": "buildTerminalHtml"
+    },
+    {
+      "from_file": "agent/src/http/routes/docker.ts",
+      "from_func": "registerDockerRoutes",
+      "to_file": "agent/src/docker.ts",
+      "to_func": "getDockerSnapshot"
+    },
+    {
+      "from_file": "agent/src/codex.ts",
+      "from_func": "getCodexStatus",
+      "to_file": "agent/src/pty-runner.ts",
+      "to_func": "runPtyCommand"
+    },
+    {
+      "from_file": "agent/src/http/routes/cli-assets.ts",
+      "from_func": "resolveAssetDir",
+      "to_file": "agent/src/http/routes/cli-assets.ts",
+      "to_func": "resolveFirstExisting"
+    },
+    {
+      "from_file": "agent/src/http/routes/cli-assets.ts",
+      "from_func": "registerCliAssetRoutes",
+      "to_file": "agent/src/http/routes/cli-assets.ts",
+      "to_func": "listSkillAssets"
+    },
+    {
+      "from_file": "lib/api.ts",
+      "from_func": "pollCopilotAuth",
+      "to_file": "lib/api.ts",
+      "to_func": "request"
+    },
+    {
+      "from_file": "agent/src/http/routes/service.ts",
+      "from_func": "getWindowsLogs",
+      "to_file": "agent/src/http/routes/service.ts",
+      "to_func": "exec"
+    },
+    {
+      "from_file": "agent/src/http/routes/service.ts",
+      "from_func": "getServiceStatus",
+      "to_file": "agent/src/http/routes/service.ts",
+      "to_func": "getGitVersion"
+    },
+    {
+      "from_file": "agent/src/http/routes/cli-assets.ts",
+      "from_func": "listMcpAssets",
+      "to_file": "agent/src/http/routes/cli-assets.ts",
+      "to_func": "tryParseJson"
+    },
+    {
+      "from_file": "agent/src/claude.ts",
+      "from_func": "getClaudeTokenUsage",
+      "to_file": "agent/src/binaries.ts",
+      "to_func": "resolveClaudeRoots"
+    },
+    {
+      "from_file": "agent/src/cursor.ts",
+      "from_func": "fetchCursorUsage",
+      "to_file": "agent/src/utils.ts",
+      "to_func": "formatOAuthError"
+    },
+    {
+      "from_file": "agent/src/http/ws.ts",
+      "from_func": "handleMessage",
+      "to_file": "agent/src/http/ws.ts",
+      "to_func": "parseClientPayload"
+    },
+    {
+      "from_file": "agent/src/http/routes/cli-assets.ts",
+      "from_func": "listFlatFileAssets",
+      "to_file": "agent/src/http/routes/cli-assets.ts",
+      "to_func": "exists"
+    },
+    {
+      "from_file": "agent/src/codex.ts",
+      "from_func": "getCodexStatus",
+      "to_file": "agent/src/codex.ts",
+      "to_func": "resetFromLine"
+    },
+    {
+      "from_file": "lib/api.ts",
+      "from_func": "startCopilotAuth",
+      "to_file": "lib/api.ts",
+      "to_func": "request"
+    },
+    {
+      "from_file": "agent/src/http/routes/copilot.ts",
+      "from_func": "registerCopilotRoutes",
+      "to_file": "agent/src/copilot.ts",
+      "to_func": "getStoredToken"
+    },
+    {
+      "from_file": "lib/api.ts",
+      "from_func": "logoutCopilot",
+      "to_file": "lib/api.ts",
+      "to_func": "request"
+    },
+    {
+      "from_file": "agent/src/copilot.ts",
+      "from_func": "fetchCopilotUsage",
+      "to_file": "agent/src/utils.ts",
+      "to_func": "formatOAuthError"
+    },
+    {
+      "from_file": "agent/src/http/routes/service.ts",
+      "from_func": "getOpenRCStatus",
+      "to_file": "agent/src/http/routes/service.ts",
+      "to_func": "exec"
+    },
+    {
+      "from_file": "agent/src/http/routes/cli-assets.ts",
+      "from_func": "registerCliAssetRoutes",
+      "to_file": "agent/src/http/routes/cli-assets.ts",
+      "to_func": "deleteFlatFileAsset"
+    },
+    {
+      "from_file": "lib/task-live-updates.ts",
+      "from_func": "useTaskLiveUpdates",
+      "to_file": "lib/live-activity.ts",
+      "to_func": "updateTaskLiveActivity"
+    },
+    {
+      "from_file": "agent/src/http/ws.ts",
+      "from_func": "attachWebSocketServers",
+      "to_file": "agent/src/http/ws.ts",
+      "to_func": "enableLowLatencySocket"
+    },
+    {
+      "from_file": "lib/notifications.ts",
+      "from_func": "setupNotifications",
+      "to_file": "lib/notifications.ts",
+      "to_func": "ensureNotificationHandler"
+    },
+    {
+      "from_file": "lib/api.ts",
+      "from_func": "resizeSession",
+      "to_file": "lib/api.ts",
+      "to_func": "request"
+    },
+    {
+      "from_file": "agent/src/claude.ts",
+      "from_func": "walkDir",
+      "to_file": "agent/src/claude.ts",
+      "to_func": "walkDir"
+    },
+    {
+      "from_file": "lib/projects-store.tsx",
+      "from_func": "ProjectsProvider",
+      "to_file": "lib/projects-store.tsx",
+      "to_func": "saveProjects"
+    },
+    {
+      "from_file": "agent/scripts/update.ts",
+      "from_func": "restartService",
+      "to_file": "agent/scripts/update.ts",
+      "to_func": "restartTaskScheduler"
+    },
+    {
+      "from_file": "agent/src/http/routes/service.ts",
+      "from_func": "getServiceLogs",
+      "to_file": "agent/src/http/routes/service.ts",
+      "to_func": "getLaunchdLogs"
+    },
+    {
+      "from_file": "agent/scripts/update.ts",
+      "from_func": "getCurrentAndRemoteCommits",
+      "to_file": "agent/scripts/update.ts",
+      "to_func": "exec"
+    },
+    {
+      "from_file": "agent/src/http/routes/ai-sessions.ts",
+      "from_func": "parseClaudeSessions",
+      "to_file": "agent/src/http/routes/ai-sessions.ts",
+      "to_func": "safeReadDir"
+    },
+    {
+      "from_file": "lib/snippets-store.tsx",
+      "from_func": "SnippetsProvider",
+      "to_file": "lib/defaults.ts",
+      "to_func": "createId"
+    },
+    {
+      "from_file": "lib/projects-store.tsx",
+      "from_func": "ProjectsProvider",
+      "to_file": "lib/defaults.ts",
+      "to_func": "createId"
+    },
+    {
+      "from_file": "lib/terminal-html.ts",
+      "from_func": "buildTerminalHtml",
+      "to_file": "lib/terminal-html.ts",
+      "to_func": "getGoogleFontsLink"
+    },
+    {
+      "from_file": "agent/src/http/routes/service.ts",
+      "from_func": "registerServiceRoutes",
+      "to_file": "agent/src/http/routes/service.ts",
+      "to_func": "detectInitSystem"
+    },
+    {
+      "from_file": "agent/src/http/routes/service.ts",
+      "from_func": "getServiceStatus",
+      "to_file": "agent/src/http/routes/service.ts",
+      "to_func": "getOpenRCStatus"
+    },
+    {
+      "from_file": "app/session/[hostId]/[name]/terminal.tsx",
+      "from_func": "SessionTerminalScreen",
+      "to_file": "app/session/[hostId]/[name]/terminal.tsx",
+      "to_func": "uploadPickedImage"
+    },
+    {
+      "from_file": "lib/discovery.ts",
+      "from_func": "deriveTargets",
+      "to_file": "lib/discovery.ts",
+      "to_func": "formatIPv4"
+    },
+    {
+      "from_file": "agent/src/http/ws.ts",
+      "from_func": "attachWebSocketServers",
+      "to_file": "agent/src/http/live.ts",
+      "to_func": "parseLiveConfig"
+    },
+    {
+      "from_file": "agent/src/ports.ts",
+      "from_func": "getCommandsForPids",
+      "to_file": "agent/src/ports.ts",
+      "to_func": "execFileAsync"
+    },
+    {
+      "from_file": "agent/src/codex.ts",
+      "from_func": "getCodexStatus",
+      "to_file": "agent/src/utils.ts",
+      "to_func": "stripAnsi"
+    },
+    {
+      "from_file": "app/session/[hostId]/[name]/terminal.tsx",
+      "from_func": "openLibrary",
+      "to_file": "app/session/[hostId]/[name]/terminal.tsx",
+      "to_func": "pickFromLibrary"
+    },
+    {
+      "from_file": "agent/src/http/routes/cli-assets.ts",
+      "from_func": "upsertFlatFileAsset",
+      "to_file": "agent/src/http/routes/cli-assets.ts",
+      "to_func": "sanitizeAssetName"
+    },
+    {
+      "from_file": "agent/src/http/routes/ai-sessions.ts",
+      "from_func": "parseClaudeSessions",
+      "to_file": "agent/src/http/routes/ai-sessions.ts",
+      "to_func": "fileExists"
+    },
+    {
+      "from_file": "agent/src/claude.ts",
+      "from_func": "getClaudeStatus",
+      "to_file": "agent/src/utils.ts",
+      "to_func": "stripAnsi"
+    },
+    {
+      "from_file": "agent/src/http/routes/notifications.ts",
+      "from_func": "registerNotificationRoutes",
+      "to_file": "agent/src/notifications/registry.ts",
+      "to_func": "upsertNotificationDevice"
+    },
+    {
+      "from_file": "agent/src/http/routes/ports.ts",
+      "from_func": "registerPortRoutes",
+      "to_file": "agent/src/ports.ts",
+      "to_func": "killProcesses"
+    },
+    {
+      "from_file": "agent/src/docker.ts",
+      "from_func": "buildDockerSnapshot",
+      "to_file": "agent/src/docker.ts",
+      "to_func": "parseLabels"
+    },
+    {
+      "from_file": "agent/scripts/update.ts",
+      "from_func": "restartService",
+      "to_file": "agent/scripts/update.ts",
+      "to_func": "restartSystemdUser"
+    },
+    {
+      "from_file": "components/Skeleton.tsx",
+      "from_func": "Skeleton",
+      "to_file": "components/Skeleton.tsx",
+      "to_func": "withAlpha"
+    },
+    {
+      "from_file": "agent/src/http/routes/cli-assets.ts",
+      "from_func": "listSkillAssets",
+      "to_file": "agent/src/http/routes/cli-assets.ts",
+      "to_func": "exists"
+    },
+    {
+      "from_file": "agent/src/http/routes/service.ts",
+      "from_func": "getServiceStatus",
+      "to_file": "agent/src/http/routes/service.ts",
+      "to_func": "getLaunchdStatus"
+    },
+    {
+      "from_file": "components/Skeleton.tsx",
+      "from_func": "Skeleton",
+      "to_file": "components/Skeleton.tsx",
+      "to_func": "useSkeletonStyles"
+    },
+    {
+      "from_file": "agent/src/http/routes/ai-sessions.ts",
+      "from_func": "parseCodexSessions",
+      "to_file": "agent/src/http/routes/ai-sessions.ts",
+      "to_func": "readFileChunk"
+    },
+    {
+      "from_file": "agent/src/ports.ts",
+      "from_func": "listPortsWithSs",
+      "to_file": "agent/src/ports.ts",
+      "to_func": "getConnectionCounts"
+    },
+    {
+      "from_file": "lib/api.ts",
+      "from_func": "dockerContainerAction",
+      "to_file": "lib/api.ts",
+      "to_func": "request"
+    },
+    {
+      "from_file": "lib/api.ts",
+      "from_func": "createSession",
+      "to_file": "lib/api.ts",
+      "to_func": "request"
+    },
+    {
+      "from_file": "lib/api.ts",
+      "from_func": "getAiSessions",
+      "to_file": "lib/api.ts",
+      "to_func": "request"
+    },
+    {
+      "from_file": "agent/src/host.ts",
+      "from_func": "getHostInfo",
+      "to_file": "agent/src/host.ts",
+      "to_func": "readCpuTotals"
+    },
+    {
+      "from_file": "agent/scripts/update.ts",
+      "from_func": "update",
+      "to_file": "agent/scripts/update.ts",
+      "to_func": "installDependencies"
+    },
+    {
+      "from_file": "lib/ansi.ts",
+      "from_func": "parseAnsi",
+      "to_file": "lib/ansi.ts",
+      "to_func": "rgbToHex"
+    },
+    {
+      "from_file": "agent/src/ports.ts",
+      "from_func": "listPorts",
+      "to_file": "agent/src/ports.ts",
+      "to_func": "listPortsWithSs"
+    },
+    {
+      "from_file": "agent/src/http/routes/service.ts",
+      "from_func": "getLaunchdLogs",
+      "to_file": "agent/src/http/routes/service.ts",
+      "to_func": "exec"
+    },
+    {
+      "from_file": "agent/src/ports.ts",
+      "from_func": "listPorts",
+      "to_file": "agent/src/ports.ts",
+      "to_func": "listPortsWithLsof"
+    },
+    {
+      "from_file": "agent/src/http/sessions.ts",
+      "from_func": "fetchSessions",
+      "to_file": "agent/src/tmux.ts",
+      "to_func": "parseSessions"
+    },
+    {
+      "from_file": "agent/src/http/ws.ts",
+      "from_func": "attachPtyBridge",
+      "to_file": "agent/src/http/ws.ts",
+      "to_func": "sendOrQueue"
+    },
+    {
+      "from_file": "agent/scripts/update.ts",
+      "from_func": "restartOpenRC",
+      "to_file": "agent/scripts/update.ts",
+      "to_func": "exec"
+    },
+    {
+      "from_file": "agent/src/http/routes/service.ts",
+      "from_func": "getServiceLogs",
+      "to_file": "agent/src/http/routes/service.ts",
+      "to_func": "resolveInstallDir"
+    },
+    {
+      "from_file": "agent/src/http/routes/service.ts",
+      "from_func": "registerServiceRoutes",
+      "to_file": "agent/src/http/routes/service.ts",
+      "to_func": "restartService"
+    },
+    {
+      "from_file": "agent/src/claude.ts",
+      "from_func": "listClaudeFiles",
+      "to_file": "agent/src/claude.ts",
+      "to_func": "walkDir"
+    },
+    {
+      "from_file": "agent/src/agents.ts",
+      "from_func": "getSessionAgentInfo",
+      "to_file": "agent/src/tmux.ts",
+      "to_func": "sessionTarget"
+    },
+    {
+      "from_file": "agent/src/http/routes/service.ts",
+      "from_func": "restartService",
+      "to_file": "agent/src/http/routes/service.ts",
+      "to_func": "detectInitSystem"
+    },
+    {
+      "from_file": "lib/api.ts",
+      "from_func": "resumeAiSession",
+      "to_file": "lib/api.ts",
+      "to_func": "request"
+    },
+    {
+      "from_file": "lib/live.tsx",
+      "from_func": "startErrorProbe",
+      "to_file": "lib/live.tsx",
+      "to_func": "updateState"
+    },
+    {
+      "from_file": "agent/scripts/update.ts",
+      "from_func": "restartService",
+      "to_file": "agent/scripts/update.ts",
+      "to_func": "restartManual"
+    },
+    {
+      "from_file": "agent/src/copilot.ts",
+      "from_func": "getCopilotStatus",
+      "to_file": "agent/src/copilot.ts",
+      "to_func": "fetchCopilotUsage"
+    },
+    {
+      "from_file": "agent/src/http/routes/cli-assets.ts",
+      "from_func": "upsertMcpAsset",
+      "to_file": "agent/src/http/routes/cli-assets.ts",
+      "to_func": "resolveMcpFile"
+    },
+    {
+      "from_file": "agent/scripts/update.ts",
+      "from_func": "restartSystemdSystem",
+      "to_file": "agent/scripts/update.ts",
+      "to_func": "log"
+    },
+    {
+      "from_file": "lib/notifications.ts",
+      "from_func": "setupNotifications",
+      "to_file": "lib/notifications.ts",
+      "to_func": "getOrCreateDeviceId"
+    },
+    {
+      "from_file": "lib/api.ts",
+      "from_func": "sendTestPushNotification",
+      "to_file": "lib/api.ts",
+      "to_func": "request"
+    },
+    {
+      "from_file": "agent/src/http/routes/cli-assets.ts",
+      "from_func": "resolveFirstExisting",
+      "to_file": "agent/src/http/routes/cli-assets.ts",
+      "to_func": "exists"
+    },
+    {
+      "from_file": "agent/src/http/routes/core.ts",
+      "from_func": "registerCoreRoutes",
+      "to_file": "agent/src/host.ts",
+      "to_func": "getHostInfo"
+    },
+    {
+      "from_file": "agent/src/claude.ts",
+      "from_func": "getClaudeStatus",
+      "to_file": "agent/src/claude.ts",
+      "to_func": "isFiniteNumber"
+    },
+    {
+      "from_file": "app/hosts/[id]/docker/[containerId]/terminal.tsx",
+      "from_func": "DockerTerminalScreen",
+      "to_file": "app/hosts/[id]/docker/[containerId]/terminal.tsx",
+      "to_func": "copyFromTerminal"
+    },
+    {
+      "from_file": "agent/src/http/routes/copilot.ts",
+      "from_func": "registerCopilotRoutes",
+      "to_file": "agent/src/copilot.ts",
+      "to_func": "storeToken"
+    },
+    {
+      "from_file": "agent/src/http/routes/cli-assets.ts",
+      "from_func": "deleteFlatFileAsset",
+      "to_file": "agent/src/http/routes/cli-assets.ts",
+      "to_func": "sanitizeAssetName"
+    },
+    {
+      "from_file": "agent/src/http/routes/docker.ts",
+      "from_func": "registerDockerRoutes",
+      "to_file": "agent/src/http/errors.ts",
+      "to_func": "jsonError"
+    },
+    {
+      "from_file": "components/HostCard.tsx",
+      "from_func": "getStatusColors",
+      "to_file": "components/HostCard.tsx",
+      "to_func": "withAlpha"
+    },
+    {
+      "from_file": "agent/src/agents.ts",
+      "from_func": "getSessionInsights",
+      "to_file": "agent/src/agents.ts",
+      "to_func": "detectAgentState"
+    },
+    {
+      "from_file": "lib/task-live-updates.ts",
+      "from_func": "useTaskLiveUpdates",
+      "to_file": "lib/ongoing-notifications.ts",
+      "to_func": "clearOngoingNotification"
+    },
+    {
+      "from_file": "agent/src/notifications/reset-monitor.ts",
+      "from_func": "pollOnce",
+      "to_file": "agent/src/notifications/registry.ts",
+      "to_func": "listNotificationDevices"
+    },
+    {
+      "from_file": "agent/src/http/routes/service.ts",
+      "from_func": "getServiceStatus",
+      "to_file": "agent/src/http/routes/service.ts",
+      "to_func": "getManualStatus"
+    },
+    {
+      "from_file": "agent/src/agents.ts",
+      "from_func": "getChildCommands",
+      "to_file": "agent/src/agents.ts",
+      "to_func": "execFileAsync"
+    },
+    {
+      "from_file": "agent/src/claude.ts",
+      "from_func": "fetchClaudeOAuthUsage",
+      "to_file": "agent/src/utils.ts",
+      "to_func": "formatOAuthError"
+    },
+    {
+      "from_file": "agent/src/claude.ts",
+      "from_func": "runClaudeUsageCapture",
+      "to_file": "agent/src/utils.ts",
+      "to_func": "stripAnsi"
+    },
+    {
+      "from_file": "agent/src/http/routes/cli-assets.ts",
+      "from_func": "registerCliAssetRoutes",
+      "to_file": "agent/src/http/routes/cli-assets.ts",
+      "to_func": "deleteMcpAsset"
+    },
+    {
+      "from_file": "lib/notifications.ts",
+      "from_func": "unregisterNotificationsForHosts",
+      "to_file": "lib/api.ts",
+      "to_func": "unregisterNotificationDevice"
+    },
+    {
+      "from_file": "lib/notifications.ts",
+      "from_func": "unregisterNotificationsForHosts",
+      "to_file": "lib/notifications.ts",
+      "to_func": "saveRegistry"
+    },
+    {
+      "from_file": "app/hosts/[id]/docker/[containerId]/terminal.tsx",
+      "from_func": "DockerTerminalScreen",
+      "to_file": "lib/terminal-html.ts",
+      "to_func": "buildTerminalHtml"
+    },
+    {
+      "from_file": "agent/src/http/routes/copilot.ts",
+      "from_func": "registerCopilotRoutes",
+      "to_file": "agent/src/http/errors.ts",
+      "to_func": "jsonError"
+    },
+    {
+      "from_file": "agent/src/notifications/pause-monitor.ts",
+      "from_func": "pollOnce",
+      "to_file": "agent/src/tmux.ts",
+      "to_func": "parseSessions"
+    },
+    {
+      "from_file": "agent/src/http/routes/ai-sessions.ts",
+      "from_func": "getAllSessions",
+      "to_file": "agent/src/http/routes/ai-sessions.ts",
+      "to_func": "parseCodexSessions"
+    },
+    {
+      "from_file": "lib/api.ts",
+      "from_func": "getCliAssets",
+      "to_file": "lib/api.ts",
+      "to_func": "request"
+    },
+    {
+      "from_file": "agent/scripts/update.ts",
+      "from_func": "restartService",
+      "to_file": "agent/scripts/update.ts",
+      "to_func": "restartSystemdSystem"
+    },
+    {
+      "from_file": "lib/task-live-updates.ts",
+      "from_func": "useTaskLiveUpdates",
+      "to_file": "lib/live-activity.ts",
+      "to_func": "endTaskLiveActivity"
+    },
+    {
+      "from_file": "agent/src/docker.ts",
+      "from_func": "getDockerSnapshot",
+      "to_file": "agent/src/docker.ts",
+      "to_func": "buildDockerSnapshot"
+    },
+    {
+      "from_file": "agent/src/claude.ts",
+      "from_func": "runClaudeUsageCapture",
+      "to_file": "agent/src/claude.ts",
+      "to_func": "startClaudeSession"
+    },
+    {
+      "from_file": "components/TerminalWebView.tsx",
+      "from_func": "TerminalWebView",
+      "to_file": "components/TerminalWebView.tsx",
+      "to_func": "confirmDimensions"
+    },
+    {
+      "from_file": "lib/notifications.ts",
+      "from_func": "setupNotifications",
+      "to_file": "lib/notifications.ts",
+      "to_func": "ensureAndroidChannel"
+    },
+    {
+      "from_file": "lib/store.tsx",
+      "from_func": "load",
+      "to_file": "lib/storage.ts",
+      "to_func": "loadPreferences"
+    },
+    {
+      "from_file": "agent/scripts/uninstall.ts",
+      "from_func": "main",
+      "to_file": "agent/scripts/uninstall.ts",
+      "to_func": "detectPlatform"
+    }
+  ],
+  "languages": [
+    "typescript"
+  ],
+  "timestamp": 1769534524.323695
+}
