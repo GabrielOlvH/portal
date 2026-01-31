@@ -117,6 +117,31 @@ async function exec(
 }
 
 async function getSystemdStatus(): Promise<ServiceStatus> {
+  // Try user service first
+  const { stdout: userStdout, exitCode: userExit } = await exec(
+    'systemctl',
+    ['--user', 'show', SERVICE_NAME, '--property=ActiveState,MainPID,Restart,ExecMainStartTimestamp'],
+    { ignoreError: true }
+  );
+
+  if (userExit === 0 && userStdout.includes('ActiveState=active')) {
+    const pidMatch = userStdout.match(/MainPID=(\d+)/);
+    const pid = pidMatch ? parseInt(pidMatch[1], 10) : 0;
+    const restartMatch = userStdout.match(/Restart=(\w+)/);
+    const autoRestart = restartMatch ? restartMatch[1] !== 'no' : false;
+
+    // Calculate uptime from start timestamp
+    let uptimeSeconds = 0;
+    const startTimeMatch = userStdout.match(/ExecMainStartTimestamp=(.+)/);
+    if (startTimeMatch) {
+      const startTime = new Date(startTimeMatch[1]).getTime();
+      uptimeSeconds = Math.floor((Date.now() - startTime) / 1000);
+    }
+
+    return { running: true, pid, uptimeSeconds, autoRestart };
+  }
+
+  // Fall back to system service
   const { stdout, exitCode } = await exec(
     'systemctl',
     ['show', SERVICE_NAME, '--property=ActiveState,MainPID,Restart,ExecMainStartTimestamp'],
@@ -290,6 +315,24 @@ export async function getServiceInfo(): Promise<ServiceInfo> {
 }
 
 async function restartSystemd(): Promise<void> {
+  // Try user service first
+  const { exitCode: userExit } = await exec(
+    'systemctl',
+    ['--user', 'is-active', '--quiet', SERVICE_NAME],
+    { ignoreError: true }
+  );
+
+  if (userExit === 0) {
+    // User service is active, restart it
+    await exec('systemctl', ['--user', 'restart', SERVICE_NAME]);
+    return;
+  } else if (userExit === 3) {
+    // User service exists but is inactive, start it
+    await exec('systemctl', ['--user', 'start', SERVICE_NAME]);
+    return;
+  }
+
+  // Fall back to system service
   await exec('systemctl', ['daemon-reload'], { ignoreError: true });
   const { exitCode } = await exec('systemctl', ['is-active', '--quiet', SERVICE_NAME], { ignoreError: true });
   if (exitCode === 0) {
