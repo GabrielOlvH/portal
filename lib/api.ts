@@ -2,8 +2,6 @@ import {
   AiProvider,
   AiSessionDetail,
   AiSessionListResponse,
-  CliAssetListResponse,
-  CliAssetType,
   CursorInfo,
   DirectoryListing,
   Host,
@@ -450,44 +448,6 @@ export async function resumeAiSession(
   });
 }
 
-// CLI Assets API
-
-export type CliAssetsOptions = {
-  provider?: AiProvider;
-  type: CliAssetType;
-};
-
-export async function getCliAssets(
-  host: Host,
-  options: CliAssetsOptions
-): Promise<CliAssetListResponse> {
-  const params = new URLSearchParams();
-  params.set('type', options.type);
-  if (options.provider) params.set('provider', options.provider);
-  const query = params.toString();
-  return request(host, `/cli-assets?${query}`, { method: 'GET' });
-}
-
-export async function upsertCliAsset(
-  host: Host,
-  payload: { provider: AiProvider; type: CliAssetType; name: string; content: string }
-): Promise<{ ok: boolean }> {
-  return request(host, '/cli-assets', {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  });
-}
-
-export async function deleteCliAsset(
-  host: Host,
-  payload: { provider: AiProvider; type: CliAssetType; name: string }
-): Promise<{ ok: boolean }> {
-  return request(host, '/cli-assets', {
-    method: 'DELETE',
-    body: JSON.stringify(payload),
-  });
-}
-
 // Copilot Auth API
 
 export type CopilotAuthStartResponse = {
@@ -555,4 +515,144 @@ export async function getServiceLogs(host: Host, lines?: number): Promise<Servic
   if (lines) params.set('lines', String(lines));
   const query = params.toString();
   return request(host, `/service/logs${query ? `?${query}` : ''}`, { method: 'GET' });
+}
+
+// New System Management API
+
+export type SystemStatus = {
+  service: ServiceStatus;
+  info: {
+    platform: 'linux' | 'macos' | 'windows';
+    initSystem: string;
+    installDir: string;
+  };
+  health: HealthResponse & {
+    update: {
+      available: boolean;
+      currentVersion: string;
+      latestVersion: string;
+      changes: string[];
+      lastCheck: string;
+    };
+    lastUpdateAttempt?: {
+      updateId: string;
+      status: 'in_progress' | 'success' | 'failed' | 'rollback';
+      timestamp: string;
+      fromVersion?: string;
+      toVersion?: string;
+      error?: string;
+      rolledBackTo?: string;
+    };
+  };
+  updateInProgress: boolean;
+};
+
+export type UpdateProgressEvent = {
+  type: 'start' | 'checking' | 'downloading' | 'installing' | 'testing' | 'restarting' | 'success' | 'rollback' | 'error' | 'complete';
+  message: string;
+  progress?: number;
+  updateId: string;
+  error?: string;
+  newVersion?: string;
+};
+
+export async function getSystemStatus(host: Host): Promise<SystemStatus> {
+  return request(host, '/system/status', { method: 'GET' });
+}
+
+export async function triggerUpdate(host: Host): Promise<{ success: boolean; message: string; updateId: string }> {
+  return request(host, '/system/update', { method: 'POST' });
+}
+
+export async function getUpdateStatus(host: Host): Promise<{
+  inProgress: boolean;
+  lastAttempt: SystemStatus['health']['lastUpdateAttempt'] | null;
+  updateAvailable: boolean;
+  currentVersion: string;
+  latestVersion: string;
+}> {
+  return request(host, '/system/update/status', { method: 'GET' });
+}
+
+export async function pollUpdateStatus(host: Host): Promise<{
+  inProgress: boolean;
+  lastAttempt: SystemStatus['health']['lastUpdateAttempt'] | null;
+  updateAvailable: boolean;
+  currentVersion: string;
+  latestVersion: string;
+}> {
+  return request(host, '/system/update/status', { method: 'GET' });
+}
+
+export function createUpdateStream(
+  host: Host, 
+  updateId: string, 
+  onEvent: (event: UpdateProgressEvent) => void, 
+  onError?: (error: Error) => void
+): () => void {
+  // For React Native, we use polling instead of SSE
+  let cancelled = false;
+  let lastProgress = 0;
+  
+  const poll = async () => {
+    if (cancelled) return;
+    
+    try {
+      const status = await pollUpdateStatus(host);
+      
+      // Check if update is still in progress
+      if (status.inProgress) {
+        // Poll again in 1 second
+        setTimeout(poll, 1000);
+      } else if (status.lastAttempt) {
+        // Update completed
+        const attempt = status.lastAttempt;
+        if (attempt.updateId === updateId) {
+          const event: UpdateProgressEvent = {
+            type: attempt.status === 'success' ? 'complete' : attempt.status === 'rollback' ? 'rollback' : 'error',
+            message: attempt.status === 'success' 
+              ? 'Update completed successfully' 
+              : attempt.error || 'Update failed',
+            updateId,
+            progress: 100,
+            error: attempt.error,
+            newVersion: attempt.toVersion,
+          };
+          onEvent(event);
+        }
+      }
+    } catch (err) {
+      if (!cancelled && onError) {
+        onError(err instanceof Error ? err : new Error('Polling failed'));
+      }
+    }
+  };
+  
+  // Start polling
+  poll();
+  
+  // Also simulate progress events based on time
+  const progressInterval = setInterval(() => {
+    if (cancelled) {
+      clearInterval(progressInterval);
+      return;
+    }
+    
+    lastProgress += 10;
+    if (lastProgress < 90) {
+      const event: UpdateProgressEvent = {
+        type: 'downloading',
+        message: 'Updating...',
+        updateId,
+        progress: lastProgress,
+      };
+      onEvent(event);
+    }
+  }, 2000);
+  
+  // Return cleanup function
+  return () => {
+    cancelled = true;
+    clearInterval(progressInterval);
+  };
 }

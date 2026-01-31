@@ -9,6 +9,11 @@ import {
   restartService,
   dockerContainerAction,
   ServiceStatus,
+  getSystemStatus,
+  triggerUpdate,
+  createUpdateStream,
+  SystemStatus,
+  UpdateProgressEvent,
 } from '@/lib/api';
 import { systemColors } from '@/lib/colors';
 import { useHostLive } from '@/lib/live';
@@ -69,6 +74,9 @@ export default function HostDetailScreen() {
   const [serviceStatus, setServiceStatus] = useState<ServiceStatus | null>(null);
   const [serviceError, setServiceError] = useState<string | null>(null);
   const [restarting, setRestarting] = useState(false);
+  const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null);
+  const [updateInProgress, setUpdateInProgress] = useState(false);
+  const [updateProgress, setUpdateProgress] = useState<UpdateProgressEvent | null>(null);
   const isFocused = useIsFocused();
 
   const { state, refresh } = useHostLive(host, {
@@ -142,14 +150,26 @@ export default function HostDetailScreen() {
     let cancelled = false;
     const fetchServiceStatus = async () => {
       try {
-        const svcStatus = await getServiceStatus(host);
-        if (!cancelled) {
-          setServiceStatus(svcStatus);
-          setServiceError(null);
+        // Try new system API first, fall back to old service API
+        try {
+          const sysStatus = await getSystemStatus(host);
+          if (!cancelled) {
+            setSystemStatus(sysStatus);
+            setServiceStatus(sysStatus.service);
+            setServiceError(null);
+          }
+        } catch {
+          // Fall back to old API
+          const svcStatus = await getServiceStatus(host);
+          if (!cancelled) {
+            setServiceStatus(svcStatus);
+            setServiceError(null);
+          }
         }
       } catch (err) {
         if (!cancelled) {
           setServiceStatus(null);
+          setSystemStatus(null);
           if (err instanceof Error && err.message.includes('404')) {
             setServiceError('Service info unavailable');
           } else {
@@ -164,7 +184,7 @@ export default function HostDetailScreen() {
 
   const handleRestartService = useCallback(async () => {
     if (!host || restarting) return;
-    Alert.alert('Restart service', 'Restart the ter agent service?', [
+    Alert.alert('Restart service', 'Restart the Bridge agent service?', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Restart',
@@ -187,6 +207,76 @@ export default function HostDetailScreen() {
       },
     ]);
   }, [host, restarting]);
+
+  const handleUpdate = useCallback(async () => {
+    if (!host || updateInProgress) return;
+    
+    const updateAvailable = systemStatus?.health?.update?.available;
+    const currentVersion = systemStatus?.health?.update?.currentVersion;
+    const latestVersion = systemStatus?.health?.update?.latestVersion;
+    
+    if (!updateAvailable) {
+      Alert.alert('No updates', 'Your agent is up to date.');
+      return;
+    }
+
+    Alert.alert(
+      'Update available',
+      `Update from ${currentVersion} to ${latestVersion}?\n\nThe agent will download, test, and automatically restart. If the update fails, it will roll back automatically.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Update',
+          style: 'default',
+          onPress: async () => {
+            setUpdateInProgress(true);
+            setUpdateProgress(null);
+            
+            try {
+              const result = await triggerUpdate(host);
+              if (!result.success) {
+                Alert.alert('Update failed', result.message);
+                setUpdateInProgress(false);
+                return;
+              }
+
+              // Connect to SSE stream
+              const cleanup = createUpdateStream(
+                host,
+                result.updateId,
+                (event) => {
+                  setUpdateProgress(event);
+                  
+                  if (event.type === 'complete' || event.type === 'error') {
+                    setUpdateInProgress(false);
+                    cleanup();
+                    
+                    if (event.type === 'complete') {
+                      Alert.alert(
+                        'Update complete',
+                        `Successfully updated to ${event.newVersion || latestVersion}`,
+                        [{ text: 'OK', onPress: () => refresh() }]
+                      );
+                    } else if (event.type === 'error') {
+                      Alert.alert('Update failed', event.error || 'Unknown error');
+                    }
+                  }
+                },
+                (error) => {
+                  console.error('SSE error:', error);
+                  setUpdateInProgress(false);
+                  Alert.alert('Update stream error', error.message);
+                }
+              );
+            } catch (err) {
+              setUpdateInProgress(false);
+              Alert.alert('Update failed', err instanceof Error ? err.message : 'Unknown error');
+            }
+          },
+        },
+      ]
+    );
+  }, [host, updateInProgress, systemStatus, refresh]);
 
   if (!host) {
     return (
@@ -349,6 +439,40 @@ export default function HostDetailScreen() {
                 </View>
               </View>
               <View style={styles.serviceActions}>
+                {systemStatus?.health?.update?.available && !updateInProgress && (
+                  <Pressable
+                    onPress={handleUpdate}
+                    style={[styles.serviceButton, styles.updateButton]}
+                  >
+                    <AppText variant="caps" tone="accent">
+                      Update ({systemStatus.health.update.currentVersion} → {systemStatus.health.update.latestVersion})
+                    </AppText>
+                  </Pressable>
+                )}
+                {updateInProgress && updateProgress && (
+                  <View style={styles.updateProgressContainer}>
+                    <AppText variant="caps" tone="muted">
+                      {updateProgress.message}
+                    </AppText>
+                    {updateProgress.progress !== undefined && (
+                      <View style={styles.progressBar}>
+                        <View
+                          style={[
+                            styles.progressFill,
+                            { width: `${updateProgress.progress}%`, backgroundColor: colors.accent },
+                          ]}
+                        />
+                      </View>
+                    )}
+                  </View>
+                )}
+                {systemStatus?.health?.lastUpdateAttempt?.status === 'rollback' && (
+                  <View style={styles.rollbackWarning}>
+                    <AppText variant="caps" tone="clay">
+                      ⚠️ Last update failed and was rolled back
+                    </AppText>
+                  </View>
+                )}
                 <Pressable
                   onPress={handleRestartService}
                   disabled={restarting}
@@ -601,6 +725,28 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   serviceButtonDisabled: {
     opacity: 0.5,
+  },
+  updateButton: {
+    backgroundColor: withAlpha(colors.accent, 0.15),
+  },
+  updateProgressContainer: {
+    flex: 1,
+    gap: 6,
+  },
+  progressBar: {
+    height: 4,
+    backgroundColor: colors.barBg,
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 2,
+  },
+  rollbackWarning: {
+    backgroundColor: withAlpha(colors.red, 0.1),
+    padding: 8,
+    borderRadius: theme.radii.sm,
   },
   remove: {
     marginTop: theme.spacing.lg,
