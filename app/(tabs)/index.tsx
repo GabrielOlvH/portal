@@ -29,7 +29,7 @@ import {
 } from 'react-native';
 
 type CompactUsageCardProps = {
-  provider: 'claude' | 'codex' | 'copilot';
+  provider: 'claude' | 'codex' | 'copilot' | 'kimi';
   usage: ProviderUsage;
 };
 
@@ -202,6 +202,7 @@ export default function SessionsScreen() {
     insights: isFocused,
     host: isFocused,
     enabled: isFocused,
+    intervalMs: 2000,
   });
   const [hostUsageMap, setHostUsageMap] = useState<Record<string, SessionInsights>>({});
 
@@ -239,9 +240,11 @@ export default function SessionsScreen() {
     let claude: ProviderUsage | null = null;
     let codex: ProviderUsage | null = null;
     let copilot: ProviderUsage | null = null;
+    let kimi: ProviderUsage | null = null;
     let claudePolled = 0;
     let codexPolled = 0;
     let copilotPolled = 0;
+    let kimiPolled = 0;
 
     const allInsights: SessionInsights[] = [];
     sessions.forEach((session) => {
@@ -269,16 +272,21 @@ export default function SessionsScreen() {
         copilot = insights.copilot;
         copilotPolled = polled;
       }
+      if (insights.kimi?.session?.percentLeft != null && polled > kimiPolled) {
+        kimi = insights.kimi;
+        kimiPolled = polled;
+      }
     });
 
-    return { claude, codex, copilot };
+    return { claude, codex, copilot, kimi };
   }, [hosts, sessions, hostUsageMap]);
 
   const usageVisibility = preferences.usageCards;
   const hasUsageCards =
     (usageVisibility.claude && aggregatedUsage.claude) ||
     (usageVisibility.codex && aggregatedUsage.codex) ||
-    (usageVisibility.copilot && aggregatedUsage.copilot);
+    (usageVisibility.copilot && aggregatedUsage.copilot) ||
+    (usageVisibility.kimi && aggregatedUsage.kimi);
 
   const refreshUsage = useCallback(async () => {
     if (hosts.length === 0) {
@@ -315,7 +323,8 @@ export default function SessionsScreen() {
     return (
       (usageVisibility.claude && !aggregatedUsage.claude) ||
       (usageVisibility.codex && !aggregatedUsage.codex) ||
-      (usageVisibility.copilot && !aggregatedUsage.copilot)
+      (usageVisibility.copilot && !aggregatedUsage.copilot) ||
+      (usageVisibility.kimi && !aggregatedUsage.kimi)
     );
   }, [hosts.length, usageVisibility, aggregatedUsage]);
 
@@ -456,6 +465,9 @@ export default function SessionsScreen() {
                 {usageVisibility.copilot && aggregatedUsage.copilot && (
                   <CompactUsageCard provider="copilot" usage={aggregatedUsage.copilot} />
                 )}
+                {usageVisibility.kimi && aggregatedUsage.kimi && (
+                  <CompactUsageCard provider="kimi" usage={aggregatedUsage.kimi} />
+                )}
               </View>
             </FadeIn>
           )}
@@ -538,6 +550,8 @@ export default function SessionsScreen() {
                           const agentState = session.insights?.meta?.agentState ?? 'stopped';
                           const gitBranch = session.insights?.git?.branch;
                           const command = session.insights?.meta?.agentCommand;
+                          const cwd = session.insights?.meta?.cwd;
+                          const projectName = cwd?.split('/').filter(Boolean).pop();
                           const isRunning = agentState === 'running';
                           const isIdle = agentState === 'idle';
                           const isLast = sessionIndex === group.sessions.length - 1;
@@ -576,14 +590,16 @@ export default function SessionsScreen() {
                                     <AppText variant="body" numberOfLines={1} style={styles.sessionName}>
                                       {session.title || session.name}
                                     </AppText>
-                                    {command && (
+                                    {(projectName || command) && (
                                       <AppText
                                         variant="mono"
                                         tone="muted"
                                         numberOfLines={1}
                                         style={styles.sessionMeta}
                                       >
-                                        {command}
+                                        {projectName && command
+                                          ? `${projectName} · ${command}`
+                                          : projectName || command}
                                       </AppText>
                                     )}
                                   </View>

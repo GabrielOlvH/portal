@@ -19,6 +19,7 @@ export function defaultPreferences(): AppPreferences {
       claude: true,
       codex: true,
       copilot: true,
+      kimi: true,
     },
     theme: 'system',
     notifications: {

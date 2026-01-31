@@ -5,6 +5,7 @@ import { getCodexStatus, getCodexTokenUsage } from './codex';
 import { getClaudeStatus, getClaudeTokenUsage } from './claude';
 import { getCopilotStatus } from './copilot';
 import { getCursorStatus } from './cursor';
+import { getKimiStatus } from './kimi';
 import { shouldRefresh, snapshot } from './cache';
 
 type ProviderStatus = ProviderUsage | { error: string } | { [key: string]: unknown };
@@ -29,11 +30,12 @@ async function ensureTokenRefresh(provider: 'codex' | 'claude', days: number) {
 }
 
 async function buildUsageSnapshot(): Promise<UsageSnapshot> {
-  const [codexResult, claudeResult, copilotResult, cursorResult] = await Promise.allSettled([
+  const [codexResult, claudeResult, copilotResult, cursorResult, kimiResult] = await Promise.allSettled([
     getCodexStatus(),
     getClaudeStatus(),
     getCopilotStatus(),
     getCursorStatus(),
+    getKimiStatus(),
   ]);
 
   const codexStatus: ProviderStatus =
@@ -44,6 +46,8 @@ async function buildUsageSnapshot(): Promise<UsageSnapshot> {
     copilotResult.status === 'fulfilled' ? copilotResult.value : { error: 'copilot fetch failed' };
   const cursorStatus: ProviderStatus =
     cursorResult.status === 'fulfilled' ? cursorResult.value : { error: 'cursor fetch failed' };
+  const kimiStatus: ProviderStatus =
+    kimiResult.status === 'fulfilled' ? kimiResult.value : { error: 'kimi fetch failed' };
 
   const codexTokens = snapshot(tokenCache.codex);
   const claudeTokens = snapshot(tokenCache.claude);
@@ -89,11 +93,21 @@ async function buildUsageSnapshot(): Promise<UsageSnapshot> {
         error: cursorStatus.error ? String(cursorStatus.error) : undefined,
       };
 
+  const kimi = 'error' in kimiStatus
+    ? { error: String(kimiStatus.error) }
+    : {
+        session: kimiStatus.session,
+        weekly: kimiStatus.weekly,
+        source: kimiStatus.source,
+        error: kimiStatus.error ? String(kimiStatus.error) : undefined,
+      };
+
   return {
     codex: codex as ProviderUsage,
     claude: claude as ProviderUsage,
     copilot: copilot as ProviderUsage,
     cursor: cursor as ProviderUsage,
+    kimi: kimi as ProviderUsage,
   };
 }
 
@@ -116,6 +130,7 @@ export function startUsageRefresh() {
           claude: { error: 'unavailable' },
           copilot: { error: 'unavailable' },
           cursor: { error: 'unavailable' },
+          kimi: { error: 'unavailable' },
         }
       );
     })
@@ -156,6 +171,7 @@ export async function getUsageSnapshot() {
       claude: { error: 'loading' },
       copilot: { error: 'loading' },
       cursor: { error: 'loading' },
+      kimi: { error: 'loading' },
     }
   );
 }

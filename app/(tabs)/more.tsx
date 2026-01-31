@@ -299,14 +299,6 @@ export default function MoreTabScreen() {
           />
           <View style={styles.separator} />
           <MenuItem
-            title="CLI Sync"
-            subtitle="Skills, commands, and MCPs"
-            onPress={() => router.push('/cli-assets')}
-            styles={styles}
-            chevronColor={colors.textSecondary}
-          />
-          <View style={styles.separator} />
-          <MenuItem
             title="Ports"
             subtitle="View and manage active ports"
             onPress={() => router.push('/ports')}
@@ -401,6 +393,15 @@ export default function MoreTabScreen() {
                   ? { ready: true }
                   : { error: 'Not connected' }
             }
+          />
+          <View style={styles.separator} />
+          <ToggleItem
+            title="Kimi Code"
+            value={preferences.usageCards.kimi}
+            onValueChange={(value) => updateUsageCardVisibility({ kimi: value })}
+            styles={styles}
+            colors={colors}
+            status={{ error: 'Set KIMI_AUTH_TOKEN env var' }}
           />
         </Card>
 

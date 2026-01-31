@@ -33,6 +33,7 @@ export type UsageCardsVisibility = {
   claude: boolean;
   codex: boolean;
   copilot: boolean;
+  kimi: boolean;
 };
 
 export type ThemeSetting = 'light' | 'dark' | 'system';
@@ -174,6 +175,7 @@ export type SessionInsights = {
   claude?: ProviderUsage;
   copilot?: ProviderUsage;
   cursor?: ProviderUsage;
+  kimi?: ProviderUsage;
   git?: GitStatus;
   meta?: InsightsMeta;
 };
@@ -186,6 +188,7 @@ export type InsightsMeta = {
   activeAgent?: 'codex' | 'claude' | null;
   agentState?: 'running' | 'idle' | 'stopped';
   agentCommand?: string | null;
+  cwd?: string | null;
 };
 
 export type Command = {
@@ -303,32 +306,4 @@ export type AiSessionListResponse = {
   sessions: AiSession[];
   total: number;
   hasMore: boolean;
-};
-
-// CLI Asset Types
-
-export type CliAssetType = 'skill' | 'mcp' | 'rule' | 'agent';
-
-export type CliAssetMeta = {
-  filename?: string;
-  raw?: boolean;
-  source?: string;
-  description?: string;
-  userInvocable?: boolean;
-  keywords?: string[];
-};
-
-export type CliAsset = {
-  id: string;
-  provider: AiProvider;
-  type: CliAssetType;
-  name: string;
-  content: string;
-  updatedAt?: number;
-  path?: string;
-  meta?: CliAssetMeta;
-};
-
-export type CliAssetListResponse = {
-  assets: CliAsset[];
 };

@@ -43,6 +43,7 @@ export type UsageSnapshot = {
   claude?: ProviderUsage;
   copilot?: ProviderUsage;
   cursor?: ProviderUsage;
+  kimi?: ProviderUsage;
   meta?: UsageMeta;
 };
 
@@ -107,10 +108,12 @@ export const oauthCache: {
   claude: OAuthCacheEntry<ProviderUsage>;
   copilot: OAuthCacheEntry<ProviderUsage>;
   cursor: OAuthCacheEntry<ProviderUsage>;
+  kimi: OAuthCacheEntry<ProviderUsage>;
 } = {
   claude: { ts: 0, value: null, error: null },
   copilot: { ts: 0, value: null, error: null },
   cursor: { ts: 0, value: null, error: null },
+  kimi: { ts: 0, value: null, error: null },
 };
 
 export const sessionActivity: Map<string, { hash: string; lastChangedAt: number; idleConfirmedAt: number | null }> = new Map();
