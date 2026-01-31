@@ -27,8 +27,8 @@ import { hostColors } from '@/lib/colors';
 import { useStore } from '@/lib/store';
 import { useProjects } from '@/lib/projects-store';
 import { useSnippets } from '@/lib/snippets-store';
-import { createSession, fetchProjectScripts, sendText, getAiSessions } from '@/lib/api';
-import { Command, PackageJsonScripts, Host, Project, Snippet, AiSession } from '@/lib/types';
+import { createSession, fetchProjectScripts, sendText } from '@/lib/api';
+import { Command, PackageJsonScripts, Host, Project, Snippet } from '@/lib/types';
 import { theme } from '@/lib/theme';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -167,14 +167,12 @@ function HostStep({
 function ProjectStep({
   projects,
   selectedProjectId,
-  sessionCounts,
   onSelect,
   onBlankSession,
   colors,
 }: {
   projects: Project[];
   selectedProjectId: string | null;
-  sessionCounts: Map<string, number>;
   onSelect: (id: string) => void;
   onBlankSession: () => void;
   colors: ThemeColors;
@@ -188,7 +186,6 @@ function ProjectStep({
       </AppText>
       <View style={styles.projectsGrid}>
         {projects.map((project) => {
-          const hasSessions = (sessionCounts.get(project.id) || 0) > 0;
           const isSelected = selectedProjectId === project.id;
           return (
             <Pressable
@@ -221,9 +218,6 @@ function ProjectStep({
                   </AppText>
                 </View>
               </View>
-              {hasSessions && (
-                <View style={[styles.sessionIndicator, isSelected && styles.sessionIndicatorSelected]} />
-              )}
             </Pressable>
           );
         })}
@@ -244,20 +238,16 @@ function ProjectStep({
 function CommandStep({
   commands,
   snippets,
-  sessionCount,
   loadingScripts,
   launching,
   onLaunch,
-  onViewAiSessions,
   colors,
 }: {
   commands: Command[];
   snippets: Snippet[];
-  sessionCount: number;
   loadingScripts: boolean;
   launching: boolean;
   onLaunch: (command: Command) => void;
-  onViewAiSessions: () => void;
   colors: ThemeColors;
 }) {
   const styles = useMemo(() => createStepStyles(colors), [colors]);
@@ -281,24 +271,6 @@ function CommandStep({
         Select a command to launch
       </AppText>
       <View style={styles.commandsList}>
-        {/* Resume AI Session Button */}
-        <Pressable onPress={onViewAiSessions}>
-          <Card style={styles.aiSessionCard}>
-            <View style={[styles.aiSessionIcon, sessionCount > 0 && styles.aiSessionIconActive]}>
-              <AppText variant="subtitle" style={[styles.aiSessionIconText, sessionCount > 0 && styles.aiSessionIconTextActive]}>AI</AppText>
-            </View>
-            <View style={styles.commandContent}>
-              <AppText variant="label">Resume AI Session</AppText>
-              <AppText variant="mono" tone="muted" style={styles.commandText}>
-                {sessionCount > 0 ? 'Continue where you left off' : 'Start a new AI session'}
-              </AppText>
-            </View>
-            <View style={[styles.launchIcon, sessionCount > 0 ? { backgroundColor: colors.accent } : { backgroundColor: colors.textMuted }]}>
-              <AppText variant="label" style={styles.launchIconText}>→</AppText>
-            </View>
-          </Card>
-        </Pressable>
-
         {!hasContent ? (
           <AppText variant="body" tone="muted" style={{ textAlign: 'center', marginTop: 16 }}>
             No scripts or snippets available
@@ -619,16 +591,6 @@ const createStepStyles = (colors: ThemeColors) =>
     projectPath: {
       fontSize: 12,
     },
-    sessionIndicator: {
-      width: 8,
-      height: 8,
-      borderRadius: 4,
-      backgroundColor: colors.accent,
-      marginLeft: theme.spacing.sm,
-    },
-    sessionIndicatorSelected: {
-      backgroundColor: colors.accentText,
-    },
     blankSessionButton: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -699,33 +661,6 @@ const createStepStyles = (colors: ThemeColors) =>
       marginTop: theme.spacing.md,
       marginBottom: theme.spacing.xs,
     },
-    aiSessionCard: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingVertical: 12,
-      paddingHorizontal: 12,
-      gap: 12,
-      backgroundColor: colors.cardPressed,
-    },
-    aiSessionIcon: {
-      width: 32,
-      height: 32,
-      borderRadius: 8,
-      backgroundColor: colors.textMuted + '30',
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    aiSessionIconActive: {
-      backgroundColor: colors.accent,
-    },
-    aiSessionIconText: {
-      color: colors.textSecondary,
-      fontSize: 12,
-      fontWeight: '700',
-    },
-    aiSessionIconTextActive: {
-      color: colors.accentText,
-    },
     launchButton: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -774,7 +709,6 @@ export function LaunchSheet({ isOpen, onClose }: LaunchSheetProps) {
   const [packageScripts, setPackageScripts] = useState<PackageJsonScripts>({});
   const [loadingScripts, setLoadingScripts] = useState(false);
   const [launching, setLaunching] = useState(false);
-  const [allHostSessions, setAllHostSessions] = useState<AiSession[]>([]);
 
   // Calculate which step to start on
   const totalSteps = useMemo(() => {
@@ -796,7 +730,6 @@ export function LaunchSheet({ isOpen, onClose }: LaunchSheetProps) {
       setSelectedHostId(hosts.length === 1 ? hosts[0].id : null);
       setSelectedProjectId(null);
       setPackageScripts({});
-      setAllHostSessions([]);
       translateX.value = -startStep * STEP_WIDTH;
       // Use setTimeout to ensure ref is ready
       setTimeout(() => {
@@ -822,54 +755,6 @@ export function LaunchSheet({ isOpen, onClose }: LaunchSheetProps) {
     () => projects.find((p) => p.id === selectedProjectId) || null,
     [projects, selectedProjectId]
   );
-
-  // Load all AI sessions when host is selected (cached for counts + filtering)
-  const [loadingHostSessions, setLoadingHostSessions] = useState(false);
-
-  useEffect(() => {
-    if (!selectedHost) {
-      setAllHostSessions([]);
-      setLoadingHostSessions(false);
-      return;
-    }
-    let cancelled = false;
-    setLoadingHostSessions(true);
-    async function loadHostSessions() {
-      try {
-        const result = await getAiSessions(selectedHost!, { limit: 100, maxAgeDays: 30 });
-        if (!cancelled) {
-          setAllHostSessions(result.sessions);
-        }
-      } catch {
-        if (!cancelled) {
-          setAllHostSessions([]);
-        }
-      } finally {
-        if (!cancelled) {
-          setLoadingHostSessions(false);
-        }
-      }
-    }
-    loadHostSessions();
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedHost]);
-
-  // Calculate session counts per project from cached data
-  const sessionCounts = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const project of hostProjects) {
-      const count = allHostSessions.filter((session) =>
-        session.directory.startsWith(project.path) ||
-        project.path.startsWith(session.directory)
-      ).length;
-      if (count > 0) {
-        counts.set(project.id, count);
-      }
-    }
-    return counts;
-  }, [hostProjects, allHostSessions]);
 
   // Load scripts when project is selected
   useEffect(() => {
@@ -1034,12 +919,6 @@ export function LaunchSheet({ isOpen, onClose }: LaunchSheetProps) {
     [selectedHost, launching, onClose, router]
   );
 
-  const handleViewAiSessions = useCallback(() => {
-    if (!selectedProject) return;
-    onClose();
-    router.push(`/ai-sessions?directory=${encodeURIComponent(selectedProject.path)}`);
-  }, [selectedProject, onClose, router]);
-
   // Animated style for pager
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: translateX.value }],
@@ -1133,7 +1012,6 @@ export function LaunchSheet({ isOpen, onClose }: LaunchSheetProps) {
             <ProjectStep
               projects={hostProjects}
               selectedProjectId={selectedProjectId}
-              sessionCounts={sessionCounts}
               onSelect={handleProjectSelect}
               onBlankSession={handleBlankSession}
               colors={colors}
@@ -1152,11 +1030,9 @@ export function LaunchSheet({ isOpen, onClose }: LaunchSheetProps) {
               <CommandStep
                 commands={projectCommands}
                 snippets={snippets}
-                sessionCount={selectedProject ? (sessionCounts.get(selectedProject.id) || 0) : 0}
                 loadingScripts={loadingScripts}
                 launching={launching}
                 onLaunch={handleLaunch}
-                onViewAiSessions={handleViewAiSessions}
                 colors={colors}
               />
             )}

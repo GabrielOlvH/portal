@@ -291,14 +291,6 @@ export default function MoreTabScreen() {
           />
           <View style={styles.separator} />
           <MenuItem
-            title="AI Sessions"
-            subtitle="Claude, Codex, and OpenCode sessions"
-            onPress={() => router.push('/ai-sessions')}
-            styles={styles}
-            chevronColor={colors.textSecondary}
-          />
-          <View style={styles.separator} />
-          <MenuItem
             title="Ports"
             subtitle="View and manage active ports"
             onPress={() => router.push('/ports')}

@@ -1,7 +1,6 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { TOKEN } from '../config';
-import { registerAiSessionRoutes } from './routes/ai-sessions';
 import { registerCopilotRoutes } from './routes/copilot';
 import { registerCoreRoutes } from './routes/core';
 import { registerDockerRoutes } from './routes/docker';
@@ -31,7 +30,6 @@ export function buildApp() {
     return next();
   });
 
-  registerAiSessionRoutes(app);
   registerCoreRoutes(app);
   registerDockerRoutes(app);
   registerFileRoutes(app);

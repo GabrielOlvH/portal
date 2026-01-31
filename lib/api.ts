@@ -1,7 +1,4 @@
 import {
-  AiProvider,
-  AiSessionDetail,
-  AiSessionListResponse,
   CursorInfo,
   DirectoryListing,
   Host,
@@ -383,70 +380,6 @@ export async function sendTestPushNotification(
     method: 'POST',
     body: JSON.stringify(payload ?? {}),
   }, 15000);
-}
-
-// AI Sessions API
-
-export type AiSessionsOptions = {
-  provider?: AiProvider;
-  limit?: number;
-  offset?: number;
-  directory?: string;
-  maxAgeDays?: number;
-  refresh?: boolean;
-};
-
-export async function getAiSessions(
-  host: Host,
-  options?: AiSessionsOptions
-): Promise<AiSessionListResponse> {
-  const params = new URLSearchParams();
-  if (options?.limit) params.set('limit', String(options.limit));
-  if (options?.offset) params.set('offset', String(options.offset));
-  if (options?.provider) params.set('provider', options.provider);
-  if (options?.directory) params.set('directory', options.directory);
-  if (options?.maxAgeDays) params.set('maxAgeDays', String(options.maxAgeDays));
-  if (options?.refresh) params.set('refresh', '1');
-  const query = params.toString();
-  return request(host, `/ai-sessions${query ? `?${query}` : ''}`, { method: 'GET' });
-}
-
-export async function getAiSessionDetail(
-  host: Host,
-  provider: AiProvider,
-  id: string
-): Promise<AiSessionDetail> {
-  return request(
-    host,
-    `/ai-sessions/${encodeURIComponent(provider)}/${encodeURIComponent(id)}`,
-    { method: 'GET' }
-  );
-}
-
-export async function resumeAiSession(
-  host: Host,
-  provider: AiProvider,
-  id: string
-): Promise<void> {
-  // Resume an AI session by creating a new tmux session with the resume command
-  // Each provider has a different resume command structure
-  const resumeCommands: Record<AiProvider, string> = {
-    claude: `claude --resume ${id}`,
-    codex: `codex --resume ${id}`,
-    opencode: `opencode --resume ${id}`,
-  };
-
-  const command = resumeCommands[provider];
-  const sessionName = `${provider}-${id.slice(0, 8)}`;
-
-  // Create a new tmux session running the resume command
-  await request(host, '/sessions', {
-    method: 'POST',
-    body: JSON.stringify({
-      name: sessionName,
-      command,
-    }),
-  });
 }
 
 // Copilot Auth API

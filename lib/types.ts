@@ -266,49 +266,6 @@ export type TunnelCreate = {
   targetPort: number;
 };
 
-// AI Session Types
-
-export type AiProvider = 'claude' | 'codex' | 'opencode';
-
-export type AiSessionTokenUsage = {
-  input: number;
-  output: number;
-  cached?: number;
-};
-
-export type AiSession = {
-  id: string;
-  provider: AiProvider;
-  directory: string;
-  summary: string;
-  createdAt: number;
-  updatedAt: number;
-  messageCount: number;
-  lastMessage: string;
-  modifiedFiles: string[];
-  tokenUsage?: AiSessionTokenUsage;
-  toolsUsed?: string[];
-  gitBranch?: string;
-};
-
-export type AiSessionMessage = {
-  role: 'user' | 'assistant' | 'system';
-  content: string;
-  timestamp: number;
-  toolCalls?: string[];
-};
-
-export type AiSessionDetail = AiSession & {
-  messages: AiSessionMessage[];
-  fullHistory?: boolean;
-};
-
-export type AiSessionListResponse = {
-  sessions: AiSession[];
-  total: number;
-  hasMore: boolean;
-};
-
 // GitHub CI Status Types
 
 export type GitHubCommitStatus = {

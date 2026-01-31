@@ -7,7 +7,6 @@ import {
   RefreshControl,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useQuery } from '@tanstack/react-query';
 import { Play, Clock, Folder, Plus } from 'lucide-react-native';
 
 import { Screen } from '@/components/Screen';
@@ -18,7 +17,6 @@ import { SkeletonList } from '@/components/Skeleton';
 import { useStore } from '@/lib/store';
 import { useProjects } from '@/lib/projects-store';
 import { useLaunchSheet } from '@/lib/launch-sheet';
-import { getAiSessions } from '@/lib/api';
 import { theme } from '@/lib/theme';
 import { hostColors, systemColors } from '@/lib/colors';
 import { ThemeColors, useTheme } from '@/lib/useTheme';
@@ -42,25 +40,6 @@ export default function ProjectsTabScreen() {
   const { open: openLaunchSheet } = useLaunchSheet();
   const [isManualRefresh, setIsManualRefresh] = useState(false);
 
-  const aiSessionQueries = useQuery({
-    queryKey: ['ai-sessions-all-hosts', hosts.map((h) => h.id).join(',')],
-    queryFn: async () => {
-      const results = await Promise.all(
-        hosts.map(async (host) => {
-          try {
-            const data = await getAiSessions(host, { limit: 100, maxAgeDays: 30 });
-            return { hostId: host.id, sessions: data.sessions };
-          } catch {
-            return { hostId: host.id, sessions: [] };
-          }
-        })
-      );
-      return results;
-    },
-    enabled: ready && hosts.length > 0,
-    staleTime: 30_000,
-  });
-
   const projectsByHost = useMemo(() => {
     const grouped = new Map<string, typeof projects>();
     projects.forEach((project) => {
@@ -70,35 +49,14 @@ export default function ProjectsTabScreen() {
     return grouped;
   }, [projects]);
 
-  const sessionCountsByProject = useMemo(() => {
-    const counts = new Map<string, number>();
-    if (!aiSessionQueries.data) return counts;
-
-    for (const { hostId, sessions } of aiSessionQueries.data) {
-      const hostProjects = projectsByHost.get(hostId) || [];
-      for (const project of hostProjects) {
-        const count = sessions.filter(
-          (session) =>
-            session.directory.startsWith(project.path) ||
-            project.path.startsWith(session.directory)
-        ).length;
-        if (count > 0) {
-          counts.set(project.id, count);
-        }
-      }
-    }
-    return counts;
-  }, [aiSessionQueries.data, projectsByHost]);
-
   const recentLaunchesToShow = useMemo(() => {
     return recentLaunches.slice(0, 5);
   }, [recentLaunches]);
 
   const handleRefresh = useCallback(() => {
     setIsManualRefresh(true);
-    aiSessionQueries.refetch();
     setTimeout(() => setIsManualRefresh(false), 600);
-  }, [aiSessionQueries]);
+  }, []);
 
   const handleRelaunch = useCallback(
     (_launch: (typeof recentLaunches)[0]) => {
@@ -239,7 +197,6 @@ export default function ProjectsTabScreen() {
                         <Card style={styles.listCard}>
                           {hostProjects.map((project, index) => {
                             const isLast = index === hostProjects.length - 1;
-                            const sessionCount = sessionCountsByProject.get(project.id) || 0;
 
                             return (
                               <Pressable
@@ -255,18 +212,6 @@ export default function ProjectsTabScreen() {
                                     {project.path}
                                   </AppText>
                                 </View>
-                                {sessionCount > 0 && (
-                                  <Pressable
-                                    style={styles.sessionBadge}
-                                    onPress={() =>
-                                      router.push(`/ai-sessions?directory=${encodeURIComponent(project.path)}`)
-                                    }
-                                  >
-                                    <AppText variant="caps" style={styles.sessionBadgeText}>
-                                      {sessionCount} AI
-                                    </AppText>
-                                  </Pressable>
-                                )}
                                 <Pressable
                                   style={styles.quickLaunchButton}
                                   onPress={(e) => {
@@ -467,16 +412,6 @@ const createStyles = (colors: ThemeColors) =>
     },
     projectPath: {
       fontSize: 11,
-    },
-    sessionBadge: {
-      backgroundColor: colors.accent,
-      paddingHorizontal: 10,
-      paddingVertical: 6,
-      borderRadius: theme.radii.sm,
-    },
-    sessionBadgeText: {
-      color: colors.accentText,
-      fontSize: 10,
     },
     quickLaunchButton: {
       padding: 8,

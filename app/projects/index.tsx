@@ -6,7 +6,6 @@ import {
   Pressable,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useQuery } from '@tanstack/react-query';
 
 import { Screen } from '@/components/Screen';
 import { AppText } from '@/components/AppText';
@@ -14,7 +13,6 @@ import { FadeIn } from '@/components/FadeIn';
 import { Card } from '@/components/Card';
 import { useStore } from '@/lib/store';
 import { useProjects } from '@/lib/projects-store';
-import { getAiSessions } from '@/lib/api';
 import { theme } from '@/lib/theme';
 import { hostColors } from '@/lib/colors';
 import { ThemeColors, useTheme } from '@/lib/useTheme';
@@ -33,46 +31,6 @@ export default function ProjectsScreen() {
     });
     return grouped;
   }, [projects]);
-
-  // Fetch AI sessions for all hosts to show counts on project cards
-  const aiSessionQueries = useQuery({
-    queryKey: ['ai-sessions-all-hosts', hosts.map(h => h.id).join(',')],
-    queryFn: async () => {
-      const results = await Promise.all(
-        hosts.map(async (host) => {
-          try {
-            const data = await getAiSessions(host, { limit: 100, maxAgeDays: 30 });
-            return { hostId: host.id, sessions: data.sessions };
-          } catch {
-            return { hostId: host.id, sessions: [] };
-          }
-        })
-      );
-      return results;
-    },
-    enabled: ready && hosts.length > 0,
-    staleTime: 30_000,
-  });
-
-  // Calculate session counts per project
-  const sessionCountsByProject = useMemo(() => {
-    const counts = new Map<string, number>();
-    if (!aiSessionQueries.data) return counts;
-
-    for (const { hostId, sessions } of aiSessionQueries.data) {
-      const hostProjects = projectsByHost.get(hostId) || [];
-      for (const project of hostProjects) {
-        const count = sessions.filter((session) =>
-          session.directory.startsWith(project.path) ||
-          project.path.startsWith(session.directory)
-        ).length;
-        if (count > 0) {
-          counts.set(project.id, count);
-        }
-      }
-    }
-    return counts;
-  }, [aiSessionQueries.data, projectsByHost]);
 
   const styles = useMemo(() => createStyles(colors), [colors]);
 
@@ -134,31 +92,16 @@ export default function ProjectsScreen() {
                   </View>
 
                   <View style={styles.projectsList}>
-                    {hostProjects.map((project) => {
-                      const sessionCount = sessionCountsByProject.get(project.id) || 0;
-                      return (
-                        <Card key={project.id} style={styles.projectCard}>
-                          <View style={styles.projectRow}>
-                            <View style={styles.projectInfo}>
-                              <AppText variant="subtitle">{project.name}</AppText>
-                              <AppText variant="mono" tone="muted" numberOfLines={1}>
-                                {project.path}
-                              </AppText>
-                            </View>
-                            {sessionCount > 0 && (
-                              <Pressable
-                                style={styles.sessionBadge}
-                                onPress={() => router.push(`/ai-sessions?directory=${encodeURIComponent(project.path)}`)}
-                              >
-                                <AppText variant="caps" style={styles.sessionBadgeText}>
-                                  {sessionCount} AI
-                                </AppText>
-                              </Pressable>
-                            )}
-                          </View>
-                        </Card>
-                      );
-                    })}
+                    {hostProjects.map((project) => (
+                      <Card key={project.id} style={styles.projectCard}>
+                        <View style={styles.projectInfo}>
+                          <AppText variant="subtitle">{project.name}</AppText>
+                          <AppText variant="mono" tone="muted" numberOfLines={1}>
+                            {project.path}
+                          </AppText>
+                        </View>
+                      </Card>
+                    ))}
                   </View>
                 </View>
               </FadeIn>
@@ -260,23 +203,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   projectCard: {
     padding: theme.spacing.md,
   },
-  projectRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.sm,
-  },
   projectInfo: {
-    flex: 1,
     gap: 4,
-  },
-  sessionBadge: {
-    backgroundColor: colors.accent,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: theme.radii.sm,
-  },
-  sessionBadgeText: {
-    color: colors.accentText,
-    fontSize: 10,
   },
 });
