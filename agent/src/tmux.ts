@@ -2,6 +2,40 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { SOCKET } from './config';
 
+const execFileAsync = promisify(execFile);
+
+// Check if we're running under systemd (to know if we need scope isolation)
+let useSystemdScope: boolean | null = null;
+async function shouldUseSystemdScope(): Promise<boolean> {
+  if (useSystemdScope !== null) return useSystemdScope;
+  try {
+    // Check if systemd-run is available and we're in a user session
+    await execFileAsync('systemd-run', ['--user', '--scope', '--', 'true'], { timeout: 2000 });
+    useSystemdScope = true;
+  } catch {
+    useSystemdScope = false;
+  }
+  return useSystemdScope;
+}
+
+// Spawn tmux in its own systemd scope so it survives service restarts
+export async function spawnTmuxSession(args: string[]): Promise<string> {
+  const baseArgs = SOCKET ? ['-S', SOCKET] : [];
+  const tmuxArgs = [...baseArgs, ...args];
+
+  if (await shouldUseSystemdScope()) {
+    const { stdout } = await execFileAsync(
+      'systemd-run',
+      ['--user', '--scope', '--', 'tmux', ...tmuxArgs],
+      { timeout: 10000 }
+    );
+    return stdout.trim();
+  }
+
+  const { stdout } = await execFileAsync('tmux', tmuxArgs, { timeout: 5000 });
+  return stdout.trim();
+}
+
 export type TmuxSessionInfo = {
   name: string;
   windows: number;
@@ -16,8 +50,6 @@ export type CursorInfo = {
   width: number;
   height: number;
 };
-
-const execFileAsync = promisify(execFile);
 
 export async function runTmux(args: readonly string[]): Promise<string> {
   const baseArgs = SOCKET ? ['-S', SOCKET] : [];

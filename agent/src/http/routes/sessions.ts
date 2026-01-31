@@ -1,6 +1,6 @@
 import type { Hono } from 'hono';
 import { getSessionInsights } from '../../agents';
-import { capturePane, getCursorInfo, requireName, runTmux, sessionTarget } from '../../tmux';
+import { capturePane, getCursorInfo, requireName, runTmux, sessionTarget, spawnTmuxSession } from '../../tmux';
 import { jsonError } from '../errors';
 import { fetchSessions } from '../sessions';
 
@@ -50,7 +50,7 @@ export function registerSessionRoutes(app: Hono) {
       const args = ['new-session', '-d', '-s', name];
       if (windowName) args.push('-n', windowName);
       if (command) args.push(command);
-      await runTmux(args);
+      await spawnTmuxSession(args);
       await runTmux(['set-option', '-t', name, 'status', 'off']);
       return c.json({ ok: true });
     } catch (err) {

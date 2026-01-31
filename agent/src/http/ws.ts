@@ -4,7 +4,7 @@ import type { Socket } from 'node:net';
 import { WebSocket, WebSocketServer, type RawData } from 'ws';
 import { TOKEN } from '../config';
 import { pty } from '../pty';
-import { runTmux } from '../tmux';
+import { runTmux, spawnTmuxSession } from '../tmux';
 import { getLiveSnapshot, parseLiveConfig } from './live';
 
 type TmuxInputPayload = {
@@ -237,20 +237,34 @@ export function attachWebSocketServers(server: Server) {
     const createIfMissing = url.searchParams.get('create') === '1';
 
     // Check if session exists first (unless create flag is set)
-    if (!createIfMissing) {
-      try {
-        await runTmux(['has-session', '-t', session]);
-      } catch {
+    // Check if session exists
+    let sessionExists = false;
+    try {
+      await runTmux(['has-session', '-t', session]);
+      sessionExists = true;
+    } catch {
+      if (!createIfMissing) {
         ws.close(1008, 'session not found');
         return;
       }
     }
 
+    // Create session in its own systemd scope if needed (survives service restarts)
+    if (!sessionExists) {
+      try {
+        await spawnTmuxSession(['new-session', '-d', '-s', session]);
+      } catch (err) {
+        ws.close(1011, err instanceof Error ? err.message : 'failed to create session');
+        return;
+      }
+    }
+
+    // Now attach to the session
     let term: ReturnType<typeof pty.spawn>;
     try {
       term = pty.spawn(
         'tmux',
-        ['new-session', '-A', '-s', session, '-x', String(cols), '-y', String(rows)],
+        ['attach-session', '-t', session, '-x', String(cols), '-y', String(rows)],
         {
           name: 'xterm-256color',
           cols,

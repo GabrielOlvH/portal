@@ -537,7 +537,6 @@ WorkingDirectory=${config.installDir}
 ExecStart=/usr/bin/node ${config.installDir}/src/index.ts
 Restart=always
 RestartSec=5
-KillMode=process
 StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=${SERVICE_NAME}
