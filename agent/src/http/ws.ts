@@ -264,7 +264,7 @@ export function attachWebSocketServers(server: Server) {
     try {
       term = pty.spawn(
         'tmux',
-        ['attach-session', '-t', session, '-x', String(cols), '-y', String(rows)],
+        ['attach-session', '-t', session],
         {
           name: 'xterm-256color',
           cols,

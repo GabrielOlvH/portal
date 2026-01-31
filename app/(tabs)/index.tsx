@@ -587,18 +587,26 @@ export default function SessionsScreen() {
           {/* Usage Cards */}
           {hasUsageCards && (
             <FadeIn>
-              <View style={styles.usageCardsRow}>
+              <View style={styles.usageCardsGrid}>
                 {usageVisibility.claude && aggregatedUsage.claude && (
-                  <CompactUsageCard provider="claude" usage={aggregatedUsage.claude} />
+                  <View style={styles.usageCardGridItem}>
+                    <CompactUsageCard provider="claude" usage={aggregatedUsage.claude} />
+                  </View>
                 )}
                 {usageVisibility.codex && aggregatedUsage.codex && (
-                  <CompactUsageCard provider="codex" usage={aggregatedUsage.codex} />
+                  <View style={styles.usageCardGridItem}>
+                    <CompactUsageCard provider="codex" usage={aggregatedUsage.codex} />
+                  </View>
                 )}
                 {usageVisibility.copilot && aggregatedUsage.copilot && (
-                  <CompactUsageCard provider="copilot" usage={aggregatedUsage.copilot} />
+                  <View style={styles.usageCardGridItem}>
+                    <CompactUsageCard provider="copilot" usage={aggregatedUsage.copilot} />
+                  </View>
                 )}
                 {usageVisibility.kimi && aggregatedUsage.kimi && (
-                  <CompactUsageCard provider="kimi" usage={aggregatedUsage.kimi} />
+                  <View style={styles.usageCardGridItem}>
+                    <CompactUsageCard provider="kimi" usage={aggregatedUsage.kimi} />
+                  </View>
                 )}
               </View>
             </FadeIn>
@@ -789,9 +797,13 @@ const createStyles = (colors: ThemeColors, _isDark: boolean) => {
     paddingBottom: 40,
     gap: 16,
   },
-  usageCardsRow: {
+  usageCardsGrid: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 10,
+  },
+  usageCardGridItem: {
+    width: '48%',
   },
   usageRow: {
     gap: 4,
