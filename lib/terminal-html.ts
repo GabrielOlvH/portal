@@ -163,7 +163,7 @@ export function buildTerminalHtml(profile: TerminalHtmlProfile, wsUrl: string, t
     ? `
       body { position: relative; }
       #root { position: relative; width: 100%; height: 100%; overflow: hidden; }
-      #terminal { width: 100%; height: 100%; padding: 0 4px; box-sizing: border-box; }
+      #terminal { width: 100%; height: 100%; padding: 0; box-sizing: border-box; }
       #overlay { position: absolute; inset: 0; z-index: 2; }
       #terminal, #overlay {
         -webkit-user-select: none;
@@ -173,7 +173,7 @@ export function buildTerminalHtml(profile: TerminalHtmlProfile, wsUrl: string, t
     `
     : `
       #root { width: 100%; height: 100%; overflow: hidden; }
-      #terminal { height: 100%; width: 100%; padding: 0 4px; box-sizing: border-box; }
+      #terminal { height: 100%; width: 100%; padding: 0; box-sizing: border-box; }
     `;
   const textareaStyles = config.hideTextarea
     ? '.xterm-helper-textarea { font-size: 16px; opacity: 0; pointer-events: none; }'
@@ -635,6 +635,10 @@ export function buildTerminalHtml(profile: TerminalHtmlProfile, wsUrl: string, t
         }
 
         function sendScroll(deltaY, clientX, clientY) {
+          // Use xterm's native scrollLines for immediate smooth visual feedback
+          term.scrollLines(deltaY > 0 ? 1 : -1);
+          
+          // Also send SGR mouse events for apps that capture mouse (vim, less, etc.)
           if (!config.enableSgrScroll || !config.enableInput || socket?.readyState !== 1) return;
           const terminalEl = document.getElementById('terminal');
           if (!terminalEl) return;
@@ -652,8 +656,13 @@ export function buildTerminalHtml(profile: TerminalHtmlProfile, wsUrl: string, t
         const overlay = document.getElementById('overlay');
 
         const WHEEL_PIXELS_PER_LINE = 80;
-        const TOUCH_PIXELS_PER_LINE = 60;
-        const MAX_SCROLL_LINES_PER_FRAME = 3;
+        const TOUCH_PIXELS_PER_LINE = 40;
+        const MAX_SCROLL_LINES_PER_FRAME = 5;
+        const MOMENTUM_FRICTION = 0.92;
+        const MOMENTUM_MIN_VELOCITY = 0.3;
+        const VELOCITY_SAMPLE_MS = 100;
+        const HAPTIC_THROTTLE_MS = 80;
+        let lastHapticTime = 0;
 
         function createScrollState() {
           return {
@@ -667,6 +676,11 @@ export function buildTerminalHtml(profile: TerminalHtmlProfile, wsUrl: string, t
 
         const wheelScroll = createScrollState();
         const touchScroll = createScrollState();
+
+        let momentumVelocity = 0;
+        let momentumRaf = 0;
+        let lastMomentumTime = 0;
+        let velocitySamples = [];
 
         function flushScroll(state) {
           state.raf = 0;
@@ -691,8 +705,78 @@ export function buildTerminalHtml(profile: TerminalHtmlProfile, wsUrl: string, t
           const direction = state.remainder > 0 ? 1 : -1;
           state.pending += direction * lines;
           state.remainder -= direction * lines * pixelsPerLine;
+          
+          // Throttle haptic feedback
+          const now = Date.now();
+          if (now - lastHapticTime > HAPTIC_THROTTLE_MS) {
+            sendToRN({ type: 'hapticLight' });
+            lastHapticTime = now;
+          }
+          
           if (!state.raf) {
             state.raf = requestAnimationFrame(() => flushScroll(state));
+          }
+        }
+
+        function trackVelocity(deltaY) {
+          const now = Date.now();
+          velocitySamples.push({ delta: deltaY, time: now });
+          // Keep only recent samples
+          velocitySamples = velocitySamples.filter(s => now - s.time < VELOCITY_SAMPLE_MS);
+        }
+
+        function calculateVelocity() {
+          if (velocitySamples.length < 2) return 0;
+          const now = Date.now();
+          const recent = velocitySamples.filter(s => now - s.time < VELOCITY_SAMPLE_MS);
+          if (recent.length < 2) return 0;
+          const totalDelta = recent.reduce((sum, s) => sum + s.delta, 0);
+          const timeSpan = recent[recent.length - 1].time - recent[0].time;
+          if (timeSpan <= 0) return 0;
+          return (totalDelta / timeSpan) * 16; // velocity per frame (~16ms)
+        }
+
+        function stopMomentum() {
+          if (momentumRaf) {
+            cancelAnimationFrame(momentumRaf);
+            momentumRaf = 0;
+          }
+          momentumVelocity = 0;
+          velocitySamples = [];
+        }
+
+        function animateMomentum() {
+          momentumRaf = 0;
+          if (Math.abs(momentumVelocity) < MOMENTUM_MIN_VELOCITY) {
+            momentumVelocity = 0;
+            return;
+          }
+
+          const now = Date.now();
+          const elapsed = lastMomentumTime ? now - lastMomentumTime : 16;
+          lastMomentumTime = now;
+
+          // Apply velocity scaled by frame time
+          const frameFactor = elapsed / 16;
+          const delta = momentumVelocity * frameFactor;
+          
+          queueScroll(delta, touchScroll.lastX, touchScroll.lastY, TOUCH_PIXELS_PER_LINE, touchScroll);
+
+          // Apply friction
+          momentumVelocity *= Math.pow(MOMENTUM_FRICTION, frameFactor);
+
+          momentumRaf = requestAnimationFrame(animateMomentum);
+        }
+
+        function startMomentum() {
+          const velocity = calculateVelocity();
+          velocitySamples = [];
+          if (Math.abs(velocity) < MOMENTUM_MIN_VELOCITY) return;
+          
+          momentumVelocity = velocity;
+          lastMomentumTime = Date.now();
+          if (!momentumRaf) {
+            momentumRaf = requestAnimationFrame(animateMomentum);
           }
         }
 
@@ -733,6 +817,7 @@ export function buildTerminalHtml(profile: TerminalHtmlProfile, wsUrl: string, t
 
         if (overlay) overlay.addEventListener('touchstart', (e) => {
           if (e.touches.length === 1) {
+            stopMomentum();
             touchStartX = e.touches[0].clientX;
             touchStartY = e.touches[0].clientY;
             lastScrollY = touchStartY;
@@ -803,6 +888,7 @@ export function buildTerminalHtml(profile: TerminalHtmlProfile, wsUrl: string, t
             if (e.cancelable) e.preventDefault();
             const delta = lastScrollY - y;
             lastScrollY = y;
+            trackVelocity(delta);
             queueScroll(delta, x, y, TOUCH_PIXELS_PER_LINE, touchScroll);
           }
         }, { passive: false });
@@ -810,6 +896,9 @@ export function buildTerminalHtml(profile: TerminalHtmlProfile, wsUrl: string, t
         if (overlay) overlay.addEventListener('touchend', () => {
           if (!touchMoved && !isSelectionMode) {
             term.focus();
+          }
+          if (isVerticalScroll && !isSelectionMode && config.enableSgrScroll) {
+            startMomentum();
           }
         }, { passive: true });
       }

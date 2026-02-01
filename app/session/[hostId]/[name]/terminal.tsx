@@ -15,6 +15,12 @@ import {
   ViewStyle,
   View,
 } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  Easing,
+} from 'react-native-reanimated';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useIsFocused } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -148,6 +154,52 @@ export default function SessionTerminalScreen(): React.ReactElement {
   const sourceCache = useRef<Record<string, SourceCacheEntry>>({});
   const styles = useMemo(() => createStyles(colors), [colors]);
   const fitScript = 'window.__fitTerminal && window.__fitTerminal(); true;';
+
+  // Animated keyboard height for smooth push-up animation
+  const keyboardHeight = useSharedValue(0);
+  const helperHeightValue = useSharedValue(0);
+  
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    
+    // iOS keyboard curve (UIViewAnimationCurveKeyboard = 7, approximated as cubic bezier)
+    const iosKeyboardEasing = Easing.bezier(0.33, 0.01, 0.0, 1.0);
+    
+    const showListener = Keyboard.addListener(showEvent, (e) => {
+      const duration = e.duration || 250;
+      keyboardHeight.value = withTiming(e.endCoordinates.height, {
+        duration,
+        easing: iosKeyboardEasing,
+      });
+    });
+    
+    const hideListener = Keyboard.addListener(hideEvent, (e) => {
+      const duration = e.duration || 250;
+      keyboardHeight.value = withTiming(0, {
+        duration,
+        easing: iosKeyboardEasing,
+      });
+    });
+    
+    return () => {
+      showListener.remove();
+      hideListener.remove();
+    };
+  }, [keyboardHeight]);
+
+  const animatedContainerStyle = useAnimatedStyle(() => {
+    // Only apply helper height offset when keyboard is open
+    const helperOffset = keyboardHeight.value > 0 ? helperHeightValue.value : 0;
+    return {
+      transform: [{ translateY: -(keyboardHeight.value + helperOffset) }],
+    };
+  });
+  const animatedHelperStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: -keyboardHeight.value }],
+    opacity: keyboardHeight.value > 0 ? 1 : 0,
+  }));
+
   const terminalTheme = useMemo(
     () => ({
       background: colors.terminalBackground,
@@ -450,6 +502,17 @@ export default function SessionTerminalScreen(): React.ReactElement {
   }, [sessions, currentSessionName, initialSessionName, router]);
 
 
+  const lastSnappedIndexRef = useRef<number | null>(null);
+
+  const handlePagerScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const nextIndex = Math.round(event.nativeEvent.contentOffset.x / screenWidth);
+    if (!Number.isFinite(nextIndex)) return;
+    if (lastSnappedIndexRef.current !== null && nextIndex !== lastSnappedIndexRef.current) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    lastSnappedIndexRef.current = nextIndex;
+  }, [screenWidth]);
+
   const handlePagerMomentumEnd = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const nextIndex = Math.round(event.nativeEvent.contentOffset.x / screenWidth);
     if (!Number.isFinite(nextIndex)) return;
@@ -468,7 +531,7 @@ export default function SessionTerminalScreen(): React.ReactElement {
       ref.injectJavaScript(fitScript);
     }, 50);
     return () => clearTimeout(timeout);
-  }, [currentSessionName, isFocused, pagerHeight, keyboardInset, helperHeight]);
+  }, [currentSessionName, isFocused, pagerHeight]);
 
 
   useEffect(() => {
@@ -537,13 +600,14 @@ export default function SessionTerminalScreen(): React.ReactElement {
         </View>
       </View>
 
-      <View style={styles.pagerFrame}>
+      <Animated.View style={[styles.pagerFrame, animatedContainerStyle]}>
         <ScrollView
           ref={pagerRef}
           horizontal
           pagingEnabled
           showsHorizontalScrollIndicator={false}
           scrollEnabled={!isSelecting}
+          onScroll={handlePagerScroll}
           onMomentumScrollEnd={handlePagerMomentumEnd}
           scrollEventThrottle={16}
           style={styles.pager}
@@ -584,7 +648,7 @@ export default function SessionTerminalScreen(): React.ReactElement {
                   </View>
                 )}
                 <View
-                  style={[styles.terminal, keyboardInset > 0 && isCurrent && { paddingBottom: keyboardInset + helperHeight }]}
+                  style={styles.terminal}
                 >
                   <TerminalWebView
                     setRef={(ref) => { webRefs.current[session.name] = ref; }}
@@ -609,6 +673,9 @@ export default function SessionTerminalScreen(): React.ReactElement {
                           }
                           case 'haptic':
                             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                            return;
+                          case 'hapticLight':
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                             return;
                           case 'selectionStart':
                             setIsSelecting(true);
@@ -646,20 +713,23 @@ export default function SessionTerminalScreen(): React.ReactElement {
             );
           })}
         </ScrollView>
-      </View>
+      </Animated.View>
 
-      {keyboardInset > 0 && (
-        <View style={[styles.helperOverlay, { bottom: keyboardInset }]}>
-          <View style={styles.helperBar} onLayout={(e) => setHelperHeight(e.nativeEvent.layout.height)}>
-            <ScrollView
-              horizontal
-              directionalLockEnabled
-              alwaysBounceVertical={false}
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.helperContent}
-            >
-              <Pressable
-                style={({ pressed }) => [styles.doneKey, pressed && styles.keyPressed]}
+      <Animated.View style={[styles.helperOverlay, animatedHelperStyle]} pointerEvents={keyboardInset > 0 ? 'auto' : 'none'}>
+        <View style={styles.helperBar} onLayout={(e) => {
+          const height = e.nativeEvent.layout.height;
+          setHelperHeight(height);
+          helperHeightValue.value = height;
+        }}>
+          <ScrollView
+            horizontal
+            directionalLockEnabled
+            alwaysBounceVertical={false}
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.helperContent}
+          >
+            <Pressable
+              style={({ pressed }) => [styles.doneKey, pressed && styles.keyPressed]}
                 onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); blurTerminal(); }}
               >
                 <ChevronDown size={16} color={colors.terminalForeground} />
@@ -778,8 +848,7 @@ export default function SessionTerminalScreen(): React.ReactElement {
               )
             )}
           </View>
-        </View>
-      )}
+        </Animated.View>
     </Screen>
   );
 }
@@ -886,6 +955,7 @@ function createStyles(colors: ThemeColors): TerminalStyles {
       position: 'absolute',
       left: 0,
       right: 0,
+      bottom: 0,
     },
     helperBar: {
       backgroundColor: colors.terminalBackground,

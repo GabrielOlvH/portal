@@ -133,6 +133,8 @@ export default function DockerTerminalScreen() {
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
               } else if (payload?.type === 'haptic') {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              } else if (payload?.type === 'hapticLight') {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               }
             } catch {}
           }}
