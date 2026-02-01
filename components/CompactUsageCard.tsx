@@ -17,7 +17,7 @@ import * as Haptics from 'expo-haptics';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 type CompactUsageCardProps = {
-  provider: 'claude' | 'codex' | 'copilot' | 'kimi';
+  provider: 'claude' | 'codex' | 'copilot' | 'cursor' | 'kimi';
   usage: ProviderUsage;
   onPress?: () => void;
 };
@@ -218,7 +218,7 @@ export function CompactUsageCard({ provider, usage, onPress }: CompactUsageCardP
                 bgColor={colors.barBg}
               />
               <View style={styles.iconOverlay}>
-                <ProviderIcon provider={provider} size={16} />
+                <ProviderIcon provider={provider} size={16} color={colors.textSecondary} />
               </View>
             </View>
           </Animated.View>

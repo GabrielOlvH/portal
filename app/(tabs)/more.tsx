@@ -403,6 +403,15 @@ export default function MoreTabScreen() {
             colors={colors}
             status={{ error: 'Set KIMI_AUTH_TOKEN env var' }}
           />
+          <View style={styles.separator} />
+          <ToggleItem
+            title="Cursor"
+            value={preferences.usageCards.cursor}
+            onValueChange={(value) => updateUsageCardVisibility({ cursor: value })}
+            styles={styles}
+            colors={colors}
+            status={{ error: 'Set CURSOR_COOKIE env var' }}
+          />
         </Card>
 
         <Card style={styles.card}>

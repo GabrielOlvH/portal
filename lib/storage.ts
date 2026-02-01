@@ -38,6 +38,7 @@ function normalizePreferences(raw: Partial<AppPreferences> | null): AppPreferenc
       codex: typeof usageCards.codex === 'boolean' ? usageCards.codex : defaults.usageCards.codex,
       copilot:
         typeof usageCards.copilot === 'boolean' ? usageCards.copilot : defaults.usageCards.copilot,
+      cursor: typeof usageCards.cursor === 'boolean' ? usageCards.cursor : defaults.usageCards.cursor,
       kimi: typeof usageCards.kimi === 'boolean' ? usageCards.kimi : defaults.usageCards.kimi,
     },
     theme,

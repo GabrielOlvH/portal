@@ -1,13 +1,55 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
+import { execSync } from 'node:child_process';
 import { oauthCache } from './state';
 import { formatOAuthError } from './utils';
 
-async function resolveCursorCookieHeader(): Promise<string | null> {
-  const envHeader = (process.env.CURSOR_COOKIE || '').trim();
-  if (envHeader) return envHeader;
+type CursorAuth = {
+  type: 'cookie' | 'token';
+  value: string;
+};
+
+function readAccessTokenFromDb(): string | null {
   const home = os.homedir();
+  const dbPath = path.join(home, '.config', 'Cursor', 'User', 'globalStorage', 'state.vscdb');
+  try {
+    if (!fs.existsSync(dbPath)) return null;
+    // Use Python to read from SQLite since it's universally available
+    const script = `
+import sqlite3, sys
+try:
+    conn = sqlite3.connect('${dbPath.replace(/'/g, "\\'")}')
+    cursor = conn.cursor()
+    cursor.execute("SELECT value FROM ItemTable WHERE key = 'cursorAuth/accessToken'")
+    row = cursor.fetchone()
+    conn.close()
+    if row: print(row[0], end='')
+except: pass
+`;
+    const result = execSync(`python3 -c "${script.replace(/"/g, '\\"')}"`, {
+      encoding: 'utf8',
+      timeout: 5000,
+      stdio: ['pipe', 'pipe', 'pipe'],
+    }).trim();
+    return result || null;
+  } catch {
+    return null;
+  }
+}
+
+async function resolveCursorAuth(): Promise<CursorAuth | null> {
+  // 1. Check environment variable (cookie format)
+  const envHeader = (process.env.CURSOR_COOKIE || '').trim();
+  if (envHeader) return { type: 'cookie', value: envHeader };
+
+  // 2. Check environment variable (token format)
+  const envToken = (process.env.CURSOR_TOKEN || '').trim();
+  if (envToken) return { type: 'token', value: envToken };
+
+  const home = os.homedir();
+
+  // 3. Check JSON cookie files
   const candidates = [
     path.join(home, '.cursor', 'session.json'),
     path.join(home, '.cursor', 'cookie.json'),
@@ -16,16 +58,21 @@ async function resolveCursorCookieHeader(): Promise<string | null> {
     try {
       const raw = fs.readFileSync(candidate, 'utf8');
       const parsed = JSON.parse(raw);
-      if (parsed && typeof parsed.cookie === 'string') return parsed.cookie;
+      if (parsed && typeof parsed.cookie === 'string') return { type: 'cookie', value: parsed.cookie };
       if (parsed && Array.isArray(parsed.cookies)) {
         const header = (parsed.cookies as Array<{ name?: string; value?: string }>)
           .map((cookie) => `${cookie.name ?? ''}=${cookie.value ?? ''}`)
           .filter((cookie: string) => cookie !== '=')
           .join('; ');
-        if (header) return header;
+        if (header) return { type: 'cookie', value: header };
       }
     } catch {}
   }
+
+  // 4. Read access token from Cursor's SQLite database
+  const dbToken = readAccessTokenFromDb();
+  if (dbToken) return { type: 'token', value: dbToken };
+
   return null;
 }
 
@@ -37,16 +84,21 @@ type CursorUsage = {
   error?: string;
 };
 
-async function fetchCursorUsage(cookieHeader: string): Promise<CursorAuthResult> {
+async function fetchCursorUsage(auth: CursorAuth): Promise<CursorAuthResult> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 12000);
   try {
+    const headers: Record<string, string> = {
+      Accept: 'application/json',
+    };
+    if (auth.type === 'cookie') {
+      headers.Cookie = auth.value;
+    } else {
+      headers.Authorization = `Bearer ${auth.value}`;
+    }
     const response = await fetch('https://cursor.com/api/usage-summary', {
       method: 'GET',
-      headers: {
-        Accept: 'application/json',
-        Cookie: cookieHeader,
-      },
+      headers,
       signal: controller.signal,
     });
     const text = await response.text();
@@ -73,12 +125,12 @@ export async function getCursorStatus(): Promise<CursorUsage> {
   if (oauthCache.cursor.error && now - oauthCache.cursor.ts < 60000) {
     return { error: oauthCache.cursor.error };
   }
-  const cookieHeader = await resolveCursorCookieHeader();
-  if (!cookieHeader) {
-    oauthCache.cursor = { ts: now, value: null, error: 'cursor cookie missing' };
+  const auth = await resolveCursorAuth();
+  if (!auth) {
+    oauthCache.cursor = { ts: now, value: null, error: 'cursor auth missing' };
     return { error: 'cursor not configured' };
   }
-  const result = await fetchCursorUsage(cookieHeader);
+  const result = await fetchCursorUsage(auth);
   if ('error' in result) {
     oauthCache.cursor = { ts: now, value: null, error: result.error };
     return { error: result.error };

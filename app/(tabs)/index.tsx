@@ -402,10 +402,12 @@ export default function SessionsScreen() {
     let claude: ProviderUsage | null = null;
     let codex: ProviderUsage | null = null;
     let copilot: ProviderUsage | null = null;
+    let cursor: ProviderUsage | null = null;
     let kimi: ProviderUsage | null = null;
     let claudePolled = 0;
     let codexPolled = 0;
     let copilotPolled = 0;
+    let cursorPolled = 0;
     let kimiPolled = 0;
 
     const allInsights: SessionInsights[] = [];
@@ -434,13 +436,17 @@ export default function SessionsScreen() {
         copilot = insights.copilot;
         copilotPolled = polled;
       }
+      if (insights.cursor?.session?.percentLeft != null && polled > cursorPolled) {
+        cursor = insights.cursor;
+        cursorPolled = polled;
+      }
       if (insights.kimi?.session?.percentLeft != null && polled > kimiPolled) {
         kimi = insights.kimi;
         kimiPolled = polled;
       }
     });
 
-    return { claude, codex, copilot, kimi };
+    return { claude, codex, copilot, cursor, kimi };
   }, [hosts, sessions, hostUsageMap]);
 
   const usageVisibility = preferences.usageCards;
@@ -448,6 +454,7 @@ export default function SessionsScreen() {
     (usageVisibility.claude && aggregatedUsage.claude) ||
     (usageVisibility.codex && aggregatedUsage.codex) ||
     (usageVisibility.copilot && aggregatedUsage.copilot) ||
+    (usageVisibility.cursor && aggregatedUsage.cursor) ||
     (usageVisibility.kimi && aggregatedUsage.kimi);
 
   const refreshUsage = useCallback(async () => {
@@ -486,6 +493,7 @@ export default function SessionsScreen() {
       (usageVisibility.claude && !aggregatedUsage.claude) ||
       (usageVisibility.codex && !aggregatedUsage.codex) ||
       (usageVisibility.copilot && !aggregatedUsage.copilot) ||
+      (usageVisibility.cursor && !aggregatedUsage.cursor) ||
       (usageVisibility.kimi && !aggregatedUsage.kimi)
     );
   }, [hosts.length, usageVisibility, aggregatedUsage]);
@@ -635,6 +643,9 @@ export default function SessionsScreen() {
                 )}
                 {usageVisibility.copilot && aggregatedUsage.copilot && (
                   <CompactUsageCard provider="copilot" usage={aggregatedUsage.copilot} />
+                )}
+                {usageVisibility.cursor && aggregatedUsage.cursor && (
+                  <CompactUsageCard provider="cursor" usage={aggregatedUsage.cursor} />
                 )}
                 {usageVisibility.kimi && aggregatedUsage.kimi && (
                   <CompactUsageCard provider="kimi" usage={aggregatedUsage.kimi} />

@@ -33,6 +33,7 @@ export type UsageCardsVisibility = {
   claude: boolean;
   codex: boolean;
   copilot: boolean;
+  cursor: boolean;
   kimi: boolean;
 };
 
