@@ -354,13 +354,15 @@ export default function SessionTerminalScreen(): React.ReactElement {
     if (!isTextInputMode) setIsAccessoryExpanded(false);
     const ref = webRefs.current[currentSessionName];
     if (!ref) return;
-    const timeout = setTimeout(() => {
+    // Multiple delayed fit attempts for layout stabilization after app restore
+    const delays = [60, 200, 500];
+    const timeouts = delays.map(delay => setTimeout(() => {
       ref.injectJavaScript(fitScript);
       if (keyboardOffset > 0 && !isTextInputMode) {
         ref.injectJavaScript('window.__focusTerminal && window.__focusTerminal(); true;');
       }
-    }, 60);
-    return () => clearTimeout(timeout);
+    }, delay));
+    return () => timeouts.forEach(clearTimeout);
   }, [appState, currentSessionName, isTextInputMode, keyboardOffset]);
 
   // Terminal helpers
@@ -534,8 +536,17 @@ export default function SessionTerminalScreen(): React.ReactElement {
   }, [currentSessionName, isFocused, pagerHeight]);
 
 
+  // Track the previous session name to detect actual changes
+  const prevCurrentSessionNameRef = useRef<string | null>(null);
+
   useEffect(() => {
     if (!currentSessionName || sessions.length === 0) return;
+    
+    // Only scroll programmatically when currentSessionName actually changes,
+    // not when sessions array updates from live polling (which would snap back mid-scroll)
+    if (prevCurrentSessionNameRef.current === currentSessionName) return;
+    prevCurrentSessionNameRef.current = currentSessionName;
+    
     const index = sessions.findIndex((session) => session.name === currentSessionName);
     if (index < 0) return;
     const x = index * screenWidth;

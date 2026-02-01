@@ -3,83 +3,83 @@ import { useColorScheme } from 'react-native';
 import type { ThemeSetting } from '@/lib/types';
 
 export const lightColors = {
-  // Backgrounds - Portal cool gray
-  background: '#f8fafc',        // Cool gray to match blue identity
-  card: '#FFFFFF',              // Solid white cards
-  cardPressed: '#f1f5f9',       // Slate-100 on press
+  // Backgrounds - Soft cream/warm white
+  background: '#FAFAF9',        // Stone-50 (warm cream)
+  card: '#FFFFFF',              // Pure white cards
+  cardPressed: '#F5F5F4',       // Stone-100 on press
 
-  // Text - Navy instead of pure black
-  text: '#0f172a',              // Slate-900 (deep navy)
-  textSecondary: '#475569',     // Slate-600
-  textMuted: '#94a3b8',         // Slate-400
+  // Text - Warm charcoal
+  text: '#1C1917',              // Stone-900 (warm black)
+  textSecondary: '#57534E',     // Stone-600
+  textMuted: '#A8A29E',         // Stone-400
 
   // Accent - Portal Blue
-  accent: '#3b82f6',            // Blue-500 (logo border color)
+  accent: '#3B82F6',            // Blue-500
   accentText: '#FFFFFF',        // White text on accent
 
   // Borders & Separators
-  border: '#e2e8f0',            // Slate-200
-  separator: '#e2e8f0',         // Slate-200
+  border: '#E7E5E4',            // Stone-200
+  separator: '#E7E5E4',         // Stone-200
 
-  // Status colors (kept vibrant)
-  green: '#22c55e',             // Green-500
-  red: '#ef4444',               // Red-500
-  orange: '#f97316',            // Orange-500
-  blue: '#3b82f6',              // Blue-500
-  teal: '#14b8a6',              // Teal-500
-  purple: '#a855f7',            // Purple-500
+  // Status colors (vibrant for visibility)
+  green: '#22C55E',             // Green-500
+  red: '#EF4444',               // Red-500
+  orange: '#F97316',            // Orange-500
+  blue: '#3B82F6',              // Blue-500
+  teal: '#14B8A6',              // Teal-500
+  purple: '#A855F7',            // Purple-500
 
   // UI elements
-  barBg: '#e2e8f0',             // Slate-200
-  shadow: '#0f172a',            // Navy shadow
+  barBg: '#E7E5E4',             // Stone-200
+  shadow: '#1C1917',            // Warm shadow
 
   // Terminal theme
   terminalBackground: '#FFFFFF',
-  terminalForeground: '#0f172a',
-  terminalSelection: '#bfdbfe', // Blue-200
-  terminalMuted: '#64748b',     // Slate-500
-  terminalBorder: '#e2e8f0',
-  terminalPressed: '#f1f5f9',
+  terminalForeground: '#1C1917',
+  terminalSelection: '#DBEAFE', // Blue-100
+  terminalMuted: '#78716C',     // Stone-500
+  terminalBorder: '#E7E5E4',
+  terminalPressed: '#F5F5F4',
 };
 
 export const darkColors = {
-  // Backgrounds - Portal deep navy
-  background: '#0f172a',        // Slate-900 (deep navy from logo)
-  card: '#1e293b',              // Slate-800
-  cardPressed: '#334155',       // Slate-700 on press
+  // Backgrounds - Near-black charcoal
+  background: '#0A0A0A',        // Near-black
+  card: '#171717',              // Neutral-900
+  cardPressed: '#262626',       // Neutral-800 on press
 
   // Text
-  text: '#f1f5f9',              // Slate-100 (soft white)
-  textSecondary: '#94a3b8',     // Slate-400
-  textMuted: '#64748b',         // Slate-500
+  text: '#FAFAFA',              // Neutral-50 (soft white)
+  textSecondary: '#A3A3A3',     // Neutral-400
+  textMuted: '#737373',         // Neutral-500
 
   // Accent - Portal Blue (brighter for dark mode)
-  accent: '#60a5fa',            // Blue-400 (visible on dark)
-  accentText: '#0f172a',        // Navy text on accent
+  accent: '#60A5FA',            // Blue-400 (visible on dark)
+  accentText: '#0A0A0A',        // Dark text on accent
 
   // Borders & Separators
-  border: '#334155',            // Slate-700
-  separator: '#334155',         // Slate-700
+  border: '#262626',            // Neutral-800
+  separator: '#262626',         // Neutral-800
 
   // Status colors (brighter for dark mode)
-  green: '#4ade80',             // Green-400
-  red: '#f87171',               // Red-400
-  orange: '#fb923c',            // Orange-400
-  blue: '#60a5fa',              // Blue-400
-  teal: '#2dd4bf',              // Teal-400
-  purple: '#c084fc',            // Purple-400
+  green: '#4ADE80',             // Green-400
+  red: '#F87171',               // Red-400
+  orange: '#FB923C',            // Orange-400
+  blue: '#60A5FA',              // Blue-400
+  teal: '#2DD4BF',              // Teal-400
+  purple: '#C084FC',            // Purple-400
 
   // UI elements
-  barBg: '#1e293b',             // Slate-800
+  barBg: '#171717',             // Neutral-900
   shadow: '#000000',
 
-  // Terminal theme - Portal navy
-  terminalBackground: '#0f172a',
-  terminalForeground: '#e2e8f0',
-  terminalSelection: '#1e3a5f', // Logo square color
-  terminalMuted: '#64748b',
-  terminalBorder: '#1e293b',
-  terminalPressed: '#1e293b',
+  // Terminal theme - Near-black
+  terminalBackground: '#0A0A0A',
+  terminalForeground: '#E5E5E5',
+  terminalSelection: '#1E3A5F', // Blue tint selection
+  terminalMuted: '#737373',
+  terminalBorder: '#171717',
+  terminalPressed: '#262626',
 };
 
 export type ThemeColors = typeof lightColors;

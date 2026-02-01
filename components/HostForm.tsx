@@ -1,7 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { View, StyleSheet, Pressable, TextInput } from 'react-native';
 import { AppText } from '@/components/AppText';
-import { Card } from '@/components/Card';
 import { HostDraft } from '@/lib/types';
 import { theme } from '@/lib/theme';
 import { ThemeColors, useTheme } from '@/lib/useTheme';
@@ -37,7 +36,7 @@ export function HostForm({
         <AppText variant="caps" tone="muted" style={styles.sectionLabel}>
           Connection
         </AppText>
-        <Card style={styles.formCard}>
+        <View style={styles.formCard}>
           <View style={styles.inputGroup}>
             <AppText variant="label" style={styles.inputLabel}>Host Name</AppText>
             <TextInput
@@ -66,7 +65,7 @@ export function HostForm({
               keyboardType="url"
             />
           </View>
-        </Card>
+        </View>
       </View>
 
       {/* Authentication */}
@@ -74,7 +73,7 @@ export function HostForm({
         <AppText variant="caps" tone="muted" style={styles.sectionLabel}>
           Authentication (Optional)
         </AppText>
-        <Card style={styles.formCard}>
+        <View style={styles.formCard}>
           <View style={styles.inputGroup}>
             <AppText variant="label" style={styles.inputLabel}>API Token</AppText>
             <TextInput
@@ -88,7 +87,7 @@ export function HostForm({
               secureTextEntry
             />
           </View>
-        </Card>
+        </View>
         <AppText variant="body" tone="muted" style={styles.hint}>
           Leave empty if your agent doesn't require authentication.
         </AppText>
@@ -155,7 +154,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   // Submit
   submit: {
     paddingVertical: 16,
-    borderRadius: theme.radii.lg,
+    borderRadius: theme.radii.md,
     backgroundColor: colors.accent,
     alignItems: 'center',
   },

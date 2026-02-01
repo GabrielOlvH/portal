@@ -7,7 +7,6 @@ import { Screen } from '@/components/Screen';
 import { AppText } from '@/components/AppText';
 import { FadeIn } from '@/components/FadeIn';
 import { HostCard } from '@/components/HostCard';
-import { Card } from '@/components/Card';
 import { SkeletonList } from '@/components/Skeleton';
 import { applyUpdate, checkForUpdate, UpdateStatus } from '@/lib/api';
 import { systemColors } from '@/lib/colors';
@@ -211,7 +210,7 @@ export default function HostsTabScreen() {
         }
       >
         {scanState.status !== 'idle' && (
-          <Card style={styles.scanCard}>
+          <View style={styles.scanCard}>
             <View style={styles.scanHeader}>
               <AppText variant="subtitle">Local scan</AppText>
               <Pressable
@@ -266,7 +265,7 @@ export default function HostsTabScreen() {
                 </View>
               );
             })}
-          </Card>
+          </View>
         )}
 
         {isBooting ? (
@@ -295,26 +294,31 @@ export default function HostsTabScreen() {
             <SkeletonList type="host" count={hosts.length} />
           </FadeIn>
         ) : (
-          hosts.map((host, index) => (
-            <FadeIn key={host.id} delay={index * 50}>
-              <HostCard
-                host={host}
-                status={statusMap[host.id]}
-                metrics={{
-                  cpu: stateMap[host.id]?.hostInfo?.cpu?.usage,
-                  ram: stateMap[host.id]?.hostInfo?.memory?.usedPercent,
-                }}
-                uptime={stateMap[host.id]?.hostInfo?.uptime}
-                load={stateMap[host.id]?.hostInfo?.load}
-                updateStatus={updateStatusMap[host.id]}
-                isUpdating={Boolean(updatingHosts[host.id])}
-                errorMessage={statusMap[host.id] === 'offline' ? stateMap[host.id]?.error : undefined}
-                onUpdate={() => handleUpdate(host.id)}
-                onPress={() => router.push(`/hosts/${host.id}`)}
-                onTerminal={() => handleTerminal(host.id)}
-              />
-            </FadeIn>
-          ))
+          <FadeIn delay={50}>
+            <View style={styles.hostsContainer}>
+              {hosts.map((host, index) => (
+                <HostCard
+                  key={host.id}
+                  host={host}
+                  status={statusMap[host.id]}
+                  metrics={{
+                    cpu: stateMap[host.id]?.hostInfo?.cpu?.usage,
+                    ram: stateMap[host.id]?.hostInfo?.memory?.usedPercent,
+                  }}
+                  uptime={stateMap[host.id]?.hostInfo?.uptime}
+                  load={stateMap[host.id]?.hostInfo?.load}
+                  updateStatus={updateStatusMap[host.id]}
+                  isUpdating={Boolean(updatingHosts[host.id])}
+                  errorMessage={statusMap[host.id] === 'offline' ? stateMap[host.id]?.error : undefined}
+                  isFirst={index === 0}
+                  isLast={index === hosts.length - 1}
+                  onUpdate={() => handleUpdate(host.id)}
+                  onPress={() => router.push(`/hosts/${host.id}`)}
+                  onTerminal={() => handleTerminal(host.id)}
+                />
+              ))}
+            </View>
+          </FadeIn>
         )}
       </ScrollView>
     </Screen>
@@ -368,6 +372,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     paddingBottom: theme.spacing.xxl,
     gap: theme.spacing.sm,
   },
+  hostsContainer: {
+    overflow: 'hidden',
+  },
   scanCard: {
     padding: theme.spacing.md,
     gap: theme.spacing.xs,
@@ -404,11 +411,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.accentText,
   },
   empty: {
-    backgroundColor: colors.card,
-    borderRadius: theme.radii.lg,
     padding: theme.spacing.lg,
     alignItems: 'center',
-    ...theme.shadow.card,
   },
   emptyIcon: {
     width: 56,

@@ -214,10 +214,9 @@ const createStyles = (colors: ThemeColors, isDark: boolean) => {
     gap: theme.spacing.md,
   },
   statusCard: {
-    backgroundColor: colors.card,
-    borderRadius: theme.radii.lg,
     padding: theme.spacing.md,
-    ...theme.shadow.card,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.separator,
   },
   statusRow: {
     flexDirection: 'row',
@@ -244,10 +243,9 @@ const createStyles = (colors: ThemeColors, isDark: boolean) => {
     color: colors.accent,
   },
   section: {
-    backgroundColor: colors.card,
-    borderRadius: theme.radii.lg,
     padding: theme.spacing.md,
-    ...theme.shadow.card,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.separator,
   },
   sectionHeader: {
     flexDirection: 'row',

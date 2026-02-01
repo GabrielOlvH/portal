@@ -69,7 +69,7 @@ function TerminalIllustration({ colors, isDark }: { colors: { accent: string; te
   const terminalHeaderBg = isDark ? withAlpha('#FFFFFF', 0.1) : withAlpha('#FFFFFF', 0.1);
 
   return (
-    <View style={[styles.illustrationContainer, { backgroundColor: colors.card }]}>
+    <View style={[styles.illustrationContainer, { backgroundColor: colors.barBg }]}>
       <View style={[styles.terminalWindow, { backgroundColor: terminalWindowBg }]}>
         <View style={[styles.terminalHeader, { backgroundColor: terminalHeaderBg }]}>
           <View style={[styles.terminalDot, { backgroundColor: '#FF5F57' }]} />
@@ -109,7 +109,7 @@ function ServerIllustration({ colors, isDark }: { colors: { accent: string; text
   const serverUnitBg = withAlpha(colors.text, 0.1);
 
   return (
-    <View style={[styles.illustrationContainer, { backgroundColor: colors.card }]}>
+    <View style={[styles.illustrationContainer, { backgroundColor: colors.barBg }]}>
       <View style={styles.serverRack}>
         <Animated.View style={[styles.serverPulse, { backgroundColor: colors.accent }, pulseStyle]} />
         <View style={[styles.serverUnit, { backgroundColor: serverUnitBg }]}>
@@ -134,7 +134,7 @@ function FolderIllustration({ colors, isDark }: { colors: { accent: string; text
   const folderTabBg = withAlpha(colors.accent, 0.3);
 
   return (
-    <View style={[styles.illustrationContainer, { backgroundColor: colors.card }]}>
+    <View style={[styles.illustrationContainer, { backgroundColor: colors.barBg }]}>
       <View style={styles.folderStack}>
         <View style={[styles.folderBack, { backgroundColor: colors.textMuted, opacity: 0.3 }]} />
         <View style={[styles.folderBack, { backgroundColor: colors.textMuted, opacity: 0.5, marginTop: -20 }]} />
@@ -162,7 +162,7 @@ function SparklesIllustration({ colors, isDark }: { colors: { accent: string; te
   }));
 
   return (
-    <View style={[styles.illustrationContainer, { backgroundColor: colors.card }]}>
+    <View style={[styles.illustrationContainer, { backgroundColor: colors.barBg }]}>
       <Animated.View style={[styles.sparkleContainer, sparkleStyle]}>
         <View style={[styles.sparkle, { backgroundColor: colors.accent }]} />
         <View style={[styles.sparkleRing, { borderColor: colors.accent }]} />

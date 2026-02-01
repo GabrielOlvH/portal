@@ -7,7 +7,6 @@ import BottomSheet, {
 } from '@gorhom/bottom-sheet';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppText } from '@/components/AppText';
-import { Card } from '@/components/Card';
 import { theme } from '@/lib/theme';
 import { ThemeColors, useTheme } from '@/lib/useTheme';
 import { TunnelCreate, Host } from '@/lib/types';
@@ -139,7 +138,7 @@ export function CreateTunnelModal({
           <View style={styles.portRow}>
             <View style={styles.portInput}>
               <AppText variant="label" tone="muted" style={styles.portLabel}>Listen Port</AppText>
-              <Card style={styles.inputCard}>
+              <View style={styles.inputCard}>
                 <BottomSheetTextInput
                   style={[styles.input, { color: colors.text }]}
                   placeholder="8080"
@@ -148,12 +147,12 @@ export function CreateTunnelModal({
                   onChangeText={setListenPort}
                   keyboardType="number-pad"
                 />
-              </Card>
+              </View>
             </View>
             <AppText style={styles.portArrow}>→</AppText>
             <View style={styles.portInput}>
               <AppText variant="label" tone="muted" style={styles.portLabel}>Target Port</AppText>
-              <Card style={styles.inputCard}>
+              <View style={styles.inputCard}>
                 <BottomSheetTextInput
                   style={[styles.input, { color: colors.text }]}
                   placeholder="3000"
@@ -162,14 +161,14 @@ export function CreateTunnelModal({
                   onChangeText={setTargetPort}
                   keyboardType="number-pad"
                 />
-              </Card>
+              </View>
             </View>
           </View>
         </View>
 
         <View style={styles.section}>
           <AppText variant="label" tone="muted" style={styles.label}>Target Host</AppText>
-          <Card style={styles.inputCard}>
+          <View style={styles.inputCard}>
             <BottomSheetTextInput
               style={[styles.input, { color: colors.text }]}
               placeholder="localhost"
@@ -179,7 +178,7 @@ export function CreateTunnelModal({
               autoCapitalize="none"
               autoCorrect={false}
             />
-          </Card>
+          </View>
           <AppText variant="body" tone="muted" style={styles.hint}>
             The host to forward connections to (usually localhost)
           </AppText>

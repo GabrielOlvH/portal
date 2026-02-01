@@ -5,6 +5,7 @@ import {
   Pressable,
   ActivityIndicator,
   Dimensions,
+  Image,
 } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -17,18 +18,18 @@ import BottomSheet, {
   BottomSheetBackgroundProps,
   BottomSheetScrollView,
 } from '@gorhom/bottom-sheet';
+import { Play } from 'lucide-react-native';
 import { ThemeColors, useTheme } from '@/lib/useTheme';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppText } from '@/components/AppText';
-import { Card } from '@/components/Card';
 import { providerIcons } from '@/components/icons/ProviderIcons';
 import { TerminalIcon } from '@/components/icons/HomeIcons';
 import { hostColors } from '@/lib/colors';
 import { useStore } from '@/lib/store';
 import { useProjects } from '@/lib/projects-store';
 import { useSnippets } from '@/lib/snippets-store';
-import { createSession, fetchProjectScripts, sendText } from '@/lib/api';
+import { createSession, fetchProjectIcon, fetchProjectScripts, sendText } from '@/lib/api';
 import { Command, PackageJsonScripts, Host, Project, Snippet } from '@/lib/types';
 import { theme } from '@/lib/theme';
 
@@ -164,18 +165,91 @@ function HostStep({
   );
 }
 
+// Project Icon Component - fetches and displays project favicon
+function ProjectIcon({
+  project,
+  host,
+  colors,
+  style,
+}: {
+  project: Project;
+  host: Host | null;
+  colors: ThemeColors;
+  style: ReturnType<typeof createStepStyles>['projectIcon'];
+}) {
+  const [iconUrl, setIconUrl] = useState<string | null>(project.iconUrl || null);
+  const [loading, setLoading] = useState(!project.iconUrl && !!host);
+
+  useEffect(() => {
+    if (project.iconUrl || !host) {
+      setLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    async function loadIcon() {
+      try {
+        const result = await fetchProjectIcon(host!, project.path);
+        if (!cancelled && result.found) {
+          setIconUrl(result.data);
+        }
+      } catch {
+        // Ignore errors, fallback to letter
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+    loadIcon();
+    return () => {
+      cancelled = true;
+    };
+  }, [project.id, project.path, project.iconUrl, host]);
+
+  if (loading) {
+    return (
+      <View style={[style, { backgroundColor: colors.accent + '20' }]}>
+        <ActivityIndicator size="small" color={colors.accent} />
+      </View>
+    );
+  }
+
+  if (iconUrl) {
+    return (
+      <View style={[style, { backgroundColor: colors.accent + '10' }]}>
+        <Image
+          source={{ uri: iconUrl }}
+          style={{ width: 22, height: 22, borderRadius: 4 }}
+          resizeMode="contain"
+        />
+      </View>
+    );
+  }
+
+  return (
+    <View style={[style, { backgroundColor: colors.accent + '20' }]}>
+      <AppText variant="subtitle" style={{ color: colors.accent, fontSize: 14 }}>
+        {project.name.charAt(0).toUpperCase()}
+      </AppText>
+    </View>
+  );
+}
+
 // Project Step Component
 function ProjectStep({
   projects,
   selectedProjectId,
   onSelect,
   onBlankSession,
+  host,
   colors,
 }: {
   projects: Project[];
   selectedProjectId: string | null;
   onSelect: (id: string) => void;
   onBlankSession: () => void;
+  host: Host | null;
   colors: ThemeColors;
 }) {
   const styles = useMemo(() => createStepStyles(colors), [colors]);
@@ -198,26 +272,22 @@ function ProjectStep({
               onPress={() => onSelect(project.id)}
             >
               <View style={styles.projectCardContent}>
-                <View style={[styles.projectIcon, { backgroundColor: colors.accent + '20' }]}>
-                  <AppText variant="subtitle" style={{ color: colors.accent, fontSize: 18 }}>
-                    {project.name.charAt(0).toUpperCase()}
-                  </AppText>
-                </View>
-                <View style={styles.projectInfo}>
-                  <AppText
-                    variant="label"
-                    numberOfLines={1}
-                    style={[
-                      styles.projectName,
-                      isSelected && styles.projectNameSelected,
-                    ]}
-                  >
-                    {project.name}
-                  </AppText>
-                  <AppText variant="mono" tone="muted" style={styles.projectPath} numberOfLines={1}>
-                    {project.path.split('/').pop()}
-                  </AppText>
-                </View>
+                <ProjectIcon
+                  project={project}
+                  host={host}
+                  colors={colors}
+                  style={styles.projectIcon}
+                />
+                <AppText
+                  variant="label"
+                  numberOfLines={1}
+                  style={[
+                    styles.projectName,
+                    isSelected && styles.projectNameSelected,
+                  ]}
+                >
+                  {project.name}
+                </AppText>
               </View>
             </Pressable>
           );
@@ -225,7 +295,7 @@ function ProjectStep({
       </View>
       <Pressable style={styles.blankSessionButton} onPress={onBlankSession}>
         <View style={[styles.projectIcon, { backgroundColor: colors.textMuted + '20' }]}>
-          <TerminalIcon size={16} color={colors.textSecondary} />
+          <TerminalIcon size={14} color={colors.textSecondary} />
         </View>
         <AppText variant="label" tone="muted">
           Start without a project
@@ -290,24 +360,21 @@ function CommandStep({
                     onPress={() => onLaunch(command)}
                     disabled={launching}
                   >
-                    <Card style={styles.commandCard}>
+                    <View style={styles.commandCard}>
                       <View style={styles.commandIcon}>
                         <TerminalIcon size={14} color={colors.textSecondary} />
                       </View>
-                      <View style={styles.commandContent}>
-                        <AppText variant="label" numberOfLines={1}>
-                          {command.label}
-                        </AppText>
-                        <AppText variant="mono" tone="muted" numberOfLines={1} style={styles.commandText}>
-                          {command.command}
-                        </AppText>
-                      </View>
+                      <AppText variant="mono" numberOfLines={1} style={styles.commandTextOnly}>
+                        {command.command}
+                      </AppText>
                       <View style={styles.launchIcon}>
-                        <AppText variant="label" style={styles.launchIconText}>
-                          {launching ? '...' : '>'}
-                        </AppText>
+                        {launching ? (
+                          <ActivityIndicator size="small" color={colors.accentText} />
+                        ) : (
+                          <Play size={12} color={colors.accentText} fill={colors.accentText} />
+                        )}
                       </View>
-                    </Card>
+                    </View>
                   </Pressable>
                 ))}
               </>
@@ -330,24 +397,21 @@ function CommandStep({
                       onPress={() => onLaunch(snippet)}
                       disabled={launching}
                     >
-                      <Card style={styles.commandCard}>
+                      <View style={styles.commandCard}>
                         <View style={styles.commandIcon}>
                           {icon || <TerminalIcon size={14} color={colors.textSecondary} />}
                         </View>
-                        <View style={styles.commandContent}>
-                          <AppText variant="label" numberOfLines={1}>
-                            {snippet.label}
-                          </AppText>
-                          <AppText variant="mono" tone="muted" numberOfLines={1} style={styles.commandText}>
-                            {snippet.command}
-                          </AppText>
-                        </View>
+                        <AppText variant="mono" numberOfLines={1} style={styles.commandTextOnly}>
+                          {snippet.command}
+                        </AppText>
                         <View style={styles.launchIcon}>
-                          <AppText variant="label" style={styles.launchIconText}>
-                            {launching ? '...' : '>'}
-                          </AppText>
+                          {launching ? (
+                            <ActivityIndicator size="small" color={colors.accentText} />
+                          ) : (
+                            <Play size={12} color={colors.accentText} fill={colors.accentText} />
+                          )}
                         </View>
-                      </Card>
+                      </View>
                     </Pressable>
                   );
                 })}
@@ -413,24 +477,19 @@ function BlankSessionStep({
                   onPress={() => onLaunch(snippet)}
                   disabled={launching}
                 >
-                  <Card style={styles.commandCard}>
+                  <View style={styles.commandCard}>
                     <View style={styles.commandIcon}>
                       {icon || <TerminalIcon size={14} color={colors.textSecondary} />}
                     </View>
-                    <View style={styles.commandContent}>
-                      <AppText variant="label" numberOfLines={1}>
-                        {snippet.label}
-                      </AppText>
-                      <AppText variant="mono" tone="muted" numberOfLines={1} style={styles.commandText}>
-                        {snippet.command}
-                      </AppText>
-                    </View>
+                    <AppText variant="mono" numberOfLines={1} style={styles.commandTextOnly}>
+                      {snippet.command}
+                    </AppText>
                     <View style={styles.launchIcon}>
                       <AppText variant="label" style={styles.launchIconText}>
                         {launching ? '...' : '>'}
                       </AppText>
                     </View>
-                  </Card>
+                  </View>
                 </Pressable>
               );
             })}
@@ -466,10 +525,6 @@ const createStepStyles = (colors: ThemeColors) =>
       gap: 8,
       paddingHorizontal: 16,
       paddingVertical: 12,
-      borderRadius: theme.radii.md,
-      backgroundColor: colors.card,
-      borderWidth: 2,
-      borderColor: colors.separator,
     },
     chipSelected: {
       backgroundColor: colors.accent,
@@ -498,14 +553,11 @@ const createStepStyles = (colors: ThemeColors) =>
       alignItems: 'center',
       justifyContent: 'space-between',
       padding: theme.spacing.md,
-      borderRadius: theme.radii.lg,
-      backgroundColor: colors.card,
-      borderWidth: 1,
-      borderColor: colors.separator,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.separator,
     },
     hostCardSelected: {
-      backgroundColor: colors.accent + '15',
-      borderColor: colors.accent,
+      backgroundColor: colors.cardPressed,
     },
     hostCardContent: {
       flexDirection: 'row',
@@ -549,60 +601,59 @@ const createStepStyles = (colors: ThemeColors) =>
     },
     // Project Card Styles
     projectsGrid: {
-      gap: theme.spacing.sm,
+      gap: theme.spacing.xs,
     },
     projectCard: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      padding: theme.spacing.md,
-      borderRadius: theme.radii.lg,
-      backgroundColor: colors.card,
-      borderWidth: 1,
-      borderColor: colors.separator,
+      paddingVertical: 10,
+      paddingHorizontal: theme.spacing.md,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.separator,
     },
     projectCardSelected: {
-      backgroundColor: colors.accent + '15',
-      borderColor: colors.accent,
+      backgroundColor: colors.cardPressed,
     },
     projectCardContent: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: theme.spacing.md,
+      gap: theme.spacing.sm,
       flex: 1,
     },
     projectIcon: {
-      width: 44,
-      height: 44,
-      borderRadius: 12,
+      width: 32,
+      height: 32,
+      borderRadius: 8,
       alignItems: 'center',
       justifyContent: 'center',
     },
     projectInfo: {
       flex: 1,
-      gap: 2,
+      gap: 0,
     },
     projectName: {
-      fontSize: 16,
+      fontSize: 15,
       fontWeight: '600',
     },
     projectNameSelected: {
       color: colors.accent,
     },
     projectPath: {
-      fontSize: 12,
+      fontSize: 11,
     },
     blankSessionButton: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      gap: 12,
-      marginTop: theme.spacing.xl,
-      padding: theme.spacing.md,
-      borderRadius: theme.radii.lg,
-      borderWidth: 1,
+      gap: 10,
+      marginTop: theme.spacing.md,
+      paddingVertical: 10,
+      paddingHorizontal: theme.spacing.md,
+      borderWidth: StyleSheet.hairlineWidth,
       borderColor: colors.separator,
       borderStyle: 'dashed',
+      borderRadius: theme.radii.sm,
     },
     sessionBadge: {
       backgroundColor: colors.textMuted,
@@ -624,18 +675,20 @@ const createStepStyles = (colors: ThemeColors) =>
       color: colors.accent,
     },
     commandsList: {
-      gap: theme.spacing.xs,
+      gap: 0,
     },
     commandCard: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: 10,
-      paddingHorizontal: 12,
-      gap: 12,
+      paddingVertical: 8,
+      paddingHorizontal: theme.spacing.md,
+      gap: 10,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.separator,
     },
     commandIcon: {
-      width: 20,
-      height: 20,
+      width: 16,
+      height: 16,
       alignItems: 'center',
       justifyContent: 'center',
     },
@@ -646,10 +699,14 @@ const createStepStyles = (colors: ThemeColors) =>
     commandText: {
       fontSize: 12,
     },
+    commandTextOnly: {
+      flex: 1,
+      fontSize: 13,
+    },
     launchIcon: {
-      width: 28,
-      height: 28,
-      borderRadius: 14,
+      width: 22,
+      height: 22,
+      borderRadius: 11,
       backgroundColor: colors.accent,
       alignItems: 'center',
       justifyContent: 'center',
@@ -669,7 +726,7 @@ const createStepStyles = (colors: ThemeColors) =>
       gap: 10,
       backgroundColor: colors.accent,
       paddingVertical: 16,
-      borderRadius: theme.radii.lg,
+      borderRadius: theme.radii.md,
     },
     launchButtonDisabled: {
       opacity: 0.6,
@@ -1015,6 +1072,7 @@ export function LaunchSheet({ isOpen, onClose }: LaunchSheetProps) {
               selectedProjectId={selectedProjectId}
               onSelect={handleProjectSelect}
               onBlankSession={handleBlankSession}
+              host={selectedHost}
               colors={colors}
             />
 

@@ -1,8 +1,12 @@
 import type { Hono } from 'hono';
 import { randomUUID } from 'node:crypto';
+import { exec } from 'node:child_process';
+import { promisify } from 'node:util';
 import { mkdir, readFile, readdir, realpath, stat, writeFile } from 'node:fs/promises';
-import { basename, join, resolve } from 'node:path';
+import { basename, join, resolve, relative } from 'node:path';
 import { jsonError } from '../errors';
+
+const execAsync = promisify(exec);
 
 function isErrnoException(err: unknown): err is NodeJS.ErrnoException {
   return typeof err === 'object' && err !== null && 'code' in err;
@@ -76,6 +80,54 @@ export function registerFileRoutes(app: Hono) {
         }
         throw err;
       }
+    } catch (err) {
+      return jsonError(c, err);
+    }
+  });
+
+  app.get('/project/icon', async (c) => {
+    try {
+      const projectPath = c.req.query('path');
+      if (!projectPath) {
+        return c.json({ error: 'path query parameter is required' }, 400);
+      }
+      const validatedPath = await validatePath(projectPath);
+      if (!validatedPath) {
+        return c.json({ error: 'Invalid or unauthorized path' }, 403);
+      }
+
+      // Use ripgrep to find icon files, respecting .gitignore
+      // Prioritize: favicon > icon, and png/svg > ico
+      const patterns = ['favicon.png', 'favicon.svg', 'favicon.ico', 'icon.png', 'icon.svg'];
+      
+      for (const pattern of patterns) {
+        try {
+          const { stdout } = await execAsync(
+            `rg --files --glob '**/${pattern}' --max-count=1 2>/dev/null | head -1`,
+            { cwd: validatedPath, timeout: 3000 }
+          );
+          const relativePath = stdout.trim();
+          if (relativePath) {
+            const fullPath = join(validatedPath, relativePath);
+            const iconStat = await stat(fullPath);
+            if (iconStat.isFile() && iconStat.size < 500000) { // Max 500KB
+              const content = await readFile(fullPath);
+              const base64 = content.toString('base64');
+              const ext = relativePath.split('.').pop() || 'png';
+              const mimeType = ext === 'ico' ? 'image/x-icon' : ext === 'svg' ? 'image/svg+xml' : `image/${ext}`;
+              return c.json({
+                found: true,
+                data: `data:${mimeType};base64,${base64}`,
+                path: relativePath,
+              });
+            }
+          }
+        } catch {
+          // Try next pattern
+        }
+      }
+
+      return c.json({ found: false });
     } catch (err) {
       return jsonError(c, err);
     }

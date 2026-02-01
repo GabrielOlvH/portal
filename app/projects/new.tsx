@@ -4,7 +4,6 @@ import { useRouter } from 'expo-router';
 
 import { Screen } from '@/components/Screen';
 import { AppText } from '@/components/AppText';
-import { Card } from '@/components/Card';
 import { DirectoryBrowser } from '@/components/DirectoryBrowser';
 import { useStore } from '@/lib/store';
 import { useProjects } from '@/lib/projects-store';
@@ -82,7 +81,7 @@ export default function NewProjectScreen() {
             Host
           </AppText>
           {hosts.length === 0 ? (
-            <Card style={styles.emptyCard}>
+            <View style={styles.emptyCard}>
               <AppText variant="body" tone="muted" style={styles.emptyText}>
                 No hosts configured yet
               </AppText>
@@ -91,7 +90,7 @@ export default function NewProjectScreen() {
                   Add Host First
                 </AppText>
               </Pressable>
-            </Card>
+            </View>
           ) : (
             <View style={styles.hostList}>
               {hosts.map((host, idx) => {
@@ -133,7 +132,7 @@ export default function NewProjectScreen() {
           <AppText variant="caps" tone="muted" style={styles.sectionLabel}>
             Project Details
           </AppText>
-          <Card style={styles.formCard}>
+          <View style={styles.formCard}>
             <View style={styles.inputGroup}>
               <AppText variant="label" style={styles.inputLabel}>Name</AppText>
               <TextInput
@@ -175,7 +174,7 @@ export default function NewProjectScreen() {
                 autoCorrect={false}
               />
             </View>
-          </Card>
+          </View>
         </View>
 
         {/* Submit */}
@@ -253,13 +252,11 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     alignItems: 'center',
     gap: theme.spacing.md,
     padding: theme.spacing.md,
-    backgroundColor: colors.card,
-    borderRadius: theme.radii.lg,
-    borderWidth: 2,
-    borderColor: 'transparent',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.separator,
   },
   hostItemSelected: {
-    backgroundColor: colors.card,
+    backgroundColor: colors.cardPressed,
   },
   hostDot: {
     width: 12,
@@ -305,7 +302,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
 
   // Form Card
   formCard: {
-    padding: 0,
     overflow: 'hidden',
   },
   inputGroup: {
@@ -357,7 +353,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   submitButton: {
     backgroundColor: colors.accent,
     paddingVertical: 16,
-    borderRadius: theme.radii.lg,
+    borderRadius: theme.radii.md,
     alignItems: 'center',
     marginTop: theme.spacing.sm,
   },

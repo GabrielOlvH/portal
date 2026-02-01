@@ -12,7 +12,6 @@ import { Play, Clock, Folder, Plus } from 'lucide-react-native';
 import { Screen } from '@/components/Screen';
 import { AppText } from '@/components/AppText';
 import { FadeIn } from '@/components/FadeIn';
-import { Card } from '@/components/Card';
 import { SkeletonList } from '@/components/Skeleton';
 import { useStore } from '@/lib/store';
 import { useProjects } from '@/lib/projects-store';
@@ -95,7 +94,7 @@ export default function ProjectsTabScreen() {
       >
         {!hasContent ? (
           <FadeIn delay={100}>
-            <Card style={styles.emptyCard}>
+            <View style={styles.emptyCard}>
               <View style={styles.emptyIcon}>
                 <Folder size={32} color={colors.textSecondary} />
               </View>
@@ -108,7 +107,7 @@ export default function ProjectsTabScreen() {
                   Add Project
                 </AppText>
               </Pressable>
-            </Card>
+            </View>
           </FadeIn>
         ) : (
           <>
@@ -121,7 +120,7 @@ export default function ProjectsTabScreen() {
                       Recent Launches
                     </AppText>
                   </View>
-                  <Card style={styles.listCard}>
+                  <View style={styles.listCard}>
                     {recentLaunchesToShow.map((launch, index) => {
                       const isLast = index === recentLaunchesToShow.length - 1;
                       const host = hosts.find((h) => h.id === launch.hostId);
@@ -149,7 +148,7 @@ export default function ProjectsTabScreen() {
                         </Pressable>
                       );
                     })}
-                  </Card>
+                  </View>
                 </View>
               </FadeIn>
             )}
@@ -185,7 +184,7 @@ export default function ProjectsTabScreen() {
                             </AppText>
                           </View>
                         </View>
-                        <Card style={styles.listCard}>
+                        <View style={styles.listCard}>
                           {hostProjects.map((project, index) => {
                             const isLast = index === hostProjects.length - 1;
 
@@ -216,7 +215,7 @@ export default function ProjectsTabScreen() {
                               </Pressable>
                             );
                           })}
-                        </Card>
+                        </View>
                       </View>
                     );
                   })}
@@ -301,7 +300,6 @@ const createStyles = (colors: ThemeColors) =>
       padding: 4,
     },
     listCard: {
-      padding: 0,
       overflow: 'hidden',
     },
     listRow: {

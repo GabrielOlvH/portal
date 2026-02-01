@@ -293,12 +293,11 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginBottom: theme.spacing.md,
   },
   codeBox: {
-    backgroundColor: colors.card,
-    borderRadius: theme.radii.lg,
     paddingVertical: theme.spacing.lg,
     paddingHorizontal: theme.spacing.xl,
     alignItems: 'center',
-    ...theme.shadow.card,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.separator,
   },
   userCode: {
     fontSize: 32,

@@ -212,6 +212,7 @@ export type Project = {
   hostId: string;
   name: string;
   path: string;
+  iconUrl?: string;
 };
 
 export type SessionOrder = {

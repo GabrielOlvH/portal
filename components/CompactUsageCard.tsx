@@ -206,7 +206,7 @@ export function CompactUsageCard({ provider, usage, onPress }: CompactUsageCardP
     <>
       <View ref={cardRef} collapsable={false}>
         <Pressable onPress={handlePress}>
-          <Animated.View style={[styles.card, { backgroundColor: colors.card }, animatedStyle]}>
+          <Animated.View style={[styles.card, animatedStyle]}>
             <View style={styles.ringContainer}>
               <DoubleRing
                 size={40}
@@ -237,7 +237,7 @@ export function CompactUsageCard({ provider, usage, onPress }: CompactUsageCardP
             style={[
               styles.tooltip, 
               { 
-                backgroundColor: colors.card,
+                backgroundColor: colors.background,
                 left: tooltipPosition.x,
                 top: tooltipPosition.y,
               }

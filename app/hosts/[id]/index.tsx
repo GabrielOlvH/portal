@@ -1,5 +1,4 @@
 import { AppText } from '@/components/AppText';
-import { Card } from '@/components/Card';
 import { Pill } from '@/components/Pill';
 import { PulsingDot } from '@/components/PulsingDot';
 import { Screen } from '@/components/Screen';
@@ -330,7 +329,7 @@ export default function HostDetailScreen() {
         ) : null}
 
         <SectionHeader title="System" />
-        <Card style={styles.infoCard}>
+        <View style={styles.infoCard}>
           {hostInfo ? (
             <>
               <View style={styles.metricRow}>
@@ -384,10 +383,10 @@ export default function HostDetailScreen() {
               Waiting for telemetry...
             </AppText>
           )}
-        </Card>
+        </View>
 
         <SectionHeader title="Service" />
-        <Card style={styles.serviceCard}>
+        <View style={styles.serviceCard}>
           {serviceError ? (
             <AppText variant="body" tone="muted">{serviceError}</AppText>
           ) : serviceStatus ? (
@@ -471,12 +470,12 @@ export default function HostDetailScreen() {
           ) : (
             <AppText variant="body" tone="muted">Loading service status...</AppText>
           )}
-        </Card>
+        </View>
 
         {hasDocker && (
           <>
             <SectionHeader title={`Docker (${containers.length})`} />
-            <Card style={styles.dockerCard}>
+            <View style={styles.dockerCard}>
               <Pressable
                 style={styles.dockerHeader}
                 onPress={() => setDockerExpanded(!dockerExpanded)}
@@ -567,7 +566,7 @@ export default function HostDetailScreen() {
                   })}
                 </View>
               )}
-            </Card>
+            </View>
           </>
         )}
 
@@ -723,7 +722,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     alignSelf: 'center',
   },
   dockerCard: {
-    padding: 0,
     overflow: 'hidden',
   },
   dockerHeader: {

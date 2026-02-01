@@ -74,7 +74,7 @@ const FLOW_LOW_WATERMARK = 64 * 1024;
 const PROBE_START = '\u0001TERPROBE:';
 const PROBE_END = '\u0002';
 
-function attachPtyBridge(ws: WebSocket, term: ReturnType<typeof pty.spawn>, closeMessage: string) {
+function attachPtyBridge(ws: WebSocket, term: ReturnType<typeof pty.spawn>, closeMessage: string, tmuxSession?: string) {
   let termClosed = false;
   let cleanedUp = false;
   let inFlightBytes = 0;
@@ -137,6 +137,10 @@ function attachPtyBridge(ws: WebSocket, term: ReturnType<typeof pty.spawn>, clos
     if (payload?.type === 'resize') {
       if (termClosed) return;
       term.resize(payload.cols, payload.rows);
+      // Explicitly refresh tmux client to ensure it picks up the new size
+      if (tmuxSession) {
+        runTmux(['refresh-client', '-t', tmuxSession]).catch(() => {});
+      }
       return;
     }
     if (payload?.type === 'probe') {
@@ -281,7 +285,7 @@ export function attachWebSocketServers(server: Server) {
     }
 
     runTmux(['set-option', '-t', session, 'status', 'off']).catch(() => {});
-    attachPtyBridge(ws, term, 'session ended');
+    attachPtyBridge(ws, term, 'session ended', session);
   });
 
   dockerWss.on('connection', (ws: WebSocket, req: IncomingMessage) => {

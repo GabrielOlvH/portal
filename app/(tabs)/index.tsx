@@ -1,18 +1,15 @@
 import { AppText } from '@/components/AppText';
 import { FadeIn } from '@/components/FadeIn';
-import { Card } from '@/components/Card';
 import { SwipeableRow } from '@/components/SwipeableRow';
 import { FAB } from '@/components/FAB';
 import { PlusIcon, ServerIcon, TerminalIcon } from '@/components/icons/HomeIcons';
-import { ProviderIcon, providerColors } from '@/components/icons/ProviderIcons';
-import { CompactUsageCard } from '@/components/CompactUsageCard';
+import { StatusBar } from '@/components/StatusBar';
 import { ExternalLink } from 'lucide-react-native';
 import { useLaunchSheet } from '@/lib/launch-sheet';
 import { Screen } from '@/components/Screen';
 import { SkeletonList } from '@/components/Skeleton';
 import { getUsage, killSession, renameSession } from '@/lib/api';
-import { hostColors, systemColors, withAlpha } from '@/lib/colors';
-import { formatTimeAgo } from '@/lib/formatters';
+import { hostColors, systemColors } from '@/lib/colors';
 import { useHostsLive } from '@/lib/live';
 import { useTaskLiveUpdates } from '@/lib/task-live-updates';
 import { useStore } from '@/lib/store';
@@ -24,7 +21,7 @@ import { TIMING } from '@/lib/constants';
 import { Host, HostInfo, HostStatus, ProviderUsage, Session, SessionInsights, GitHubCommitStatus } from '@/lib/types';
 import { useRouter } from 'expo-router';
 import { useIsFocused } from '@react-navigation/native';
-import { Cpu, GitBranch, MemoryStick, Pencil, Plus, Trash2, Github, Check, X, Clock, ChevronDown, ChevronUp, GripVertical } from 'lucide-react-native';
+import { GitBranch, Pencil, Trash2, Github, Check, X, Clock, ChevronDown, ChevronUp, GripVertical } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -264,14 +261,14 @@ function GitHubStatusSection({ colors, styles }: GitHubStatusSectionProps) {
 
   return (
     <FadeIn>
-      <Card style={[styles.ciCard, hasFailures && styles.ciCardError]}>
+      <View style={styles.ciSection}>
         <Pressable
           onPress={() => setIsExpanded(!isExpanded)}
           style={styles.ciHeader}
         >
           <View style={styles.ciHeaderLeft}>
-            <Github size={16} color={hasFailures ? colors.red : hasPending ? colors.orange : colors.green} />
-            <AppText variant="label" style={styles.ciTitle}>
+            <Github size={14} color={hasFailures ? colors.red : hasPending ? colors.orange : colors.green} />
+            <AppText variant="caps" tone="muted" style={styles.ciTitle}>
               {summary.total > 0
                 ? `${summary.success} ok · ${summary.failure + summary.error} fail · ${summary.pending} run`
                 : 'CI'}
@@ -287,13 +284,13 @@ function GitHubStatusSection({ colors, styles }: GitHubStatusSectionProps) {
                   return (
                     <View key={project.id} style={[styles.ciStatusDot, { backgroundColor: getStatusColor(latest.state) }]} />
                   );
-                })}
-              </View>
-            )}
+              })}
+            </View>
+          )}
             {isExpanded ? (
-              <ChevronUp size={16} color={colors.textMuted} />
+              <ChevronUp size={14} color={colors.textMuted} />
             ) : (
-              <ChevronDown size={16} color={colors.textMuted} />
+              <ChevronDown size={14} color={colors.textMuted} />
             )}
           </View>
         </Pressable>
@@ -345,7 +342,7 @@ function GitHubStatusSection({ colors, styles }: GitHubStatusSectionProps) {
             )}
           </View>
         )}
-      </Card>
+      </View>
     </FadeIn>
   );
 }
@@ -450,12 +447,16 @@ export default function SessionsScreen() {
   }, [hosts, sessions, hostUsageMap]);
 
   const usageVisibility = preferences.usageCards;
-  const hasUsageCards =
-    (usageVisibility.claude && aggregatedUsage.claude) ||
-    (usageVisibility.codex && aggregatedUsage.codex) ||
-    (usageVisibility.copilot && aggregatedUsage.copilot) ||
-    (usageVisibility.cursor && aggregatedUsage.cursor) ||
-    (usageVisibility.kimi && aggregatedUsage.kimi);
+
+  // Compute host summary for StatusBar
+  const hostSummary = useMemo(() => {
+    const onlineHosts = hosts.filter((h) => stateMap[h.id]?.status === 'online');
+    return {
+      online: onlineHosts.length,
+      total: hosts.length,
+      names: onlineHosts.slice(0, 3).map((h) => h.name),
+    };
+  }, [hosts, stateMap]);
 
   const refreshUsage = useCallback(async () => {
     if (hosts.length === 0) {
@@ -631,30 +632,18 @@ export default function SessionsScreen() {
             />
           }
         >
-          {/* Usage Cards */}
-          {hasUsageCards && (
-            <FadeIn>
-              <View style={styles.usageCardsRow}>
-                {usageVisibility.claude && aggregatedUsage.claude && (
-                  <CompactUsageCard provider="claude" usage={aggregatedUsage.claude} />
-                )}
-                {usageVisibility.codex && aggregatedUsage.codex && (
-                  <CompactUsageCard provider="codex" usage={aggregatedUsage.codex} />
-                )}
-                {usageVisibility.copilot && aggregatedUsage.copilot && (
-                  <CompactUsageCard provider="copilot" usage={aggregatedUsage.copilot} />
-                )}
-                {usageVisibility.cursor && aggregatedUsage.cursor && (
-                  <CompactUsageCard provider="cursor" usage={aggregatedUsage.cursor} />
-                )}
-                {usageVisibility.kimi && aggregatedUsage.kimi && (
-                  <CompactUsageCard provider="kimi" usage={aggregatedUsage.kimi} />
-                )}
-              </View>
-            </FadeIn>
-          )}
+          {/* Status Bar - Usage + CI + Hosts summary */}
+          <FadeIn>
+            <StatusBar
+              usage={aggregatedUsage}
+              usageVisibility={usageVisibility}
+              ciSummary={null}
+              ciEnabled={preferences.github.enabled}
+              hostSummary={hostSummary}
+            />
+          </FadeIn>
 
-          {/* GitHub CI Status */}
+          {/* GitHub CI Status - Expandable Details */}
           <GitHubStatusSection colors={colors} styles={styles} />
 
           {isBooting ? (
@@ -663,7 +652,7 @@ export default function SessionsScreen() {
             </FadeIn>
           ) : hosts.length === 0 ? (
             <FadeIn delay={100}>
-              <Card style={styles.emptyCard}>
+              <View style={styles.emptyCard}>
                 <View style={styles.emptyIconContainer}>
                   <View style={styles.emptyIconRing}>
                     <ServerIcon size={28} color={colors.accent} />
@@ -685,7 +674,7 @@ export default function SessionsScreen() {
                     Add your first host
                   </AppText>
                 </Pressable>
-              </Card>
+              </View>
             </FadeIn>
           ) : isPending ? (
             <FadeIn delay={100}>
@@ -693,41 +682,40 @@ export default function SessionsScreen() {
             </FadeIn>
           ) : sessions.length === 0 && !isManualRefresh ? (
             <FadeIn delay={100}>
-              <Card style={styles.emptySmall}>
-                <TerminalIcon size={24} color={colors.textSecondary} />
-                <AppText variant="label" tone="muted" style={styles.emptySmallText}>
+              <View style={styles.emptySmall}>
+                <TerminalIcon size={20} color={colors.textMuted} />
+                <AppText variant="label" tone="muted">
                   No active sessions
                 </AppText>
-              </Card>
+              </View>
             </FadeIn>
           ) : (
             <View style={styles.sessionsList}>
               {groupedSessions.map((group, groupIndex) => {
                 const hostColor = group.host.color || hostColors[groupIndex % hostColors.length];
+                const isFirstGroup = groupIndex === 0;
                 return (
-                  <FadeIn key={group.host.id} delay={100 + groupIndex * 50}>
-                    <Card style={styles.hostGroupCard}>
-                      <View style={styles.hostGroupHeader}>
-                        <View style={[styles.hostGroupAccent, { backgroundColor: hostColor }]} />
-                        <AppText variant="label" style={styles.hostGroupName}>
+                  <FadeIn key={group.host.id} delay={50 + groupIndex * 30}>
+                    <View>
+                      {/* Host Divider */}
+                      <View style={[
+                        styles.hostDivider,
+                        !isFirstGroup && styles.hostDividerBorder,
+                        { borderTopColor: colors.separator }
+                      ]}>
+                        <View style={[styles.hostAccent, { backgroundColor: hostColor }]} />
+                        <AppText variant="caps" tone="muted" style={styles.hostName}>
                           {group.host.name}
                         </AppText>
                         {group.hostStatus === 'offline' && (
-                          <View style={styles.offlineBadge}>
-                            <AppText variant="mono" style={styles.offlineText}>offline</AppText>
-                          </View>
+                          <AppText variant="mono" style={[styles.offlineTag, { color: colors.orange }]}>
+                            offline
+                          </AppText>
                         )}
                         {group.hostInfo && (
-                          <View style={styles.hostStatsBadge}>
-                            <Cpu size={10} color={colors.textMuted} />
-                            <AppText variant="mono" style={styles.hostStatsText}>
-                              {group.hostInfo.cpu.usage ?? '-'}%
-                            </AppText>
-                            <MemoryStick size={10} color={colors.textMuted} />
-                            <AppText variant="mono" style={styles.hostStatsText}>
-                              {group.hostInfo.memory.usedPercent ?? '-'}%
-                            </AppText>
-                          </View>
+                          <AppText variant="mono" tone="muted" style={styles.hostStats}>
+                            {group.hostInfo.cpu.usage ?? '-'}% · {group.hostInfo.memory.usedPercent ?? '-'}%
+                          </AppText>
                         )}
                         <Pressable
                           onPress={() => setReorderingHostId(reorderingHostId === group.host.id ? null : group.host.id)}
@@ -736,34 +724,34 @@ export default function SessionsScreen() {
                             pressed && styles.reorderTogglePressed,
                             reorderingHostId === group.host.id && styles.reorderToggleActive,
                           ]}
+                          hitSlop={8}
                         >
-                          <GripVertical size={14} color={reorderingHostId === group.host.id ? colors.accentText : colors.textMuted} />
+                          <GripVertical size={12} color={reorderingHostId === group.host.id ? colors.accentText : colors.textMuted} />
                         </Pressable>
                       </View>
-                      <View style={styles.hostGroupSessions}>
-                        {group.sessions.map((session, sessionIndex) => (
-                          <SessionRow
-                            key={session.name}
-                            session={session}
-                            index={sessionIndex}
-                            totalSessions={group.sessions.length}
-                            isLast={sessionIndex === group.sessions.length - 1}
-                            isReordering={reorderingHostId === group.host.id}
-                            onMoveUp={() => handleMoveSession(group.host.id, sessionIndex, sessionIndex - 1)}
-                            onMoveDown={() => handleMoveSession(group.host.id, sessionIndex, sessionIndex + 1)}
-                            onPress={() =>
-                              router.push(
-                                `/session/${group.host.id}/${encodeURIComponent(session.name)}/terminal`
-                              )
-                            }
-                            onKill={() => handleKillSession(group.host, session.name)}
-                            onRename={() => handleRenameStart(group.host, session.name)}
-                            colors={colors}
-                            styles={styles}
-                          />
-                        ))}
-                      </View>
-                    </Card>
+                      {/* Sessions */}
+                      {group.sessions.map((session, sessionIndex) => (
+                        <SessionRow
+                          key={session.name}
+                          session={session}
+                          index={sessionIndex}
+                          totalSessions={group.sessions.length}
+                          isLast={sessionIndex === group.sessions.length - 1}
+                          isReordering={reorderingHostId === group.host.id}
+                          onMoveUp={() => handleMoveSession(group.host.id, sessionIndex, sessionIndex - 1)}
+                          onMoveDown={() => handleMoveSession(group.host.id, sessionIndex, sessionIndex + 1)}
+                          onPress={() =>
+                            router.push(
+                              `/session/${group.host.id}/${encodeURIComponent(session.name)}/terminal`
+                            )
+                          }
+                          onKill={() => handleKillSession(group.host, session.name)}
+                          onRename={() => handleRenameStart(group.host, session.name)}
+                          colors={colors}
+                          styles={styles}
+                        />
+                      ))}
+                    </View>
                   </FadeIn>
                 );
               })}
@@ -786,83 +774,45 @@ const createStyles = (colors: ThemeColors, _isDark: boolean) => {
   return StyleSheet.create({
   fabContainer: {
     position: 'absolute',
-    right: 20,
+    right: 16,
     bottom: 90,
   },
   scrollContent: {
-    paddingBottom: 40,
-    gap: 16,
+    paddingBottom: 32,
+    gap: 12,
   },
-  usageCardsRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  usageRow: {
-    gap: 4,
-  },
-  usageRowHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  usageLabel: {
-    fontSize: 11,
-  },
-  usageReset: {
-    fontSize: 9,
-  },
-  usageBarContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  usageBarBg: {
-    flex: 1,
-    height: 6,
-    backgroundColor: colors.barBg,
-    borderRadius: 3,
-    overflow: 'hidden',
-  },
-  usageBarFill: {
-    height: '100%',
-    borderRadius: 3,
-  },
-  usagePercent: {
-    fontSize: 11,
-    width: 32,
-    textAlign: 'right',
-  },
+  // Empty states
   emptyCard: {
-    padding: 32,
+    padding: 24,
     alignItems: 'center',
   },
   emptyIconContainer: {
-    marginBottom: 20,
+    marginBottom: 16,
   },
   emptyIconRing: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: colors.barBg,
     alignItems: 'center',
     justifyContent: 'center',
   },
   emptyTitle: {
-    marginBottom: 8,
+    marginBottom: 6,
   },
   emptyBody: {
     textAlign: 'center',
-    marginBottom: 24,
+    marginBottom: 16,
     maxWidth: 260,
   },
   primaryButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
     backgroundColor: colors.accent,
-    borderRadius: theme.radii.md,
-    paddingVertical: 14,
-    paddingHorizontal: 24,
+    borderRadius: theme.radii.sm,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
   },
   primaryButtonText: {
     color: colors.accentText,
@@ -871,62 +821,43 @@ const createStyles = (colors: ThemeColors, _isDark: boolean) => {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 10,
-    padding: 32,
+    gap: 8,
+    paddingVertical: 24,
   },
-  emptySmallText: {
-    marginTop: 2,
-  },
+  // Session list - flat design
   sessionsList: {
-    gap: 12,
-  },
-  hostGroupCard: {
-    padding: 0,
     overflow: 'hidden',
   },
-  hostGroupHeader: {
+  hostDivider: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.separator,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    gap: 8,
   },
-  hostGroupAccent: {
+  hostDividerBorder: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  hostAccent: {
     width: 3,
-    height: 14,
+    height: 12,
     borderRadius: 1.5,
   },
-  hostGroupName: {
+  hostName: {
     flex: 1,
+    fontSize: 10,
     fontWeight: '600',
   },
-  offlineBadge: {
-    backgroundColor: withAlpha(colors.orange, 0.18),
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  offlineText: {
-    color: colors.orange,
-    fontSize: 10,
+  offlineTag: {
+    fontSize: 9,
     fontWeight: '500',
   },
-  hostStatsBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-  },
-  hostStatsText: {
+  hostStats: {
     fontSize: 10,
-    color: colors.textMuted,
-    marginRight: 6,
   },
-  hostGroupSessions: {},
   sessionRow: {
-    paddingVertical: 12,
-    paddingHorizontal: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
   },
   sessionRowBorder: {
     borderBottomWidth: StyleSheet.hairlineWidth,
@@ -938,47 +869,49 @@ const createStyles = (colors: ThemeColors, _isDark: boolean) => {
   sessionRowContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
   },
   stateDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
     backgroundColor: colors.textMuted,
   },
   stateDotRunning: {
     backgroundColor: colors.green,
     shadowColor: colors.green,
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.6,
-    shadowRadius: 4,
+    shadowOpacity: 0.5,
+    shadowRadius: 3,
   },
   stateDotIdle: {
     backgroundColor: colors.orange,
   },
   sessionTextContent: {
     flex: 1,
-    gap: 2,
+    gap: 1,
   },
-  sessionName: {},
+  sessionName: {
+    fontSize: 14,
+  },
   sessionMeta: {
-    fontSize: 11,
+    fontSize: 10,
   },
   gitPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 3,
     backgroundColor: colors.cardPressed,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
   },
   gitPillText: {
-    fontSize: 10,
+    fontSize: 9,
   },
   reorderButton: {
-    padding: 8,
-    borderRadius: 8,
+    padding: 6,
+    borderRadius: 6,
     backgroundColor: colors.cardPressed,
   },
   reorderButtonDisabled: {
@@ -988,9 +921,8 @@ const createStyles = (colors: ThemeColors, _isDark: boolean) => {
     backgroundColor: colors.separator,
   },
   reorderToggle: {
-    padding: 6,
-    borderRadius: 6,
-    marginLeft: 8,
+    padding: 4,
+    borderRadius: 4,
   },
   reorderTogglePressed: {
     backgroundColor: colors.cardPressed,
@@ -999,71 +931,66 @@ const createStyles = (colors: ThemeColors, _isDark: boolean) => {
     backgroundColor: colors.accent,
   },
   // CI Status styles
-  ciCard: {
-    padding: 0,
-    overflow: 'hidden',
-  },
-  ciCardError: {
-    borderLeftWidth: 2,
-    borderLeftColor: colors.red,
+  ciSection: {
+    paddingVertical: 4,
   },
   ciHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
+    paddingVertical: 6,
+    paddingHorizontal: 4,
   },
   ciHeaderLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   ciHeaderRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
   },
   ciTitle: {
     fontWeight: '600',
-    fontSize: 12,
+    fontSize: 11,
   },
   ciSummaryDots: {
     flexDirection: 'row',
-    gap: 4,
+    gap: 3,
   },
   ciStatusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
   },
   ciContent: {
-    paddingHorizontal: 12,
-    paddingBottom: 10,
+    paddingHorizontal: 4,
+    paddingBottom: 4,
   },
   ciBranches: {
-    gap: 4,
+    gap: 3,
   },
   ciBranch: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingVertical: 2,
+    gap: 5,
+    paddingVertical: 1,
   },
   ciBranchName: {
-    fontSize: 11,
+    fontSize: 10,
     flex: 1,
   },
   ciCommitSha: {
-    fontSize: 10,
+    fontSize: 9,
   },
   ciDiffInfo: {
-    fontSize: 10,
+    fontSize: 9,
   },
   ciEmpty: {
-    fontSize: 11,
+    fontSize: 10,
     textAlign: 'center',
-    paddingVertical: 8,
+    paddingVertical: 6,
   },
   });
 };

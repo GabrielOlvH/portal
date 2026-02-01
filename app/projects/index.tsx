@@ -10,7 +10,6 @@ import { useRouter } from 'expo-router';
 import { Screen } from '@/components/Screen';
 import { AppText } from '@/components/AppText';
 import { FadeIn } from '@/components/FadeIn';
-import { Card } from '@/components/Card';
 import { useStore } from '@/lib/store';
 import { useProjects } from '@/lib/projects-store';
 import { theme } from '@/lib/theme';
@@ -93,14 +92,14 @@ export default function ProjectsScreen() {
 
                   <View style={styles.projectsList}>
                     {hostProjects.map((project) => (
-                      <Card key={project.id} style={styles.projectCard}>
+                      <View key={project.id} style={styles.projectCard}>
                         <View style={styles.projectInfo}>
                           <AppText variant="subtitle">{project.name}</AppText>
                           <AppText variant="mono" tone="muted" numberOfLines={1}>
                             {project.path}
                           </AppText>
                         </View>
-                      </Card>
+                      </View>
                     ))}
                   </View>
                 </View>
@@ -138,11 +137,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     gap: theme.spacing.lg,
   },
   empty: {
-    backgroundColor: colors.card,
-    borderRadius: theme.radii.lg,
     padding: theme.spacing.lg,
     alignItems: 'center',
-    ...theme.shadow.card,
   },
   emptyIcon: {
     width: 56,

@@ -919,6 +919,21 @@ export function buildTerminalHtml(profile: TerminalHtmlProfile, wsUrl: string, t
         visualViewport.addEventListener('scroll', requestDimensions);
       }
       window.addEventListener('resize', requestDimensions);
+      
+      // Handle app minimize/restore - force dimension re-sync
+      document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) {
+          // Reset dimension tracking to force full re-sync
+          hasFitted = false;
+          lastCols = 0;
+          lastRows = 0;
+          // Multiple attempts with increasing delays for layout stabilization
+          [50, 150, 300].forEach(delay => {
+            setTimeout(requestDimensions, delay);
+          });
+        }
+      });
+      
       connect();
     </script>
   </body>

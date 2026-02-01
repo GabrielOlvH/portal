@@ -12,7 +12,6 @@ import { useRouter } from 'expo-router';
 
 import { Screen } from '@/components/Screen';
 import { AppText } from '@/components/AppText';
-import { Card } from '@/components/Card';
 import { useStore } from '@/lib/store';
 import { useProjects } from '@/lib/projects-store';
 import { useGitHubConfig, useRefreshGitHubStatus } from '@/lib/queries/github';
@@ -82,7 +81,7 @@ export default function GitHubSettingsScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        <Card style={styles.card}>
+        <View style={styles.card}>
           <View style={styles.header}>
             <View style={styles.iconContainer}>
               <Github size={24} color={colors.accent} />
@@ -112,9 +111,9 @@ export default function GitHubSettingsScreen() {
               ios_backgroundColor={colors.separator}
             />
           </View>
-        </Card>
+        </View>
 
-        <Card style={styles.card}>
+        <View style={styles.card}>
           <View style={styles.sectionHeader}>
             <AppText variant="subtitle">Authentication</AppText>
             <AppText variant="label" tone="muted">
@@ -172,9 +171,9 @@ export default function GitHubSettingsScreen() {
               </View>
             </View>
           )}
-        </Card>
+        </View>
 
-        <Card style={styles.card}>
+        <View style={styles.card}>
           <View style={styles.sectionHeader}>
             <AppText variant="subtitle">Test Connection</AppText>
             <AppText variant="label" tone="muted">
@@ -207,9 +206,9 @@ export default function GitHubSettingsScreen() {
               Add projects first to test CI status
             </AppText>
           )}
-        </Card>
+        </View>
 
-        <Card style={styles.card}>
+        <View style={styles.card}>
           <View style={styles.sectionHeader}>
             <AppText variant="subtitle">Projects</AppText>
             <AppText variant="label" tone="muted">
@@ -236,7 +235,7 @@ export default function GitHubSettingsScreen() {
               </View>
             </>
           )}
-        </Card>
+        </View>
       </ScrollView>
     </Screen>
   );
@@ -249,7 +248,6 @@ const createStyles = (colors: ThemeColors) =>
       gap: theme.spacing.md,
     },
     card: {
-      padding: 0,
       overflow: 'hidden',
     },
     header: {

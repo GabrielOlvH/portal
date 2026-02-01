@@ -528,11 +528,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.textSecondary,
   },
   empty: {
-    backgroundColor: colors.card,
-    borderRadius: theme.radii.lg,
     padding: theme.spacing.lg,
     alignItems: 'center',
-    ...theme.shadow.card,
   },
   emptyIcon: {
     width: 56,

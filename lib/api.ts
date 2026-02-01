@@ -258,6 +258,17 @@ export async function fetchProjectScripts(
   return request(host, `/project/scripts?${params.toString()}`, { method: 'GET' });
 }
 
+export type ProjectIconResult = { found: true; data: string; path: string } | { found: false };
+
+export async function fetchProjectIcon(
+  host: Host,
+  projectPath: string
+): Promise<ProjectIconResult> {
+  const params = new URLSearchParams();
+  params.set('path', projectPath);
+  return request(host, `/project/icon?${params.toString()}`, { method: 'GET' });
+}
+
 export async function fetchDirectoryListing(
   host: Host,
   path?: string

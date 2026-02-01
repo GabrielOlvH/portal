@@ -1,7 +1,6 @@
 import React, { memo, useMemo } from 'react';
 import { View, StyleSheet, Pressable } from 'react-native';
 import { AppText } from '@/components/AppText';
-import { Card } from '@/components/Card';
 import { theme } from '@/lib/theme';
 import { ThemeColors, useTheme } from '@/lib/useTheme';
 import { PortInfo } from '@/lib/types';
@@ -25,7 +24,7 @@ export const PortRow = memo(function PortRow({
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   return (
-    <Card style={styles.card}>
+    <View style={styles.card}>
       <Pressable
         style={styles.content}
         onPress={selectionMode ? onToggleSelect : undefined}
@@ -75,13 +74,14 @@ export const PortRow = memo(function PortRow({
           </Pressable>
         )}
       </Pressable>
-    </Card>
+    </View>
   );
 });
 
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
   card: {
-    padding: 0,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.separator,
     overflow: 'hidden',
   },
   content: {

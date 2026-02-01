@@ -10,10 +10,10 @@ import Animated, {
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { theme } from '@/lib/theme';
-import { cardShadow, useTheme } from '@/lib/useTheme';
+import { useTheme } from '@/lib/useTheme';
 import { withAlpha } from '@/lib/colors';
 
-function createStyles(colors: { card: string; cardPressed: string }) {
+function createStyles(colors: { card: string; cardPressed: string; separator: string }) {
   return StyleSheet.create({
     container: {
       backgroundColor: colors.cardPressed,
@@ -35,9 +35,9 @@ function createStyles(colors: { card: string; cardPressed: string }) {
       gap: theme.spacing.sm,
     },
     sessionCard: {
-      backgroundColor: colors.card,
-      borderRadius: theme.radii.lg,
       padding: 14,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.separator,
     },
     sessionCardRow: {
       flexDirection: 'row',
@@ -57,10 +57,10 @@ function createStyles(colors: { card: string; cardPressed: string }) {
       marginTop: 2,
     },
     hostCard: {
-      backgroundColor: colors.card,
-      borderRadius: theme.radii.lg,
       padding: 16,
       gap: 14,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.separator,
     },
     hostCardHeader: {
       flexDirection: 'row',
@@ -90,10 +90,10 @@ function createStyles(colors: { card: string; cardPressed: string }) {
       marginTop: 4,
     },
     containerCard: {
-      backgroundColor: colors.card,
-      borderRadius: theme.radii.lg,
       padding: 14,
       gap: 12,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.separator,
     },
     containerCardHeader: {
       flexDirection: 'row',
@@ -203,10 +203,10 @@ type SkeletonCardProps = {
 };
 
 export function SkeletonSessionCard({ style }: SkeletonCardProps) {
-  const { isDark, styles } = useSkeletonStyles();
+  const { styles } = useSkeletonStyles();
 
   return (
-    <View style={[styles.sessionCard, isDark ? cardShadow.dark : cardShadow.light, style]}>
+    <View style={[styles.sessionCard, style]}>
       <View style={styles.sessionCardRow}>
         <Skeleton width={4} height={36} borderRadius={2} />
         <View style={styles.sessionCardContent}>
@@ -222,10 +222,10 @@ export function SkeletonSessionCard({ style }: SkeletonCardProps) {
 }
 
 export function SkeletonHostCard({ style }: SkeletonCardProps) {
-  const { isDark, styles } = useSkeletonStyles();
+  const { styles } = useSkeletonStyles();
 
   return (
-    <View style={[styles.hostCard, isDark ? cardShadow.dark : cardShadow.light, style]}>
+    <View style={[styles.hostCard, style]}>
       <View style={styles.hostCardHeader}>
         <Skeleton width={12} height={12} borderRadius={6} />
         <View style={styles.hostCardTitleWrap}>
@@ -253,10 +253,10 @@ export function SkeletonHostCard({ style }: SkeletonCardProps) {
 }
 
 export function SkeletonContainerCard({ style }: SkeletonCardProps) {
-  const { isDark, styles } = useSkeletonStyles();
+  const { styles } = useSkeletonStyles();
 
   return (
-    <View style={[styles.containerCard, isDark ? cardShadow.dark : cardShadow.light, style]}>
+    <View style={[styles.containerCard, style]}>
       <View style={styles.containerCardHeader}>
         <Skeleton width={8} height={8} borderRadius={4} />
         <View style={styles.containerCardInfo}>

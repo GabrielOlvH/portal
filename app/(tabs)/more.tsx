@@ -11,7 +11,6 @@ import type { ProviderUsage, TerminalFontFamily, ThemeSetting } from '@/lib/type
 
 import { Screen } from '@/components/Screen';
 import { AppText } from '@/components/AppText';
-import { Card } from '@/components/Card';
 import { theme } from '@/lib/theme';
 import { ThemeColors, useTheme } from '@/lib/useTheme';
 
@@ -281,349 +280,381 @@ export default function MoreTabScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        <Card style={styles.card}>
-          <MenuItem
-            title="Snippets"
-            subtitle="Global commands to reuse anywhere"
-            onPress={() => router.push('/snippets')}
-            styles={styles}
-            chevronColor={colors.textSecondary}
-          />
-          <View style={styles.separator} />
-          <MenuItem
-            title="Ports"
-            subtitle="View and manage active ports"
-            onPress={() => router.push('/ports')}
-            styles={styles}
-            chevronColor={colors.textSecondary}
-          />
-          <View style={styles.separator} />
-          <MenuItem
-            title="GitHub CI Status"
-            subtitle={preferences.github.enabled ? 'CI monitoring enabled' : 'Configure CI status monitoring'}
-            onPress={() => router.push('/github/settings')}
-            styles={styles}
-            chevronColor={colors.textSecondary}
-          />
-        </Card>
+        {/* Tools Section */}
+        <View style={styles.section}>
+          <AppText variant="caps" tone="muted" style={styles.sectionLabel}>
+            Tools
+          </AppText>
+          <View style={styles.sectionContent}>
+            <MenuItem
+              title="Snippets"
+              subtitle="Global commands to reuse anywhere"
+              onPress={() => router.push('/snippets')}
+              styles={styles}
+              chevronColor={colors.textSecondary}
+            />
+            <View style={styles.separator} />
+            <MenuItem
+              title="Ports"
+              subtitle="View and manage active ports"
+              onPress={() => router.push('/ports')}
+              styles={styles}
+              chevronColor={colors.textSecondary}
+            />
+            <View style={styles.separator} />
+            <MenuItem
+              title="GitHub CI Status"
+              subtitle={preferences.github.enabled ? 'CI monitoring enabled' : 'Configure CI status monitoring'}
+              onPress={() => router.push('/github/settings')}
+              styles={styles}
+              chevronColor={colors.textSecondary}
+            />
+          </View>
+        </View>
 
-        <Card style={styles.card}>
-          <View style={styles.copilotItem}>
-            <View style={styles.menuItemContent}>
-              <AppText variant="subtitle">GitHub Copilot</AppText>
-              {copilotLoading ? (
-                <ActivityIndicator size="small" color={colors.textSecondary} />
-              ) : copilotAuthenticated ? (
-                <>
-                  <AppText variant="label" tone="accent">Connected</AppText>
-                  {copilotUsage && (
-                    <AppText variant="label" tone="muted">
-                      Premium: {copilotUsage.session?.percentLeft ?? '—'}% • Chat: {copilotUsage.weekly?.percentLeft ?? '—'}%
-                    </AppText>
-                  )}
-                </>
-              ) : (
-                <AppText variant="label" tone="muted">Not connected</AppText>
-              )}
+        {/* Copilot Section */}
+        <View style={styles.section}>
+          <AppText variant="caps" tone="muted" style={styles.sectionLabel}>
+            Copilot
+          </AppText>
+          <View style={styles.sectionContent}>
+            <View style={styles.copilotItem}>
+              <View style={styles.menuItemContent}>
+                <AppText variant="subtitle">GitHub Copilot</AppText>
+                {copilotLoading ? (
+                  <ActivityIndicator size="small" color={colors.textSecondary} />
+                ) : copilotAuthenticated ? (
+                  <>
+                    <AppText variant="label" tone="accent">Connected</AppText>
+                    {copilotUsage && (
+                      <AppText variant="label" tone="muted">
+                        Premium: {copilotUsage.session?.percentLeft ?? '—'}% • Chat: {copilotUsage.weekly?.percentLeft ?? '—'}%
+                      </AppText>
+                    )}
+                  </>
+                ) : (
+                  <AppText variant="label" tone="muted">Not connected</AppText>
+                )}
+              </View>
+              <Pressable
+                onPress={copilotAuthenticated ? handleCopilotDisconnect : handleCopilotConnect}
+                disabled={copilotLoading || !host}
+                style={styles.copilotButton}
+              >
+                <AppText variant="caps" tone={copilotAuthenticated ? 'clay' : 'accent'}>
+                  {copilotAuthenticated ? 'Disconnect' : 'Connect'}
+                </AppText>
+              </Pressable>
             </View>
-            <Pressable
-              onPress={copilotAuthenticated ? handleCopilotDisconnect : handleCopilotConnect}
-              disabled={copilotLoading || !host}
-              style={styles.copilotButton}
-            >
-              <AppText variant="caps" tone={copilotAuthenticated ? 'clay' : 'accent'}>
-                {copilotAuthenticated ? 'Disconnect' : 'Connect'}
+          </View>
+        </View>
+
+        {/* Usage Cards Section */}
+        <View style={styles.section}>
+          <AppText variant="caps" tone="muted" style={styles.sectionLabel}>
+            Usage Cards
+          </AppText>
+          <View style={styles.sectionContent}>
+            <View style={styles.sectionHeader}>
+              <AppText variant="label" tone="muted">
+                Choose which provider cards appear on the Sessions tab.
               </AppText>
+            </View>
+            <View style={styles.separator} />
+            <ToggleItem
+              title="Claude Code"
+              value={preferences.usageCards.claude}
+              onValueChange={(value) => updateUsageCardVisibility({ claude: value })}
+              styles={styles}
+              colors={colors}
+              status={
+                usageLoading
+                  ? { loading: true }
+                  : claudeUsage?.error
+                    ? { error: claudeUsage.error }
+                    : claudeUsage
+                      ? { ready: true }
+                      : { error: 'Not detected' }
+              }
+            />
+            <View style={styles.separator} />
+            <ToggleItem
+              title="Codex"
+              value={preferences.usageCards.codex}
+              onValueChange={(value) => updateUsageCardVisibility({ codex: value })}
+              styles={styles}
+              colors={colors}
+              status={
+                usageLoading
+                  ? { loading: true }
+                  : codexUsage?.error
+                    ? { error: codexUsage.error }
+                    : codexUsage
+                      ? { ready: true }
+                      : { error: 'Not detected' }
+              }
+            />
+            <View style={styles.separator} />
+            <ToggleItem
+              title="GitHub Copilot"
+              value={preferences.usageCards.copilot}
+              onValueChange={(value) => updateUsageCardVisibility({ copilot: value })}
+              styles={styles}
+              colors={colors}
+              status={
+                copilotLoading
+                  ? { loading: true }
+                  : copilotAuthenticated
+                    ? { ready: true }
+                    : { error: 'Not connected' }
+              }
+            />
+            <View style={styles.separator} />
+            <ToggleItem
+              title="Kimi Code"
+              value={preferences.usageCards.kimi}
+              onValueChange={(value) => updateUsageCardVisibility({ kimi: value })}
+              styles={styles}
+              colors={colors}
+              status={{ error: 'Set KIMI_AUTH_TOKEN env var' }}
+            />
+            <View style={styles.separator} />
+            <ToggleItem
+              title="Cursor"
+              value={preferences.usageCards.cursor}
+              onValueChange={(value) => updateUsageCardVisibility({ cursor: value })}
+              styles={styles}
+              colors={colors}
+              status={{ error: 'Set CURSOR_COOKIE env var' }}
+            />
+          </View>
+        </View>
+
+        {/* Notifications Section */}
+        <View style={styles.section}>
+          <AppText variant="caps" tone="muted" style={styles.sectionLabel}>
+            Notifications
+          </AppText>
+          <View style={styles.sectionContent}>
+            <View style={styles.sectionHeader}>
+              <AppText variant="label" tone="muted">
+                Manage push alerts and live task updates.
+              </AppText>
+            </View>
+            <View style={styles.separator} />
+            <ToggleItem
+              title="Push notifications"
+              subtitle="Alerts when a task pauses"
+              value={preferences.notifications.pushEnabled}
+              onValueChange={(value) => updateNotificationSettings({ pushEnabled: value })}
+              styles={styles}
+              colors={colors}
+            />
+            <View style={styles.separator} />
+            <ToggleItem
+              title="Live updates"
+              subtitle="Live Activity on iOS and ongoing notification on Android"
+              value={preferences.notifications.liveEnabled}
+              onValueChange={(value) => updateNotificationSettings({ liveEnabled: value })}
+              styles={styles}
+              colors={colors}
+            />
+            <View style={styles.separator} />
+            <Pressable
+              onPress={async () => {
+                if (!host) {
+                  Alert.alert('No host', 'Add a host to send a push test.');
+                  return;
+                }
+                if (!preferences.notifications.pushEnabled) {
+                  Alert.alert('Push disabled', 'Enable push notifications to send a test alert.');
+                  return;
+                }
+                setTestPushLoading(true);
+                try {
+                  const outcomes = await registerNotificationsForHostsWithResult(hosts);
+                  const failed = outcomes.find((item) => !item.ok);
+                  if (failed?.error === 'physical-device-required') {
+                    Alert.alert('Physical device required', 'Expo push tokens are not available on simulators.');
+                    setTestPushLoading(false);
+                    return;
+                  }
+                  if (failed?.error === 'permissions-not-granted') {
+                    Alert.alert('Permission not granted', 'Enable notifications in system settings and try again.');
+                    setTestPushLoading(false);
+                    return;
+                  }
+                  if (failed?.error === 'push-token-unavailable') {
+                    Alert.alert('Push token unavailable', 'Try restarting the app or ensure this is an Expo Go project.');
+                    setTestPushLoading(false);
+                    return;
+                  }
+                  if (failed?.error && failed?.error !== 'registration-failed') {
+                    Alert.alert('Registration failed', failed.error);
+                    setTestPushLoading(false);
+                    return;
+                  }
+
+                  const result = await sendTestPushNotification(host, {
+                    title: 'Bridge',
+                    body: 'Test push notification',
+                  });
+                  if (result.count && result.count > 0) {
+                    Alert.alert('Push sent', `Sent to ${result.count} device(s).`);
+                  } else {
+                    Alert.alert('No devices registered', 'Open the app to register this device, then try again.');
+                  }
+                } catch (err) {
+                  Alert.alert('Failed to send', err instanceof Error ? err.message : 'Unable to send test push.');
+                } finally {
+                  setTestPushLoading(false);
+                }
+              }}
+              disabled={testPushLoading}
+              style={({ pressed }) => [
+                styles.menuItem,
+                pressed && styles.menuItemPressed,
+              ]}
+            >
+              <View style={styles.menuItemContent}>
+                <AppText variant="subtitle">Send test push</AppText>
+                <AppText variant="label" tone="muted">
+                  From server via Expo Push
+                </AppText>
+              </View>
+              {testPushLoading ? (
+                <ActivityIndicator size="small" color={colors.textSecondary} />
+              ) : (
+                <AppText variant="caps" tone="accent">
+                  Send
+                </AppText>
+              )}
+            </Pressable>
+            <View style={styles.separator} />
+            <Pressable
+              onPress={async () => {
+                if (!preferences.notifications.pushEnabled) {
+                  Alert.alert('Push disabled', 'Enable push notifications to send a test alert.');
+                  return;
+                }
+                setTestNotificationLoading(true);
+                const result = await sendTestNotification();
+                setTestNotificationLoading(false);
+
+                if (result.status === 'success') {
+                  Alert.alert('Test notification sent', `Notification id: ${result.id}`);
+                } else if (result.status === 'denied') {
+                  Alert.alert('Permission not granted', 'Enable notifications in system settings and try again.');
+                } else {
+                  Alert.alert('Failed to send', result.message);
+                }
+              }}
+              disabled={testNotificationLoading}
+              style={({ pressed }) => [
+                styles.menuItem,
+                pressed && styles.menuItemPressed,
+              ]}
+            >
+              <View style={styles.menuItemContent}>
+                <AppText variant="subtitle">Send test notification</AppText>
+                <AppText variant="label" tone="muted">
+                  Local alert to confirm permissions
+                </AppText>
+              </View>
+              {testNotificationLoading ? (
+                <ActivityIndicator size="small" color={colors.textSecondary} />
+              ) : (
+                <AppText variant="caps" tone="accent">
+                  Send
+                </AppText>
+              )}
             </Pressable>
           </View>
-        </Card>
+        </View>
 
-        <Card style={styles.card}>
-          <View style={styles.sectionHeader}>
-            <AppText variant="subtitle">Main page usage</AppText>
-            <AppText variant="label" tone="muted">
-              Choose which provider cards appear on the Sessions tab.
-            </AppText>
-          </View>
-          <View style={styles.separator} />
-          <ToggleItem
-            title="Claude Code"
-            value={preferences.usageCards.claude}
-            onValueChange={(value) => updateUsageCardVisibility({ claude: value })}
-            styles={styles}
-            colors={colors}
-            status={
-              usageLoading
-                ? { loading: true }
-                : claudeUsage?.error
-                  ? { error: claudeUsage.error }
-                  : claudeUsage
-                    ? { ready: true }
-                    : { error: 'Not detected' }
-            }
-          />
-          <View style={styles.separator} />
-          <ToggleItem
-            title="Codex"
-            value={preferences.usageCards.codex}
-            onValueChange={(value) => updateUsageCardVisibility({ codex: value })}
-            styles={styles}
-            colors={colors}
-            status={
-              usageLoading
-                ? { loading: true }
-                : codexUsage?.error
-                  ? { error: codexUsage.error }
-                  : codexUsage
-                    ? { ready: true }
-                    : { error: 'Not detected' }
-            }
-          />
-          <View style={styles.separator} />
-          <ToggleItem
-            title="GitHub Copilot"
-            value={preferences.usageCards.copilot}
-            onValueChange={(value) => updateUsageCardVisibility({ copilot: value })}
-            styles={styles}
-            colors={colors}
-            status={
-              copilotLoading
-                ? { loading: true }
-                : copilotAuthenticated
-                  ? { ready: true }
-                  : { error: 'Not connected' }
-            }
-          />
-          <View style={styles.separator} />
-          <ToggleItem
-            title="Kimi Code"
-            value={preferences.usageCards.kimi}
-            onValueChange={(value) => updateUsageCardVisibility({ kimi: value })}
-            styles={styles}
-            colors={colors}
-            status={{ error: 'Set KIMI_AUTH_TOKEN env var' }}
-          />
-          <View style={styles.separator} />
-          <ToggleItem
-            title="Cursor"
-            value={preferences.usageCards.cursor}
-            onValueChange={(value) => updateUsageCardVisibility({ cursor: value })}
-            styles={styles}
-            colors={colors}
-            status={{ error: 'Set CURSOR_COOKIE env var' }}
-          />
-        </Card>
-
-        <Card style={styles.card}>
-          <View style={styles.sectionHeader}>
-            <AppText variant="subtitle">Notifications</AppText>
-            <AppText variant="label" tone="muted">
-              Manage push alerts and live task updates.
-            </AppText>
-          </View>
-          <View style={styles.separator} />
-          <ToggleItem
-            title="Push notifications"
-            subtitle="Alerts when a task pauses"
-            value={preferences.notifications.pushEnabled}
-            onValueChange={(value) => updateNotificationSettings({ pushEnabled: value })}
-            styles={styles}
-            colors={colors}
-          />
-          <View style={styles.separator} />
-          <ToggleItem
-            title="Live updates"
-            subtitle="Live Activity on iOS and ongoing notification on Android"
-            value={preferences.notifications.liveEnabled}
-            onValueChange={(value) => updateNotificationSettings({ liveEnabled: value })}
-            styles={styles}
-            colors={colors}
-          />
-          <View style={styles.separator} />
-          <Pressable
-            onPress={async () => {
-              if (!host) {
-                Alert.alert('No host', 'Add a host to send a push test.');
-                return;
-              }
-              if (!preferences.notifications.pushEnabled) {
-                Alert.alert('Push disabled', 'Enable push notifications to send a test alert.');
-                return;
-              }
-              setTestPushLoading(true);
-              try {
-                const outcomes = await registerNotificationsForHostsWithResult(hosts);
-                const failed = outcomes.find((item) => !item.ok);
-                if (failed?.error === 'physical-device-required') {
-                  Alert.alert('Physical device required', 'Expo push tokens are not available on simulators.');
-                  setTestPushLoading(false);
-                  return;
-                }
-                if (failed?.error === 'permissions-not-granted') {
-                  Alert.alert('Permission not granted', 'Enable notifications in system settings and try again.');
-                  setTestPushLoading(false);
-                  return;
-                }
-                if (failed?.error === 'push-token-unavailable') {
-                  Alert.alert('Push token unavailable', 'Try restarting the app or ensure this is an Expo Go project.');
-                  setTestPushLoading(false);
-                  return;
-                }
-                if (failed?.error && failed?.error !== 'registration-failed') {
-                  Alert.alert('Registration failed', failed.error);
-                  setTestPushLoading(false);
-                  return;
-                }
-
-                const result = await sendTestPushNotification(host, {
-                  title: 'Bridge',
-                  body: 'Test push notification',
-                });
-                if (result.count && result.count > 0) {
-                  Alert.alert('Push sent', `Sent to ${result.count} device(s).`);
-                } else {
-                  Alert.alert('No devices registered', 'Open the app to register this device, then try again.');
-                }
-              } catch (err) {
-                Alert.alert('Failed to send', err instanceof Error ? err.message : 'Unable to send test push.');
-              } finally {
-                setTestPushLoading(false);
-              }
-            }}
-            disabled={testPushLoading}
-            style={({ pressed }) => [
-              styles.menuItem,
-              pressed && styles.menuItemPressed,
-            ]}
-          >
-            <View style={styles.menuItemContent}>
-              <AppText variant="subtitle">Send test push</AppText>
+        {/* Appearance Section */}
+        <View style={styles.section}>
+          <AppText variant="caps" tone="muted" style={styles.sectionLabel}>
+            Appearance
+          </AppText>
+          <View style={styles.sectionContent}>
+            <View style={styles.sectionHeader}>
               <AppText variant="label" tone="muted">
-                From server via Expo Push
+                Choose your preferred theme
               </AppText>
             </View>
-            {testPushLoading ? (
-              <ActivityIndicator size="small" color={colors.textSecondary} />
-            ) : (
-              <AppText variant="caps" tone="accent">
-                Send
-              </AppText>
-            )}
-          </Pressable>
-          <View style={styles.separator} />
-          <Pressable
-            onPress={async () => {
-              if (!preferences.notifications.pushEnabled) {
-                Alert.alert('Push disabled', 'Enable push notifications to send a test alert.');
-                return;
-              }
-              setTestNotificationLoading(true);
-              const result = await sendTestNotification();
-              setTestNotificationLoading(false);
+            <View style={styles.separator} />
+            <View style={styles.themeSelector}>
+              <ThemeOption
+                label="Light"
+                value="light"
+                selected={preferences.theme === 'light'}
+                onSelect={updateTheme}
+                styles={styles}
+                colors={colors}
+              />
+              <ThemeOption
+                label="Dark"
+                value="dark"
+                selected={preferences.theme === 'dark'}
+                onSelect={updateTheme}
+                styles={styles}
+                colors={colors}
+              />
+              <ThemeOption
+                label="System"
+                value="system"
+                selected={preferences.theme === 'system'}
+                onSelect={updateTheme}
+                styles={styles}
+                colors={colors}
+              />
+            </View>
+          </View>
+        </View>
 
-              if (result.status === 'success') {
-                Alert.alert('Test notification sent', `Notification id: ${result.id}`);
-              } else if (result.status === 'denied') {
-                Alert.alert('Permission not granted', 'Enable notifications in system settings and try again.');
-              } else {
-                Alert.alert('Failed to send', result.message);
-              }
-            }}
-            disabled={testNotificationLoading}
-            style={({ pressed }) => [
-              styles.menuItem,
-              pressed && styles.menuItemPressed,
-            ]}
-          >
-            <View style={styles.menuItemContent}>
-              <AppText variant="subtitle">Send test notification</AppText>
+        {/* Terminal Section */}
+        <View style={styles.section}>
+          <AppText variant="caps" tone="muted" style={styles.sectionLabel}>
+            Terminal
+          </AppText>
+          <View style={styles.sectionContent}>
+            <View style={styles.sectionHeader}>
               <AppText variant="label" tone="muted">
-                Local alert to confirm permissions
+                Customize terminal appearance
               </AppText>
             </View>
-            {testNotificationLoading ? (
-              <ActivityIndicator size="small" color={colors.textSecondary} />
-            ) : (
-              <AppText variant="caps" tone="accent">
-                Send
-              </AppText>
-            )}
-          </Pressable>
-        </Card>
-
-        <Card style={styles.card}>
-          <View style={styles.sectionHeader}>
-            <AppText variant="subtitle">Appearance</AppText>
-            <AppText variant="label" tone="muted">
-              Choose your preferred theme
-            </AppText>
+            <View style={styles.separator} />
+            <View style={styles.settingRow}>
+              <AppText variant="label">Font</AppText>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <View style={styles.fontSelector}>
+                  {FONT_OPTIONS.map((opt) => (
+                    <FontOption
+                      key={opt.value}
+                      label={opt.label}
+                      value={opt.value}
+                      selected={preferences.terminal.fontFamily === opt.value}
+                      onSelect={(val) => updateTerminalSettings({ fontFamily: val })}
+                      styles={styles}
+                      colors={colors}
+                    />
+                  ))}
+                </View>
+              </ScrollView>
+            </View>
+            <View style={styles.separator} />
+            <View style={styles.settingRow}>
+              <AppText variant="label">Size</AppText>
+              <FontSizeSelector
+                value={preferences.terminal.fontSize}
+                onChange={(size) => updateTerminalSettings({ fontSize: size })}
+                styles={styles}
+                colors={colors}
+              />
+            </View>
           </View>
-          <View style={styles.separator} />
-          <View style={styles.themeSelector}>
-            <ThemeOption
-              label="Light"
-              value="light"
-              selected={preferences.theme === 'light'}
-              onSelect={updateTheme}
-              styles={styles}
-              colors={colors}
-            />
-            <ThemeOption
-              label="Dark"
-              value="dark"
-              selected={preferences.theme === 'dark'}
-              onSelect={updateTheme}
-              styles={styles}
-              colors={colors}
-            />
-            <ThemeOption
-              label="System"
-              value="system"
-              selected={preferences.theme === 'system'}
-              onSelect={updateTheme}
-              styles={styles}
-              colors={colors}
-            />
-          </View>
-        </Card>
-
-        <Card style={styles.card}>
-          <View style={styles.sectionHeader}>
-            <AppText variant="subtitle">Terminal</AppText>
-            <AppText variant="label" tone="muted">
-              Customize terminal appearance
-            </AppText>
-          </View>
-          <View style={styles.separator} />
-          <View style={styles.settingRow}>
-            <AppText variant="label">Font</AppText>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View style={styles.fontSelector}>
-                {FONT_OPTIONS.map((opt) => (
-                  <FontOption
-                    key={opt.value}
-                    label={opt.label}
-                    value={opt.value}
-                    selected={preferences.terminal.fontFamily === opt.value}
-                    onSelect={(val) => updateTerminalSettings({ fontFamily: val })}
-                    styles={styles}
-                    colors={colors}
-                  />
-                ))}
-              </View>
-            </ScrollView>
-          </View>
-          <View style={styles.separator} />
-          <View style={styles.settingRow}>
-            <AppText variant="label">Size</AppText>
-            <FontSizeSelector
-              value={preferences.terminal.fontSize}
-              onChange={(size) => updateTerminalSettings({ fontSize: size })}
-              styles={styles}
-              colors={colors}
-            />
-          </View>
-        </Card>
+        </View>
       </ScrollView>
     </Screen>
   );
@@ -632,10 +663,16 @@ export default function MoreTabScreen() {
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
   scrollContent: {
     paddingBottom: theme.spacing.xxl,
-    gap: theme.spacing.md,
+    gap: theme.spacing.lg,
   },
-  card: {
-    padding: 0,
+  section: {
+    gap: theme.spacing.xs,
+  },
+  sectionLabel: {
+    marginLeft: theme.spacing.sm,
+    marginBottom: 2,
+  },
+  sectionContent: {
     overflow: 'hidden',
   },
   menuItem: {
@@ -652,13 +689,13 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     gap: 2,
   },
   separator: {
-    height: 1,
+    height: StyleSheet.hairlineWidth,
     backgroundColor: colors.separator,
     marginHorizontal: theme.spacing.md,
   },
   sectionHeader: {
-    padding: theme.spacing.md,
-    gap: 2,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
   },
   copilotItem: {
     flexDirection: 'row',

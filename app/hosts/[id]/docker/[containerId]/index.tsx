@@ -213,10 +213,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     gap: theme.spacing.sm,
   },
   statusCard: {
-    backgroundColor: colors.card,
-    borderRadius: theme.radii.lg,
     padding: theme.spacing.md,
-    ...theme.shadow.card,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.separator,
   },
   statusRow: {
     flexDirection: 'row',
@@ -233,11 +232,10 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.red,
   },
   actionsRow: {
-    backgroundColor: colors.card,
-    borderRadius: theme.radii.lg,
     padding: theme.spacing.sm,
     gap: 10,
-    ...theme.shadow.card,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.separator,
   },
   actionButton: {
     paddingVertical: 10,
@@ -255,20 +253,16 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.red,
   },
   detailCard: {
-    backgroundColor: colors.card,
-    borderRadius: theme.radii.lg,
     padding: theme.spacing.md,
     gap: 10,
-    ...theme.shadow.card,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.separator,
   },
   detailRow: {
     gap: 4,
   },
   noticeCard: {
-    backgroundColor: colors.card,
-    borderRadius: theme.radii.lg,
     padding: theme.spacing.md,
-    ...theme.shadow.card,
   },
 });
 

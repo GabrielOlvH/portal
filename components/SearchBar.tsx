@@ -1,6 +1,5 @@
 import React, { useMemo } from 'react';
 import { View, TextInput, StyleSheet, Pressable } from 'react-native';
-import { Card } from '@/components/Card';
 import { AppText } from '@/components/AppText';
 import { theme } from '@/lib/theme';
 import { ThemeColors, useTheme } from '@/lib/useTheme';
@@ -16,7 +15,7 @@ export function SearchBar({ value, onChangeText, placeholder = 'Search...' }: Se
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   return (
-    <Card style={styles.card}>
+    <View style={styles.card}>
       <View style={styles.container}>
         <AppText style={styles.icon}>⌕</AppText>
         <TextInput
@@ -35,13 +34,15 @@ export function SearchBar({ value, onChangeText, placeholder = 'Search...' }: Se
           </Pressable>
         )}
       </View>
-    </Card>
+    </View>
   );
 }
 
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
   card: {
     marginBottom: theme.spacing.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.separator,
   },
   container: {
     flexDirection: 'row',

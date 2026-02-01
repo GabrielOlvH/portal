@@ -2,7 +2,6 @@ import React, { memo, useCallback, useMemo } from 'react';
 import { Alert, Pressable, StyleSheet, View, type ColorValue } from 'react-native';
 import { GitBranch, Pause, Play, StopCircle } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
-import { Card } from '@/components/Card';
 import { AppText } from '@/components/AppText';
 import { theme } from '@/lib/theme';
 import { ThemeColors, useTheme } from '@/lib/useTheme';
@@ -74,7 +73,7 @@ export const SessionCard = memo(function SessionCard({
         pressed && styles.pressed,
       ]}
     >
-      <Card style={styles.card}>
+      <View style={styles.card}>
         <View style={[styles.colorBar, { backgroundColor: hostColor }]} />
         <View style={styles.content}>
           <View style={styles.header}>
@@ -112,14 +111,14 @@ export const SessionCard = memo(function SessionCard({
             </View>
           )}
         </View>
-      </Card>
+      </View>
     </Pressable>
   );
 });
 
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
   pressable: {
-    borderRadius: theme.radii.lg,
+    borderRadius: theme.radii.md,
   },
   pressed: {
     transform: [{ scale: 0.98 }],

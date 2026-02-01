@@ -228,10 +228,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     gap: theme.spacing.md,
   },
   formCard: {
-    backgroundColor: colors.card,
-    borderRadius: theme.radii.lg,
     padding: theme.spacing.md,
-    ...theme.shadow.card,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.separator,
   },
   formTitle: {
     marginBottom: theme.spacing.sm,
@@ -262,11 +261,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.accentText,
   },
   empty: {
-    backgroundColor: colors.card,
-    borderRadius: theme.radii.lg,
     padding: theme.spacing.lg,
     alignItems: 'center',
-    ...theme.shadow.card,
   },
   emptyBody: {
     textAlign: 'center',
@@ -288,11 +284,10 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   snippetCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.card,
-    borderRadius: theme.radii.lg,
     padding: theme.spacing.md,
     gap: theme.spacing.md,
-    ...theme.shadow.card,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.separator,
   },
   snippetInfo: {
     flex: 1,

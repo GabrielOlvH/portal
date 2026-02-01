@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { View, StyleSheet, Pressable } from 'react-native';
 import { AppText } from '@/components/AppText';
-import { Card } from '@/components/Card';
 import { theme } from '@/lib/theme';
 import { ThemeColors, useTheme } from '@/lib/useTheme';
 import { PortInfo } from '@/lib/types';
@@ -26,7 +25,7 @@ export function PortGroup({ processName, ports, children, defaultExpanded = true
   }, [ports]);
 
   return (
-    <Card style={styles.card}>
+    <View style={styles.card}>
       <Pressable style={styles.header} onPress={() => setExpanded(!expanded)}>
         <AppText style={styles.chevron}>{expanded ? '▼' : '▶'}</AppText>
         <View style={styles.headerInfo}>
@@ -46,7 +45,7 @@ export function PortGroup({ processName, ports, children, defaultExpanded = true
           {children}
         </View>
       )}
-    </Card>
+    </View>
   );
 }
 

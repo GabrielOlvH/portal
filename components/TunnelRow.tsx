@@ -1,7 +1,6 @@
 import React, { memo, useMemo } from 'react';
 import { View, StyleSheet, Pressable } from 'react-native';
 import { AppText } from '@/components/AppText';
-import { Card } from '@/components/Card';
 import { theme } from '@/lib/theme';
 import { ThemeColors, useTheme } from '@/lib/useTheme';
 import { Tunnel } from '@/lib/types';
@@ -19,7 +18,7 @@ export const TunnelRow = memo(function TunnelRow({ tunnel, onClose }: TunnelRowP
                       tunnel.status === 'error' ? colors.red : colors.textSecondary;
 
   return (
-    <Card style={styles.card}>
+    <View style={styles.card}>
       <View style={styles.content}>
         <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
 
@@ -57,15 +56,15 @@ export const TunnelRow = memo(function TunnelRow({ tunnel, onClose }: TunnelRowP
           </AppText>
         </View>
       )}
-    </Card>
+    </View>
   );
 });
 
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
   card: {
-    padding: 0,
     overflow: 'hidden',
-    marginBottom: theme.spacing.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.separator,
   },
   content: {
     flexDirection: 'row',
