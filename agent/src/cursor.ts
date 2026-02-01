@@ -2,13 +2,34 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { execSync } from 'node:child_process';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { oauthCache } from './state';
 import { formatOAuthError } from './utils';
+
+const execFileAsync = promisify(execFile);
 
 type CursorAuth = {
   type: 'cookie' | 'token';
   value: string;
 };
+
+async function getCursorCookieFromShell(): Promise<string | null> {
+  try {
+    // Source login shell to get vars from ~/.profile
+    const { stdout } = await execFileAsync('bash', ['-lc', 'echo "$CURSOR_COOKIE"'], {
+      timeout: 5000,
+      encoding: 'utf8',
+    });
+    const cookie = stdout.trim();
+    if (cookie && cookie !== '$CURSOR_COOKIE') {
+      return cookie;
+    }
+  } catch {
+    // Ignore errors
+  }
+  return null;
+}
 
 function readAccessTokenFromDb(): string | null {
   const home = os.homedir();
@@ -47,9 +68,13 @@ async function resolveCursorAuth(): Promise<CursorAuth | null> {
   const envToken = (process.env.CURSOR_TOKEN || '').trim();
   if (envToken) return { type: 'token', value: envToken };
 
+  // 3. Try getting cookie from login shell (sources ~/.profile)
+  const shellCookie = await getCursorCookieFromShell();
+  if (shellCookie) return { type: 'cookie', value: shellCookie };
+
   const home = os.homedir();
 
-  // 3. Check JSON cookie files
+  // 4. Check JSON cookie files
   const candidates = [
     path.join(home, '.cursor', 'session.json'),
     path.join(home, '.cursor', 'cookie.json'),
@@ -69,7 +94,7 @@ async function resolveCursorAuth(): Promise<CursorAuth | null> {
     } catch {}
   }
 
-  // 4. Read access token from Cursor's SQLite database
+  // 5. Read access token from Cursor's SQLite database (fallback, may not work with web API)
   const dbToken = readAccessTokenFromDb();
   if (dbToken) return { type: 'token', value: dbToken };
 
