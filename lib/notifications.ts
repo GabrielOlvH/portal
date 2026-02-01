@@ -24,7 +24,8 @@ async function ensureNotificationHandler() {
   if (handlerConfigured) return;
   Notifications.setNotificationHandler({
     handleNotification: async () => ({
-      shouldShowAlert: true,
+      shouldShowBanner: true,
+      shouldShowList: true,
       shouldPlaySound: false,
       shouldSetBadge: false,
     }),
@@ -181,7 +182,9 @@ export async function unregisterNotificationsForHosts(hosts: Host[]): Promise<vo
     hosts.map(async (host) => {
       try {
         await unregisterNotificationDevice(host, deviceId);
-      } catch {}
+      } catch (error) {
+        console.warn('[Notifications] Failed to unregister device for host:', host.id, error);
+      }
     })
   );
 
@@ -217,7 +220,6 @@ export async function sendTestNotification(): Promise<TestNotificationResult> {
       content: {
         title: 'Bridge',
         body: 'Notifications are working on this device.',
-        channelId: CHANNEL_ID,
         sound: 'default',
       },
       trigger: null,

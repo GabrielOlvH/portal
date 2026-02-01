@@ -188,10 +188,12 @@ function attachPtyBridge(ws: WebSocket, term: ReturnType<typeof pty.spawn>, clos
 }
 
 export function attachWebSocketServers(server: Server) {
-  const termWss = new WebSocketServer({ noServer: true, perMessageDeflate: false });
-  const dockerWss = new WebSocketServer({ noServer: true, perMessageDeflate: false });
-  const logsWss = new WebSocketServer({ noServer: true, perMessageDeflate: false });
-  const eventsWss = new WebSocketServer({ noServer: true, perMessageDeflate: false });
+  // Type assertion needed because @types/ws doesn't fully type perMessageDeflate with noServer
+  const wsOptions = { noServer: true, perMessageDeflate: false } as const;
+  const termWss = new WebSocketServer(wsOptions);
+  const dockerWss = new WebSocketServer(wsOptions);
+  const logsWss = new WebSocketServer(wsOptions);
+  const eventsWss = new WebSocketServer(wsOptions);
   const wssByPath = new Map([
     ['/ws', termWss],
     ['/events', eventsWss],
@@ -201,14 +203,14 @@ export function attachWebSocketServers(server: Server) {
 
   server.on('upgrade', (req: IncomingMessage, socket: Socket, head: Buffer) => {
     try {
-      const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
+      const url = new URL(req.url ?? '/', `http://${req.headers.host ?? 'localhost'}`);
       const wss = wssByPath.get(url.pathname);
       if (!wss) {
         socket.destroy();
         return;
       }
       if (TOKEN) {
-        const token = url.searchParams.get('token') || '';
+        const token = url.searchParams.get('token') ?? '';
         if (token !== TOKEN) {
           socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
           socket.destroy();
@@ -225,7 +227,7 @@ export function attachWebSocketServers(server: Server) {
 
   termWss.on('connection', async (ws: WebSocket, req: IncomingMessage) => {
     enableLowLatencySocket(ws);
-    const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
+    const url = new URL(req.url ?? '/', `http://${req.headers.host ?? 'localhost'}`);
     const session = url.searchParams.get('session');
     if (!session) {
       ws.close(1008, 'session required');
@@ -284,7 +286,7 @@ export function attachWebSocketServers(server: Server) {
 
   dockerWss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
     enableLowLatencySocket(ws);
-    const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
+    const url = new URL(req.url ?? '/', `http://${req.headers.host ?? 'localhost'}`);
     const container = url.searchParams.get('container');
     if (!container) {
       ws.close(1008, 'container required');
@@ -312,7 +314,7 @@ export function attachWebSocketServers(server: Server) {
 
   logsWss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
     enableLowLatencySocket(ws);
-    const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
+    const url = new URL(req.url ?? '/', `http://${req.headers.host ?? 'localhost'}`);
     const container = url.searchParams.get('container');
     if (!container) {
       ws.close(1008, 'container required');
@@ -320,7 +322,7 @@ export function attachWebSocketServers(server: Server) {
     }
 
     const follow = url.searchParams.get('follow') !== '0';
-    const tail = url.searchParams.get('tail') || '100';
+    const tail = url.searchParams.get('tail') ?? '100';
     const timestamps = url.searchParams.get('timestamps') === '1';
 
     const args = ['logs'];
@@ -379,7 +381,7 @@ export function attachWebSocketServers(server: Server) {
 
   eventsWss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
     enableLowLatencySocket(ws);
-    const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
+    const url = new URL(req.url ?? '/', `http://${req.headers.host ?? 'localhost'}`);
     const config = parseLiveConfig(url);
     let lastPayload = '';
     let refreshTimer: ReturnType<typeof setTimeout> | null = null;

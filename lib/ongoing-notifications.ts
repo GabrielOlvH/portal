@@ -1,6 +1,29 @@
 import { Platform } from 'react-native';
 
-type NotifeeModule = typeof import('@notifee/react-native');
+// Notifee is Android-only, lazy load to avoid iOS issues
+type NotifeeModule = {
+  createChannel(channel: {
+    id: string;
+    name: string;
+    importance: number;
+  }): Promise<string>;
+  displayNotification(notification: {
+    id?: string;
+    title?: string;
+    body?: string;
+    android?: {
+      channelId: string;
+      ongoing?: boolean;
+      onlyAlertOnce?: boolean;
+      smallIcon?: string;
+      pressAction?: { id: string };
+    };
+  }): Promise<string>;
+  cancelNotification(notificationId: string): Promise<void>;
+  AndroidImportance: {
+    HIGH: number;
+  };
+};
 
 const CHANNEL_ID = 'task-updates';
 const NOTIFICATION_ID = 'task-ongoing';
@@ -13,7 +36,8 @@ function getNotifee(): NotifeeModule | null {
   if (moduleCache !== undefined) return moduleCache;
   try {
     moduleCache = require('@notifee/react-native') as NotifeeModule;
-  } catch {
+  } catch (error) {
+    console.warn('[OngoingNotifications] Failed to load notifee module:', error);
     moduleCache = null;
   }
   return moduleCache;

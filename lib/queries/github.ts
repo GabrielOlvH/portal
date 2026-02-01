@@ -46,8 +46,8 @@ export function useGitHubStatus(
           if (response.authenticated) {
             results.push(...response.statuses);
           }
-        } catch {
-          // Skip failed hosts
+        } catch (error) {
+          console.warn('[GitHub] Failed to get status for host:', hostId, error);
         }
       }
 
@@ -87,8 +87,8 @@ export function useRefreshGitHubStatus() {
           if (response.authenticated) {
             results.push(...response.statuses);
           }
-        } catch {
-          // Skip failed hosts
+        } catch (error) {
+          console.warn('[GitHub] Failed to refresh status for host:', hostId, error);
         }
       }
 

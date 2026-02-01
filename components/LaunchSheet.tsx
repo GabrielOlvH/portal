@@ -11,9 +11,10 @@ import Animated, {
   useAnimatedStyle,
   withSpring,
 } from 'react-native-reanimated';
-// import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import BottomSheet, {
   BottomSheetBackdrop,
+  BottomSheetBackdropProps,
+  BottomSheetBackgroundProps,
   BottomSheetScrollView,
 } from '@gorhom/bottom-sheet';
 import { ThemeColors, useTheme } from '@/lib/useTheme';
@@ -934,7 +935,7 @@ export function LaunchSheet({ isOpen, onClose }: LaunchSheetProps) {
   );
 
   const renderBackdrop = useCallback(
-    (props: any) => (
+    (props: BottomSheetBackdropProps) => (
       <BottomSheetBackdrop
         {...props}
         disappearsOnIndex={-1}
@@ -948,7 +949,7 @@ export function LaunchSheet({ isOpen, onClose }: LaunchSheetProps) {
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   const renderBackground = useCallback(
-    (props: any) => (
+    (props: BottomSheetBackgroundProps) => (
       <View style={[props.style, styles.sheetBackground, { backgroundColor: colors.card }]} />
     ),
     [colors.card, styles.sheetBackground]

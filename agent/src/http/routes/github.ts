@@ -4,7 +4,6 @@ import {
   getAllProjectStatuses,
   getBranchesForProject,
   clearStatusCache,
-  type CommitStatus,
 } from '../../github';
 import { jsonError } from '../errors';
 
@@ -27,7 +26,7 @@ export function registerGitHubRoutes(app: Hono) {
   // Get commit status for all projects
   app.post('/github/status', async (c) => {
     try {
-      const body = (await c.req.json()) as StatusRequest;
+      const body = await c.req.json<StatusRequest>();
       const { projects, branches } = body;
 
       if (!Array.isArray(projects)) {
@@ -65,7 +64,7 @@ export function registerGitHubRoutes(app: Hono) {
   // Force refresh (clear cache and fetch fresh)
   app.post('/github/refresh', async (c) => {
     try {
-      const body = (await c.req.json()) as StatusRequest;
+      const body = await c.req.json<StatusRequest>();
       const { projects, branches } = body;
 
       if (!Array.isArray(projects)) {
@@ -105,7 +104,7 @@ export function registerGitHubRoutes(app: Hono) {
   // Get branches for a project
   app.post('/github/branches', async (c) => {
     try {
-      const body = (await c.req.json()) as BranchesRequest;
+      const body = await c.req.json<BranchesRequest>();
       const { projectPath } = body;
 
       if (!projectPath || typeof projectPath !== 'string') {

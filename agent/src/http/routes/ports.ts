@@ -14,7 +14,7 @@ export function registerPortRoutes(app: Hono) {
 
   app.post('/ports/kill', async (c) => {
     try {
-      const body = (await c.req.json()) as { pids?: unknown };
+      const body = await c.req.json<{ pids?: unknown }>();
       if (!Array.isArray(body.pids) || body.pids.length === 0) {
         return c.json({ error: 'pids array is required' }, 400);
       }

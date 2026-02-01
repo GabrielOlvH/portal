@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { memo, useCallback, useMemo } from 'react';
 import { Alert, Pressable, StyleSheet, View, type ColorValue } from 'react-native';
 import { GitBranch, Pause, Play, StopCircle } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
@@ -7,15 +7,7 @@ import { AppText } from '@/components/AppText';
 import { theme } from '@/lib/theme';
 import { ThemeColors, useTheme } from '@/lib/useTheme';
 import type { Host, Session } from '@/lib/types';
-
-function withAlpha(hex: string, alpha: number) {
-  const clean = hex.replace('#', '');
-  if (clean.length !== 6) return hex;
-  const r = parseInt(clean.slice(0, 2), 16);
-  const g = parseInt(clean.slice(2, 4), 16);
-  const b = parseInt(clean.slice(4, 6), 16);
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-}
+import { withAlpha } from '@/lib/colors';
 
 function getStateColors(state: 'running' | 'idle' | 'stopped', colors: ThemeColors) {
   const stateColorMap = {
@@ -35,7 +27,7 @@ type SessionCardProps = {
   onKill: () => void;
 };
 
-export function SessionCard({
+export const SessionCard = memo(function SessionCard({
   session,
   host,
   hostColor,
@@ -86,7 +78,7 @@ export function SessionCard({
         <View style={[styles.colorBar, { backgroundColor: hostColor }]} />
         <View style={styles.content}>
           <View style={styles.header}>
-            <AppText variant="subtitle" numberOfLines={1} style={styles.name}>
+            <AppText variant="subtitle" numberOfLines={2} style={styles.name}>
               {session.title || session.name}
             </AppText>
             <View style={[styles.stateBadge, { backgroundColor: stateBgColor }]}>
@@ -123,7 +115,7 @@ export function SessionCard({
       </Card>
     </Pressable>
   );
-}
+});
 
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
   pressable: {

@@ -1,12 +1,10 @@
-import { spawn, execFile } from 'node:child_process';
-import { existsSync, mkdirSync, writeFileSync, readFileSync, renameSync } from 'node:fs';
-import { promisify } from 'node:util';
+import { spawn } from 'node:child_process';
+import { existsSync, renameSync } from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { resolveInstallDir, restartService, detectInitSystem } from './manager';
-import { checkForUpdates, setUpdateAttempt, getCurrentVersion, type UpdateAttempt, type UpdateInfo } from './health';
-
-const execFileAsync = promisify(execFile);
+import { resolveInstallDir, restartService } from './manager';
+import { checkForUpdates, setUpdateAttempt, getCurrentVersion } from './health';
+import { exec } from '../utils/exec';
 
 // Event emitter for SSE streaming
 type ProgressCallback = (event: UpdateEvent) => void;
@@ -45,31 +43,6 @@ let isUpdating = false;
 
 export function isUpdateInProgress(): boolean {
   return isUpdating;
-}
-
-async function exec(
-  command: string,
-  args: string[],
-  options: { cwd?: string; timeout?: number; ignoreError?: boolean } = {}
-): Promise<{ stdout: string; stderr: string; exitCode: number }> {
-  try {
-    const { stdout, stderr } = await execFileAsync(command, args, {
-      cwd: options.cwd,
-      timeout: options.timeout ?? 30000,
-      encoding: 'utf8',
-    });
-    return { stdout: stdout.trim(), stderr: stderr.trim(), exitCode: 0 };
-  } catch (error: unknown) {
-    if (options.ignoreError) {
-      const err = error as { stdout?: string; stderr?: string; code?: number };
-      return {
-        stdout: (err.stdout ?? '').trim(),
-        stderr: (err.stderr ?? '').trim(),
-        exitCode: err.code ?? 1,
-      };
-    }
-    throw error;
-  }
 }
 
 function sendProgress(context: UpdateContext, event: Omit<UpdateEvent, 'updateId'>): void {
@@ -159,7 +132,6 @@ export async function applyUpdate(progressCallback: ProgressCallback): Promise<U
     await exec('git', ['tag', tagName], { cwd: installDir });
 
     // Backup node_modules if package.json will change
-    const packageJsonPath = path.join(installDir, 'package.json');
     const nodeModulesBackup = path.join(installDir, 'node_modules.backup');
     const nodeModulesPath = path.join(installDir, 'node_modules');
 
@@ -381,7 +353,7 @@ async function hasPackageJsonChanged(installDir: string, previousVersion: string
       ['diff', '--name-only', previousVersion, 'HEAD'],
       { cwd: installDir, ignoreError: true }
     );
-    return stdout.split('\n').some((file) => file.includes('package.json') || file.includes('package-lock.json'));
+    return stdout.split('\n').some((file) => file.includes('package.json') ?? file.includes('package-lock.json'));
   } catch {
     return true; // Assume changed if we can't determine
   }
@@ -419,7 +391,7 @@ async function testNewVersion(installDir: string): Promise<boolean> {
 
       try {
         // Try to connect to health endpoint
-        const port = process.env.TMUX_AGENT_PORT || '4020';
+        const port = process.env.TMUX_AGENT_PORT ?? '4020';
         const http = await import('node:http');
 
         const req = http.get(`http://127.0.0.1:${port}/health`, (res) => {

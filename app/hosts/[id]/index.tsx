@@ -15,12 +15,15 @@ import {
   SystemStatus,
   UpdateProgressEvent,
 } from '@/lib/api';
-import { systemColors } from '@/lib/colors';
+import { systemColors, withAlpha } from '@/lib/colors';
 import { useHostLive } from '@/lib/live';
 import { useStore } from '@/lib/store';
 import { theme } from '@/lib/theme';
 import { ThemeColors, useTheme } from '@/lib/useTheme';
+import { TIMING } from '@/lib/constants';
 import { DockerContainer, HostInfo } from '@/lib/types';
+import { formatBytes } from '@/lib/formatters';
+import { isContainerRunning } from '@/lib/docker-utils';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useIsFocused } from '@react-navigation/native';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -35,18 +38,6 @@ import {
 } from 'react-native';
 import { Play, Square, ChevronDown, ChevronRight } from 'lucide-react-native';
 
-function formatBytes(bytes?: number) {
-  if (!bytes || bytes <= 0) return '-';
-  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
-  let value = bytes;
-  let idx = 0;
-  while (value >= 1024 && idx < units.length - 1) {
-    value /= 1024;
-    idx += 1;
-  }
-  return `${value.toFixed(value >= 10 ? 0 : 1)} ${units[idx]}`;
-}
-
 function formatUptime(seconds?: number) {
   if (!seconds || seconds <= 0) return '-';
   const days = Math.floor(seconds / 86400);
@@ -56,13 +47,6 @@ function formatUptime(seconds?: number) {
   if (hours > 0) return `${hours}h ${mins}m`;
   return `${mins}m`;
 }
-
-function isContainerRunning(container: DockerContainer): boolean {
-  if (container.state) return container.state.toLowerCase() === 'running';
-  if (container.status) return container.status.toLowerCase().startsWith('up');
-  return false;
-}
-
 
 export default function HostDetailScreen() {
   const router = useRouter();
@@ -321,7 +305,7 @@ export default function HostDetailScreen() {
             onRefresh={() => {
               setSyncing(true);
               refresh();
-              setTimeout(() => setSyncing(false), 600);
+              setTimeout(() => setSyncing(false), TIMING.SYNC_INDICATOR_MS);
             }}
             tintColor={systemColors.blue as string}
           />
@@ -612,26 +596,12 @@ export default function HostDetailScreen() {
   );
 }
 
-function withAlpha(hex: string, alpha: number) {
-  const clean = hex.replace('#', '');
-  if (clean.length !== 6) return hex;
-  const r = parseInt(clean.slice(0, 2), 16);
-  const g = parseInt(clean.slice(2, 4), 16);
-  const b = parseInt(clean.slice(4, 6), 16);
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-}
-
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 16,
-  },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
   },
   scrollContent: {
     paddingBottom: 40,

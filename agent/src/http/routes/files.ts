@@ -1,11 +1,38 @@
 import type { Hono } from 'hono';
 import { randomUUID } from 'node:crypto';
-import { mkdir, readFile, readdir, stat, writeFile } from 'node:fs/promises';
-import { basename, join } from 'node:path';
+import { mkdir, readFile, readdir, realpath, stat, writeFile } from 'node:fs/promises';
+import { basename, join, resolve } from 'node:path';
 import { jsonError } from '../errors';
 
 function isErrnoException(err: unknown): err is NodeJS.ErrnoException {
   return typeof err === 'object' && err !== null && 'code' in err;
+}
+
+const ALLOWED_ROOTS = [
+  process.env.HOME,
+  '/tmp',
+  '/home',
+  process.cwd(),
+].filter((root): root is string => typeof root === 'string');
+
+async function validatePath(inputPath: string): Promise<string | null> {
+  if (inputPath.includes('..')) {
+    return null;
+  }
+
+  try {
+    const resolvedPath = resolve(inputPath);
+    const realPath = await realpath(resolvedPath);
+
+    const isAllowed = ALLOWED_ROOTS.some((root) => {
+      const resolvedRoot = resolve(root);
+      return realPath === resolvedRoot || realPath.startsWith(resolvedRoot + '/');
+    });
+
+    return isAllowed ? realPath : null;
+  } catch {
+    return null;
+  }
 }
 
 function normalizeExtension(mimeType: string): string {
@@ -31,7 +58,11 @@ export function registerFileRoutes(app: Hono) {
       if (!projectPath) {
         return c.json({ error: 'path query parameter is required' }, 400);
       }
-      const packageJsonPath = join(projectPath, 'package.json');
+      const validatedPath = await validatePath(projectPath);
+      if (!validatedPath) {
+        return c.json({ error: 'Invalid or unauthorized path' }, 403);
+      }
+      const packageJsonPath = join(validatedPath, 'package.json');
       try {
         const content = await readFile(packageJsonPath, 'utf-8');
         const pkg = JSON.parse(content);
@@ -52,13 +83,17 @@ export function registerFileRoutes(app: Hono) {
 
   app.get('/fs/list', async (c) => {
     try {
-      const dirPath = c.req.query('path') || process.env.HOME || '/';
-      const entries = await readdir(dirPath, { withFileTypes: true });
+      const rawPath = c.req.query('path') || process.env.HOME || '/';
+      const validatedPath = await validatePath(rawPath);
+      if (!validatedPath) {
+        return c.json({ error: 'Invalid or unauthorized path' }, 403);
+      }
+      const entries = await readdir(validatedPath, { withFileTypes: true });
       const items = await Promise.all(
         entries
           .filter((entry) => !entry.name.startsWith('.'))
           .map(async (entry) => {
-            const fullPath = join(dirPath, entry.name);
+            const fullPath = join(validatedPath, entry.name);
             const isDirectory = entry.isDirectory();
             let hasPackageJson = false;
             if (isDirectory) {
@@ -81,8 +116,8 @@ export function registerFileRoutes(app: Hono) {
         return a.name.localeCompare(b.name);
       });
       return c.json({
-        path: dirPath,
-        parent: dirPath === '/' ? null : join(dirPath, '..'),
+        path: validatedPath,
+        parent: validatedPath === '/' ? null : join(validatedPath, '..'),
         items: items.filter((item) => item.isDirectory),
       });
     } catch (err) {

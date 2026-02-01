@@ -57,8 +57,9 @@ start_manual() {
         return 1
     fi
 
-    cd "$INSTALL_DIR/agent"
+    cd "$INSTALL_DIR/agent" || return 1
     if [ -f ".env" ]; then
+        # shellcheck disable=SC2046
         export $(grep -v '^#' .env | xargs)
     fi
     nohup "$node_bin" node_modules/.bin/tsx src/index.ts > /tmp/bridge-agent.log 2>&1 &
@@ -134,7 +135,7 @@ if [ ! -d "$INSTALL_DIR" ]; then
     exit 1
 fi
 
-cd "$INSTALL_DIR"
+cd "$INSTALL_DIR" || exit 1
 
 # Fetch latest from remote
 log "Checking for updates..."
@@ -152,16 +153,16 @@ LOCAL=$(git rev-parse HEAD)
 REMOTE=$(git rev-parse "origin/$BRANCH")
 
 if [ "$LOCAL" = "$REMOTE" ]; then
-    log "Already up to date ($(echo $LOCAL | head -c 7))"
+    log "Already up to date ($(echo "$LOCAL" | head -c 7))"
     exit 0
 fi
 
-log "Update available: $(echo $LOCAL | head -c 7) -> $(echo $REMOTE | head -c 7)"
+log "Update available: $(echo "$LOCAL" | head -c 7) -> $(echo "$REMOTE" | head -c 7)"
 
 # Check what changed
 CHANGES=$(git diff --name-only "$LOCAL" "$REMOTE")
 log "Changed files:"
-echo "$CHANGES" | while read file; do echo "  - $file"; done
+    echo "$CHANGES" | while read -r file; do echo "  - $file"; done
 
 # Stash any local changes
 STASHED=false
@@ -190,8 +191,7 @@ fi
 # Check if dependencies changed
 if echo "$CHANGES" | grep -q "agent/package.json\|agent/package-lock.json"; then
     log "Dependencies changed, running npm install..."
-    cd agent && npm install
-    cd ..
+    (cd agent && npm install)
 fi
 
 # Restart service

@@ -16,6 +16,7 @@ import { useStore } from '@/lib/store';
 import { useHostsLive } from '@/lib/live';
 import { theme } from '@/lib/theme';
 import { ThemeColors, useTheme } from '@/lib/useTheme';
+import { TIMING, POLLING } from '@/lib/constants';
 
 type CardStatus = 'online' | 'offline' | 'checking';
 
@@ -139,7 +140,7 @@ export default function HostsTabScreen() {
     };
 
     checkUpdates();
-    const interval = setInterval(checkUpdates, 60000);
+    const interval = setInterval(checkUpdates, POLLING.UPDATE_CHECK_MS);
     return () => {
       cancelled = true;
       clearInterval(interval);
@@ -203,7 +204,7 @@ export default function HostsTabScreen() {
             onRefresh={() => {
               setManualRefresh(true);
               refreshAll();
-              setTimeout(() => setManualRefresh(false), 600);
+              setTimeout(() => setManualRefresh(false), TIMING.REFRESH_INDICATOR_MS);
             }}
             tintColor={systemColors.blue as string}
           />

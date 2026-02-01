@@ -16,7 +16,7 @@ type RegistrationPayload = {
 export function registerNotificationRoutes(app: Hono) {
   app.post('/notifications/register', async (c) => {
     try {
-      const payload = (await c.req.json()) as RegistrationPayload;
+      const payload = await c.req.json<RegistrationPayload>();
       const deviceId = typeof payload.deviceId === 'string' ? payload.deviceId.trim() : '';
       const expoPushToken =
         typeof payload.expoPushToken === 'string' ? payload.expoPushToken.trim() : '';
@@ -35,7 +35,7 @@ export function registerNotificationRoutes(app: Hono) {
 
   app.delete('/notifications/register', async (c) => {
     try {
-      const payload = (await c.req.json()) as { deviceId?: string };
+      const payload = await c.req.json<{ deviceId?: string }>();
       const deviceId = typeof payload.deviceId === 'string' ? payload.deviceId.trim() : '';
       if (!deviceId) {
         return c.json({ ok: false, error: 'deviceId required' }, 400);
@@ -58,15 +58,15 @@ export function registerNotificationRoutes(app: Hono) {
 
   app.post('/notifications/test', async (c) => {
     try {
-      const payload = (await c.req.json()) as { title?: string; body?: string };
+      const payload = await c.req.json<{ title?: string; body?: string }>();
       const devices = await listNotificationDevices();
-      const title = payload?.title?.trim() || 'Bridge';
-      const body = payload?.body?.trim() || 'Test push notification';
+      const title = payload?.title?.trim() ?? 'Bridge';
+      const body = payload?.body?.trim() ?? 'Test push notification';
       const messages = devices.map((device) => ({
         to: device.expoPushToken,
         title,
         body,
-        sound: 'default',
+        sound: 'default' as const,
         channelId: 'task-updates',
         data: { type: 'test-push' },
       }));

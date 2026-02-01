@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useStore } from './store';
 import { useHostsLive } from './live';
 import { DockerContainer, Host, HostStatus } from './types';
+import { isContainerRunning } from './docker-utils';
 
 export type ContainerWithHost = DockerContainer & {
   host: Host;
@@ -73,20 +74,5 @@ export function useAllDocker(options?: { enabled?: boolean }): UseAllDockerResul
   };
 }
 
-export function isContainerRunning(container: DockerContainer): boolean {
-  if (container.state) return container.state.toLowerCase() === 'running';
-  if (container.status) return container.status.toLowerCase().startsWith('up');
-  return false;
-}
-
-export function formatBytes(bytes?: number): string {
-  if (!bytes || bytes <= 0) return '-';
-  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
-  let value = bytes;
-  let idx = 0;
-  while (value >= 1024 && idx < units.length - 1) {
-    value /= 1024;
-    idx += 1;
-  }
-  return `${value.toFixed(value >= 10 ? 0 : 1)} ${units[idx]}`;
-}
+export { isContainerRunning } from './docker-utils';
+export { formatBytes } from './formatters';

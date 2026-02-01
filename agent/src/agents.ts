@@ -5,7 +5,7 @@ import { stripAnsi } from './utils';
 import { getGitStatus } from './git';
 import { getUsageSnapshot } from './usage';
 import { IDLE_STOP_MS } from './config';
-import { sessionActivity } from './state';
+import { sessionActivity, evictSessionActivity } from './state';
 
 const execFileAsync = promisify(execFile);
 const shellCommands = new Set(['bash', 'zsh', 'fish', 'sh', 'tmux']);
@@ -88,7 +88,15 @@ export async function getSessionAgentInfo(
       };
     });
 
-    const ordered = [...panes].sort((a, b) => (a.active === b.active ? 0 : a.active ? -1 : 1));
+    const ordered = [...panes].sort((a, b) => {
+      if (a.active === b.active) {
+        return 0;
+      } else if (a.active) {
+        return -1;
+      } else {
+        return 1;
+      }
+    });
 
     let agent: 'codex' | 'claude' | null = null;
     let agentCommand: string | null = null;
@@ -149,6 +157,7 @@ export function detectAgentState(
   const previous = sessionActivity.get(sessionName);
   if (!previous || previous.hash !== hash) {
     sessionActivity.set(sessionName, { hash, lastChangedAt: now, idleConfirmedAt: null });
+    evictSessionActivity();
     return 'running';
   }
 
@@ -160,6 +169,7 @@ export function detectAgentState(
   // Hysteresis: require 2 consecutive "would be idle" checks
   if (previous.idleConfirmedAt === null) {
     sessionActivity.set(sessionName, { ...previous, idleConfirmedAt: now });
+    evictSessionActivity();
     return 'running';
   }
 

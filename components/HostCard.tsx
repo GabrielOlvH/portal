@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { memo, useMemo } from 'react';
 import { Pressable, StyleSheet, TextStyle, View, ViewStyle } from 'react-native';
 import { Download, Terminal } from 'lucide-react-native';
 import { AppText } from '@/components/AppText';
@@ -9,6 +9,7 @@ import { useTheme } from '@/lib/useTheme';
 import type { UpdateStatus } from '@/lib/api';
 import type { Host } from '@/lib/types';
 import type { ThemeColors } from '@/lib/useTheme';
+import { withAlpha } from '@/lib/colors';
 
 type HostStatus = 'online' | 'offline' | 'checking';
 type StatusColors = { color: string; bg: string };
@@ -58,15 +59,6 @@ function getHostname(url: string): string {
   }
 }
 
-function withAlpha(hex: string, alpha: number): string {
-  const clean = hex.replace('#', '');
-  if (clean.length !== 6) return hex;
-  const r = parseInt(clean.slice(0, 2), 16);
-  const g = parseInt(clean.slice(2, 4), 16);
-  const b = parseInt(clean.slice(4, 6), 16);
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-}
-
 function getStatusColors(status: HostStatus, colors: ThemeColors): StatusColors {
   switch (status) {
     case 'online':
@@ -110,7 +102,7 @@ function formatUptime(seconds?: number): string {
   return `${mins}m`;
 }
 
-export function HostCard({
+export const HostCard = memo(function HostCard({
   host,
   status,
   metrics,
@@ -267,7 +259,7 @@ export function HostCard({
       </Card>
     </Pressable>
   );
-}
+});
 
 function createStyles(colors: ThemeColors): HostCardStyles {
   return StyleSheet.create<HostCardStyles>({

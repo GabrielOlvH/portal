@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { memo, useMemo } from 'react';
 import { View, StyleSheet, Pressable } from 'react-native';
 import { AppText } from '@/components/AppText';
 import { Card } from '@/components/Card';
@@ -14,7 +14,7 @@ type PortRowProps = {
   onKill?: () => void;
 };
 
-export function PortRow({
+export const PortRow = memo(function PortRow({
   port,
   selected = false,
   selectionMode = false,
@@ -77,7 +77,7 @@ export function PortRow({
       </Pressable>
     </Card>
   );
-}
+});
 
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
   card: {

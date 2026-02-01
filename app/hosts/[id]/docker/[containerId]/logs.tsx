@@ -11,31 +11,12 @@ import { TerminalWebView } from '@/components/TerminalWebView';
 import { useStore } from '@/lib/store';
 import { ThemeColors, useTheme } from '@/lib/useTheme';
 import { buildTerminalHtml, TERMINAL_HTML_VERSION, TerminalFontConfig } from '@/lib/terminal-html';
+import { buildDockerLogsWsUrl } from '@/lib/ws-urls';
 
 type SourceCacheEntry = {
   key: string;
   source: { html: string };
 };
-
-function buildLogsWsUrl(
-  host: { baseUrl: string; authToken?: string },
-  containerId: string,
-  options: { follow: boolean; tail: string; timestamps: boolean }
-): string {
-  try {
-    const base = new URL(host.baseUrl);
-    const protocol = base.protocol === 'https:' ? 'wss:' : 'ws:';
-    const params = new URLSearchParams();
-    params.set('container', containerId);
-    params.set('follow', options.follow ? '1' : '0');
-    params.set('tail', options.tail);
-    if (options.timestamps) params.set('timestamps', '1');
-    if (host.authToken) params.set('token', host.authToken);
-    return `${protocol}//${base.host}/docker/logs?${params.toString()}`;
-  } catch {
-    return '';
-  }
-}
 
 export default function DockerLogsScreen() {
   const router = useRouter();
@@ -59,7 +40,7 @@ export default function DockerLogsScreen() {
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected' | 'reconnecting'>('connecting');
 
   const wsUrl = useMemo(
-    () => (host && containerId ? buildLogsWsUrl(host, containerId, { follow, tail, timestamps }) : ''),
+    () => (host && containerId ? buildDockerLogsWsUrl(host, containerId, { follow, tail, timestamps }) : ''),
     [host, containerId, follow, tail, timestamps]
   );
 

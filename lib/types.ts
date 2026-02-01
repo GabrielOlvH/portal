@@ -59,6 +59,7 @@ export type AppPreferences = {
   };
   terminal: TerminalSettings;
   github: GitHubPreferences;
+  sessionOrders: SessionOrder[];
 };
 
 export type HostStatus = 'unknown' | 'checking' | 'online' | 'offline';
@@ -212,6 +213,11 @@ export type Project = {
   path: string;
 };
 
+export type SessionOrder = {
+  hostId: string;
+  sessionNames: string[];
+};
+
 export type RecentLaunch = {
   id: string;
   hostId: string;
@@ -301,6 +307,11 @@ export type GitHubCommitStatus = {
   state: 'pending' | 'success' | 'failure' | 'error';
   contexts: GitHubCommitStatusContext[];
   updatedAt: number;
+  // Local git state
+  ahead?: number;      // commits ahead of origin
+  behind?: number;     // commits behind origin
+  staged?: number;     // staged files count
+  unstaged?: number;   // unstaged changes count
 };
 
 export type GitHubPreferences = {

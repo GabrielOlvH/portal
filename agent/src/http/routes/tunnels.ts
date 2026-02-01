@@ -14,7 +14,7 @@ export function registerTunnelRoutes(app: Hono) {
 
   app.post('/tunnels', async (c) => {
     try {
-      const body = (await c.req.json()) as Partial<TunnelCreate>;
+      const body = await c.req.json<Partial<TunnelCreate>>();
 
       if (!body.listenPort || typeof body.listenPort !== 'number') {
         return c.json({ error: 'listenPort is required and must be a number' }, 400);

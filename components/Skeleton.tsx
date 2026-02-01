@@ -11,22 +11,7 @@ import Animated, {
 import { LinearGradient } from 'expo-linear-gradient';
 import { theme } from '@/lib/theme';
 import { cardShadow, useTheme } from '@/lib/useTheme';
-
-type SkeletonProps = {
-  width?: number | string;
-  height?: number;
-  borderRadius?: number;
-  style?: ViewStyle;
-};
-
-function withAlpha(hex: string, alpha: number) {
-  const clean = hex.replace('#', '');
-  if (clean.length !== 6) return hex;
-  const r = parseInt(clean.slice(0, 2), 16);
-  const g = parseInt(clean.slice(2, 4), 16);
-  const b = parseInt(clean.slice(4, 6), 16);
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-}
+import { withAlpha } from '@/lib/colors';
 
 function createStyles(colors: { card: string; cardPressed: string }) {
   return StyleSheet.create({
@@ -205,6 +190,13 @@ export function Skeleton({
     </View>
   );
 }
+
+type SkeletonProps = {
+  width?: number | string;
+  height?: number;
+  borderRadius?: number;
+  style?: ViewStyle;
+};
 
 type SkeletonCardProps = {
   style?: ViewStyle;

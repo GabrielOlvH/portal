@@ -1,8 +1,7 @@
 import type { Hono } from 'hono';
-import type { Context } from 'hono';
 import { stream } from 'hono/streaming';
 import { getServiceStatus, getServiceInfo, getServiceLogs, restartService } from '../../service/manager';
-import { getHealthStatus, getCachedHealthStatus, checkForUpdates, type UpdateInfo } from '../../service/health';
+import { getHealthStatus, getCachedHealthStatus, checkForUpdates } from '../../service/health';
 import { applyUpdate, isUpdateInProgress, type UpdateEvent } from '../../service/updater';
 import { jsonError } from '../errors';
 
@@ -83,6 +82,18 @@ export function registerSystemRoutes(app: Hono) {
     }
   });
 
+function notifyUpdateStreams(event: UpdateEvent): void {
+  activeUpdateStreams.forEach((callback) => {
+    callback(event);
+  });
+}
+
+function startUpdateInBackground(updateId: string): void {
+  setImmediate(() => {
+    applyUpdate(notifyUpdateStreams);
+  });
+}
+
   // Trigger update (returns immediately, use SSE for progress)
   app.post('/system/update', async (c) => {
     try {
@@ -94,20 +105,8 @@ export function registerSystemRoutes(app: Hono) {
         }, 409);
       }
 
-      // Generate update ID and start update in background
       const updateId = crypto.randomUUID();
-      
-      // Start update process in background
-      setImmediate(() => {
-        const progressCallback = (event: UpdateEvent) => {
-          // Notify all connected SSE clients
-          activeUpdateStreams.forEach((callback) => {
-            callback(event);
-          });
-        };
-
-        applyUpdate(progressCallback);
-      });
+      startUpdateInBackground(updateId);
 
       return c.json({
         success: true,
@@ -119,6 +118,65 @@ export function registerSystemRoutes(app: Hono) {
     }
   });
 
+function buildFinalUpdateEvent(health: NonNullable<ReturnType<typeof getCachedHealthStatus>>, updateId: string): UpdateEvent {
+  const attempt = health.lastUpdateAttempt!;
+  return {
+    type: attempt.status === 'success' ? 'complete' : attempt.status === 'rollback' ? 'rollback' : 'error',
+    message: attempt.status === 'success' ? 'Update completed' : attempt.error ?? 'Update failed',
+    updateId,
+    progress: 100,
+    error: attempt.error,
+  };
+}
+
+function createStreamCallback(stream: any, updateId: string): (event: UpdateEvent) => void {
+  return (event: UpdateEvent) => {
+    stream.write(`data: ${JSON.stringify(event)}\n\n`).catch(() => {
+      activeUpdateStreams.delete(updateId);
+    });
+  };
+}
+
+function setupStreamCleanup(updateId: string, checkInterval: ReturnType<typeof setInterval>, stream: any): void {
+  activeUpdateStreams.delete(updateId);
+  setTimeout(() => {
+    stream.close().catch(() => {});
+  }, 1000);
+}
+
+function handleStreamDisconnect(updateId: string, checkInterval: ReturnType<typeof setInterval>): void {
+  clearInterval(checkInterval);
+  activeUpdateStreams.delete(updateId);
+}
+
+async function streamUpdateProgress(c: any, stream: any, updateId: string): Promise<void> {
+  const streamCallback = createStreamCallback(stream, updateId);
+  activeUpdateStreams.set(updateId, streamCallback);
+
+  const initialEvent: UpdateEvent = {
+    type: 'start',
+    message: 'Connected to update stream',
+    updateId,
+    progress: 0,
+  };
+  await stream.write(`data: ${JSON.stringify(initialEvent)}\n\n`);
+
+  const checkInterval = setInterval(() => {
+    if (!isUpdateInProgress()) {
+      clearInterval(checkInterval);
+      setupStreamCleanup(updateId, checkInterval, stream);
+    }
+  }, 1000);
+
+  c.req.raw.signal.addEventListener('abort', () => {
+    handleStreamDisconnect(updateId, checkInterval);
+  });
+
+  while (isUpdateInProgress() && !c.req.raw.signal.aborted) {
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+  }
+}
+
   // SSE endpoint for update progress
   app.get('/system/update/stream', async (c) => {
     const updateId = c.req.query('id');
@@ -128,20 +186,10 @@ export function registerSystemRoutes(app: Hono) {
     }
 
     if (!isUpdateInProgress()) {
-      // Check if we have cached health with update info
       const health = getCachedHealthStatus();
       if (health?.lastUpdateAttempt && health.lastUpdateAttempt.updateId === updateId) {
-        // Return the final status
         return stream(c, async (stream) => {
-          const attempt = health.lastUpdateAttempt!;
-          const event: UpdateEvent = {
-            type: attempt.status === 'success' ? 'complete' : attempt.status === 'rollback' ? 'rollback' : 'error',
-            message: attempt.status === 'success' ? 'Update completed' : attempt.error || 'Update failed',
-            updateId,
-            progress: 100,
-            error: attempt.error,
-          };
-          
+          const event = buildFinalUpdateEvent(health, updateId);
           await stream.write(`data: ${JSON.stringify(event)}\n\n`);
           await stream.close();
         });
@@ -151,50 +199,7 @@ export function registerSystemRoutes(app: Hono) {
     }
 
     return stream(c, async (stream) => {
-      // Register this stream
-      const streamCallback = (event: UpdateEvent) => {
-        stream.write(`data: ${JSON.stringify(event)}\n\n`).catch(() => {
-          // Stream closed, remove callback
-          activeUpdateStreams.delete(updateId);
-        });
-      };
-
-      activeUpdateStreams.set(updateId, streamCallback);
-
-      // Send initial event
-      const initialEvent: UpdateEvent = {
-        type: 'start',
-        message: 'Connected to update stream',
-        updateId,
-        progress: 0,
-      };
-      await stream.write(`data: ${JSON.stringify(initialEvent)}\n\n`);
-
-      // Keep connection alive until update completes or client disconnects
-      // Check every second if update is still in progress
-      const checkInterval = setInterval(() => {
-        if (!isUpdateInProgress()) {
-          clearInterval(checkInterval);
-          activeUpdateStreams.delete(updateId);
-          // Give a moment for final events to be sent
-          setTimeout(() => {
-            stream.close().catch(() => {
-              // Ignore close errors
-            });
-          }, 1000);
-        }
-      }, 1000);
-
-      // Handle client disconnect
-      c.req.raw.signal.addEventListener('abort', () => {
-        clearInterval(checkInterval);
-        activeUpdateStreams.delete(updateId);
-      });
-
-      // Keep the stream open
-      while (isUpdateInProgress() && !c.req.raw.signal.aborted) {
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-      }
+      await streamUpdateProgress(c, stream, updateId);
     });
   });
 
@@ -205,10 +210,10 @@ export function registerSystemRoutes(app: Hono) {
       
       return c.json({
         inProgress: isUpdateInProgress(),
-        lastAttempt: health?.lastUpdateAttempt || null,
-        updateAvailable: health?.update.available || false,
-        currentVersion: health?.update.currentVersion || 'unknown',
-        latestVersion: health?.update.latestVersion || 'unknown',
+        lastAttempt: health?.lastUpdateAttempt ?? null,
+        updateAvailable: health?.update.available ?? false,
+        currentVersion: health?.update.currentVersion ?? 'unknown',
+        latestVersion: health?.update.latestVersion ?? 'unknown',
       });
     } catch (err) {
       return jsonError(c, err);

@@ -59,7 +59,7 @@ async function buildUsageSnapshot(): Promise<UsageSnapshot> {
     : {
         session: codexStatus.session,
         weekly: codexStatus.weekly,
-        tokens: codexTokens || undefined,
+        tokens: codexTokens ?? undefined,
         source: codexStatus.source,
         error: codexStatus.error ? String(codexStatus.error) : undefined,
         credits: codexStatus.credits,
@@ -70,7 +70,7 @@ async function buildUsageSnapshot(): Promise<UsageSnapshot> {
     : {
         session: claudeStatus.session,
         weekly: claudeStatus.weekly,
-        tokens: claudeTokens || undefined,
+        tokens: claudeTokens ?? undefined,
         source: claudeStatus.source,
         error: claudeStatus.error ? String(claudeStatus.error) : undefined,
       };
@@ -122,10 +122,10 @@ export function startUsageRefresh() {
       return value;
     })
     .catch((err) => {
-      const message = err instanceof Error ? err.message : String(err || 'refresh failed');
+      const message = err instanceof Error ? err.message : String(err ?? 'refresh failed');
       usageCache.lastError = message;
       return (
-        usageCache.value || {
+        usageCache.value ?? {
           codex: { error: 'unavailable' },
           claude: { error: 'unavailable' },
           copilot: { error: 'unavailable' },
@@ -144,10 +144,10 @@ function withUsageMeta(snapshot: UsageSnapshot) {
   return {
     ...snapshot,
     meta: {
-      lastPolled: usageCache.ts || undefined,
-      lastAttempt: usageCache.lastAttempt || undefined,
+      lastPolled: usageCache.ts ?? undefined,
+      lastAttempt: usageCache.lastAttempt ?? undefined,
       refreshing: Boolean(usageCache.inflight),
-      error: usageCache.lastError || undefined,
+      error: usageCache.lastError ?? undefined,
     },
   };
 }
@@ -166,7 +166,7 @@ export async function getUsageSnapshot() {
   const previous = usageCache.value;
   startUsageRefresh();
   return withUsageMeta(
-    previous || {
+    previous ?? {
       codex: { error: 'loading' },
       claude: { error: 'loading' },
       copilot: { error: 'loading' },

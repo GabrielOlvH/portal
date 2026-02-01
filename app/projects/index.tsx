@@ -20,7 +20,7 @@ import { ThemeColors, useTheme } from '@/lib/useTheme';
 export default function ProjectsScreen() {
   const router = useRouter();
   const { colors } = useTheme();
-  const { hosts, ready } = useStore();
+  const { hosts } = useStore();
   const { projects } = useProjects();
 
   const projectsByHost = useMemo(() => {

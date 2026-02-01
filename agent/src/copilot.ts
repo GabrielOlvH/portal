@@ -12,7 +12,7 @@ type CopilotAuthResult = { data: any } | { error: string };
 export function getStoredToken(): string | null {
   try {
     const token = fs.readFileSync(TOKEN_FILE, 'utf8').trim();
-    return token || null;
+    return token ?? null;
   } catch {
     return null;
   }
@@ -64,9 +64,9 @@ async function fetchCopilotUsage(token: string): Promise<CopilotAuthResult> {
       return { error: `copilot http ${response.status}: ${text.slice(0, 200)}` };
     }
 
-    return { error: lastAuthError || 'copilot unauthorized' };
+    return { error: lastAuthError ?? 'copilot unauthorized' };
   } catch (err) {
-    return { error: formatOAuthError(err) || 'copilot request failed' };
+    return { error: formatOAuthError(err) ?? 'copilot request failed' };
   } finally {
     clearTimeout(timeout);
   }

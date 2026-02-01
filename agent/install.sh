@@ -47,7 +47,7 @@ check_prerequisites() {
         missing+=("npm")
     fi
 
-    if [ ${#missing[@]} -ne 0 ]; then
+    if [ "${#missing[@]}" -ne 0 ]; then
         echo -e "${RED}Error: Missing required tools: ${missing[*]}${NC}"
         echo "Please install them and try again."
         exit 1
@@ -71,11 +71,11 @@ prompt() {
 
     if [ "$is_secret" = true ]; then
         echo -ne "${CYAN}$prompt_text${NC}"
-        read -s value
+        read -r -s value
         echo
     else
         echo -ne "${CYAN}$prompt_text${NC}"
-        read value
+        read -r value
     fi
 
     if [ -z "$value" ]; then
@@ -130,17 +130,17 @@ install() {
     # Clone or update repo
     if [ -d "$INSTALL_DIR" ]; then
         echo -e "${YELLOW}Existing installation found, updating...${NC}"
-        cd "$INSTALL_DIR"
+        cd "$INSTALL_DIR" || exit 1
         git pull origin main || git pull origin master
     else
         echo "Cloning repository..."
         git clone "$REPO_URL" "$INSTALL_DIR"
-        cd "$INSTALL_DIR"
+        cd "$INSTALL_DIR" || exit 1
     fi
 
     # Install dependencies
     echo "Installing dependencies..."
-    cd agent
+    cd agent || exit 1
     npm install
 
     # Create .env file
@@ -248,9 +248,10 @@ EOF
     echo -e "${CYAN}Starting agent manually for now...${NC}"
 
     # Start manually in background
-    cd "$INSTALL_DIR/agent"
-    export $(cat .env | grep -v '^#' | xargs)
-    nohup $(which node) node_modules/.bin/tsx src/index.ts > /tmp/bridge-agent.log 2>&1 &
+    cd "$INSTALL_DIR/agent" || exit 1
+    # shellcheck disable=SC2046
+    export $(grep -v '^#' .env | xargs)
+    nohup "$(command -v node)" node_modules/.bin/tsx src/index.ts > /tmp/bridge-agent.log 2>&1 &
     echo $! > /tmp/bridge-agent.pid
 
     echo -e "${GREEN}✓ Agent started (PID: $(cat /tmp/bridge-agent.pid))${NC}"
@@ -260,9 +261,10 @@ EOF
 setup_manual() {
     echo -e "\n${YELLOW}No supported init system found. Starting manually...${NC}"
 
-    cd "$INSTALL_DIR/agent"
-    export $(cat .env | grep -v '^#' | xargs)
-    nohup $(which node) node_modules/.bin/tsx src/index.ts > /tmp/bridge-agent.log 2>&1 &
+    cd "$INSTALL_DIR/agent" || exit 1
+    # shellcheck disable=SC2046
+    export $(grep -v '^#' .env | xargs)
+    nohup "$(command -v node)" node_modules/.bin/tsx src/index.ts > /tmp/bridge-agent.log 2>&1 &
     echo $! > /tmp/bridge-agent.pid
 
     echo -e "${GREEN}✓ Agent started (PID: $(cat /tmp/bridge-agent.pid))${NC}"
@@ -319,6 +321,7 @@ print_success() {
     echo
 
     echo -e "${BOLD}Add to Bridge app:${NC}"
+    # shellcheck disable=SC2046
     echo -e "  URL: ${GREEN}http://$(hostname -I 2>/dev/null | awk '{print $1}' || echo 'your-ip'):$PORT${NC}"
     if [ -n "$AUTH_TOKEN" ]; then
         echo -e "  Token: ${GREEN}$AUTH_TOKEN${NC}"

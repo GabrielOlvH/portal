@@ -6,5 +6,5 @@ export function shouldRefresh<T>(cache: CacheEntry<T>, intervalMs: number): bool
 }
 
 export function snapshot<T>(cache: CacheEntry<T>): T | undefined {
-  return cache.value || undefined;
+  return cache.value ?? undefined;
 }

@@ -40,7 +40,6 @@ function detectWindowReset(
   const currentReset = window.reset;
 
   const previousPercent = lastPercents.get(key);
-  const previousReset = lastResets.get(key);
 
   // Update tracking state
   if (currentReset) {

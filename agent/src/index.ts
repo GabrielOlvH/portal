@@ -15,7 +15,11 @@ startHealthMonitoring();
 if (USAGE_POLL_INTERVAL > 0) {
   startUsageRefresh();
   setInterval(() => {
-    startUsageRefresh();
+    try {
+      startUsageRefresh();
+    } catch (error) {
+      console.error('[Agent] Failed to refresh usage:', error);
+    }
   }, USAGE_POLL_INTERVAL);
 }
 
@@ -34,20 +38,32 @@ process.on('exit', () => {
 if (TOKEN_POLL_INTERVAL > 0) {
   primeTokenRefresh();
   setInterval(() => {
-    primeTokenRefresh();
+    try {
+      primeTokenRefresh();
+    } catch (error) {
+      console.error('[Agent] Failed to refresh token:', error);
+    }
   }, TOKEN_POLL_INTERVAL);
 }
 
 if (NOTIFICATION_POLL_INTERVAL > 0) {
   startPauseMonitor();
   setInterval(() => {
-    startPauseMonitor();
+    try {
+      startPauseMonitor();
+    } catch (error) {
+      console.error('[Agent] Failed to run pause monitor:', error);
+    }
   }, NOTIFICATION_POLL_INTERVAL);
 }
 
 if (RESET_MONITOR_INTERVAL > 0) {
   startResetMonitor();
   setInterval(() => {
-    startResetMonitor();
+    try {
+      startResetMonitor();
+    } catch (error) {
+      console.error('[Agent] Failed to run reset monitor:', error);
+    }
   }, RESET_MONITOR_INTERVAL);
 }

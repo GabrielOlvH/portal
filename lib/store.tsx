@@ -15,6 +15,7 @@ const StoreContext = createContext<{
   updateTheme: (theme: ThemeSetting) => void;
   updateTerminalSettings: (updates: Partial<TerminalSettings>) => void;
   updateGitHubSettings: (updates: Partial<GitHubPreferences>) => void;
+  updateSessionOrder: (hostId: string, sessionNames: string[]) => void;
 } | null>(null);
 
 export function StoreProvider({ children }: { children: React.ReactNode }) {
@@ -147,6 +148,22 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     []
   );
 
+  const updateSessionOrder = useCallback((hostId: string, sessionNames: string[]) => {
+    setPreferences((prev) => {
+      const existingIndex = prev.sessionOrders.findIndex((o) => o.hostId === hostId);
+      let nextOrders: typeof prev.sessionOrders;
+      if (existingIndex >= 0) {
+        nextOrders = [...prev.sessionOrders];
+        nextOrders[existingIndex] = { hostId, sessionNames };
+      } else {
+        nextOrders = [...prev.sessionOrders, { hostId, sessionNames }];
+      }
+      const next: AppPreferences = { ...prev, sessionOrders: nextOrders };
+      savePreferences(next);
+      return next;
+    });
+  }, []);
+
   const value = useMemo(
     () => ({
       hosts,
@@ -160,6 +177,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       updateTheme,
       updateTerminalSettings,
       updateGitHubSettings,
+      updateSessionOrder,
     }),
     [
       hosts,
@@ -173,6 +191,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       updateTheme,
       updateTerminalSettings,
       updateGitHubSettings,
+      updateSessionOrder,
     ]
   );
 

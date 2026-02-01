@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { memo, useMemo } from 'react';
 import { View, StyleSheet, Pressable } from 'react-native';
 import { AppText } from '@/components/AppText';
 import { Card } from '@/components/Card';
@@ -11,7 +11,7 @@ type TunnelRowProps = {
   onClose?: () => void;
 };
 
-export function TunnelRow({ tunnel, onClose }: TunnelRowProps) {
+export const TunnelRow = memo(function TunnelRow({ tunnel, onClose }: TunnelRowProps) {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
@@ -59,7 +59,7 @@ export function TunnelRow({ tunnel, onClose }: TunnelRowProps) {
       )}
     </Card>
   );
-}
+});
 
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
   card: {

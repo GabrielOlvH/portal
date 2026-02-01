@@ -11,28 +11,13 @@ import { TerminalWebView } from '@/components/TerminalWebView';
 import { useStore } from '@/lib/store';
 import { ThemeColors, useTheme } from '@/lib/useTheme';
 import { buildTerminalHtml, TERMINAL_HTML_VERSION, TerminalFontConfig } from '@/lib/terminal-html';
+import { buildDockerExecWsUrl } from '@/lib/ws-urls';
 
 type WebViewSource = { html: string };
 type SourceCacheEntry = {
   key: string;
   source: WebViewSource;
 };
-
-function buildDockerWsUrl(host: { baseUrl: string; authToken?: string }, containerId: string): string {
-  try {
-    const base = new URL(host.baseUrl);
-    const protocol = base.protocol === 'https:' ? 'wss:' : 'ws:';
-    const params = new URLSearchParams();
-    params.set('container', containerId);
-    params.set('shell', 'sh');
-    params.set('cols', '80');
-    params.set('rows', '24');
-    if (host.authToken) params.set('token', host.authToken);
-    return `${protocol}//${base.host}/docker/exec?${params.toString()}`;
-  } catch {
-    return '';
-  }
-}
 
 export default function DockerTerminalScreen() {
   const router = useRouter();
@@ -49,7 +34,7 @@ export default function DockerTerminalScreen() {
     [preferences.terminal.fontFamily, preferences.terminal.fontSize]
   );
 
-  const wsUrl = useMemo(() => (host && containerId ? buildDockerWsUrl(host, containerId) : ''), [host, containerId]);
+  const wsUrl = useMemo(() => (host && containerId ? buildDockerExecWsUrl(host, containerId) : ''), [host, containerId]);
   const terminalTheme = useMemo(
     () => ({
       background: colors.terminalBackground,

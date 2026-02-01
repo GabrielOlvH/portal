@@ -10,7 +10,7 @@ import { homedir, hostname, platform as osPlatform, networkInterfaces } from 'no
 import * as readline from 'node:readline/promises';
 import { stdin, stdout } from 'node:process';
 import { join } from 'node:path';
-import { detectPlatform, installService, type ServiceConfig } from '../src/service/manager';
+import { detectPlatform, type ServiceConfig } from '../src/service/manager';
 
 // ANSI Colors
 const supportsColor = process.stdout.isTTY && process.env.TERM !== 'dumb';
@@ -321,9 +321,9 @@ async function main(): Promise<void> {
     installDependencies(config.installDir);
     createEnvFile(config.installDir, config);
 
-    // Setup service
-    console.log(`\n${c.blue}Setting up system service...${c.reset}`);
-    await installService(config);
+    // Note: System service installation removed - use manual setup
+    console.log(`\n${c.yellow}System service installation must be done manually.${c.reset}`);
+    console.log(`See documentation for platform-specific instructions.`);
 
     // Verify
     const running = await verifyServiceRunning(config);

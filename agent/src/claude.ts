@@ -7,6 +7,7 @@ import { CLAUDE_PROBE_DIR, CLAUDE_PROMPT_RESPONSES } from './config';
 import { claudeSession, oauthCache, tokenCache, usageInflight } from './state';
 import { pty } from './pty';
 import { MAX_TOKEN_FILES } from './config';
+import { toInt, scanJsonlFile, resetFromLine } from './utils/jsonl';
 
 import type { ProviderUsage, TokenUsage } from './state';
 
@@ -44,7 +45,7 @@ async function loadClaudeOAuthCredentials(): Promise<ClaudeOAuthCredentials> {
   }
   const expiresAt = oauth.expiresAt ? new Date(oauth.expiresAt) : null;
   const scopes = Array.isArray(oauth.scopes) ? oauth.scopes : [];
-  const rateLimitTier = oauth.rateLimitTier || null;
+    const rateLimitTier = oauth.rateLimitTier ?? null;
   return {
     accessToken: oauth.accessToken,
     expiresAt,
@@ -62,7 +63,7 @@ function makeClaudeRateWindow(window: { utilization?: number; resets_at?: string
   const reset = window.resets_at || window.resetsAt;
   return {
     percentLeft,
-    reset: reset || undefined,
+    reset: reset ?? undefined,
     windowMinutes,
   };
 }
@@ -205,6 +206,16 @@ function startClaudeSession(binary: string) {
   return term;
 }
 
+function removeListener(term: any, event: string, handler: (...args: any[]) => void): void {
+  try {
+    if (typeof term.off === 'function') {
+      term.off(event, handler);
+    } else if (typeof term.removeListener === 'function') {
+      term.removeListener(event, handler);
+    }
+  } catch {}
+}
+
 function watchClaudeOutput(term: typeof claudeSession.term, { onData, onDone }: ClaudeOutputHandlers): () => void {
   if (!term) {
     return () => {};
@@ -218,115 +229,132 @@ function watchClaudeOutput(term: typeof claudeSession.term, { onData, onDone }: 
   term.onData(handleData);
   term.onExit(handleExit);
   return () => {
-    try {
-      if (typeof (term as any).off === 'function') {
-        (term as any).off('data', handleData);
-      } else if (typeof (term as any).removeListener === 'function') {
-        (term as any).removeListener('data', handleData);
-      }
-    } catch {}
-    try {
-      if (typeof (term as any).off === 'function') {
-        (term as any).off('exit', handleExit);
-      } else if (typeof (term as any).removeListener === 'function') {
-        (term as any).removeListener('exit', handleExit);
-      }
-    } catch {}
+    removeListener(term, 'data', handleData);
+    removeListener(term, 'exit', handleExit);
   };
+}
+
+type ClaudeCaptureState = {
+  settled: boolean;
+  output: string;
+  sentUsage: boolean;
+  sentUsageAt: number;
+  lastPromptAt: number;
+  cleanup: (() => void) | null;
+  triggered: Set<string>;
+};
+
+function createCaptureState(): ClaudeCaptureState {
+  return {
+    settled: false,
+    output: '',
+    sentUsage: false,
+    sentUsageAt: 0,
+    lastPromptAt: 0,
+    cleanup: null,
+    triggered: new Set<string>(),
+  };
+}
+
+function finishCapture(state: ClaudeCaptureState, result: string, resolve: (value: string) => void): void {
+  if (state.settled) return;
+  state.settled = true;
+  if (state.cleanup) {
+    try {
+      state.cleanup();
+    } catch {}
+    claudeSession.listeners.delete(state.cleanup);
+  }
+  usageInflight.claudeCapture = null;
+  resolve(result);
+}
+
+function sendUsageCommand(term: ReturnType<typeof startClaudeSession>, state: ClaudeCaptureState): void {
+  if (state.sentUsage) return;
+  state.sentUsage = true;
+  state.sentUsageAt = Date.now();
+  try {
+    term.write('/usage\r');
+  } catch {}
+}
+
+function handlePromptResponse(
+  clean: string,
+  term: ReturnType<typeof startClaudeSession>,
+  state: ClaudeCaptureState
+): void {
+  for (const item of CLAUDE_PROMPT_RESPONSES) {
+    if (!clean.includes(item.needle)) continue;
+    if (state.triggered.has(item.needle) && !item.resend) continue;
+    const now = Date.now();
+    if (now - state.lastPromptAt < 800 && state.triggered.has(item.needle)) continue;
+    state.triggered.add(item.needle);
+    state.lastPromptAt = now;
+    try {
+      term.write(item.keys);
+    } catch {}
+  }
+}
+
+function handleClaudeData(
+  data: string,
+  term: ReturnType<typeof startClaudeSession>,
+  state: ClaudeCaptureState,
+  timeout: ReturnType<typeof setTimeout>,
+  resolve: (value: string) => void
+): void {
+  state.output += data;
+  const clean = stripAnsi(state.output).toLowerCase();
+  const hasStopNeedle = clean.includes('current session');
+  const hasUsageBlocker = ['do you trust the files in this folder?'].some((needle) => clean.includes(needle));
+  const hasUsageTrigger = [
+    'bypass permissions on',
+    'claude code',
+    'tips for getting started',
+    'yes, proceed',
+  ].some((needle) => clean.includes(needle));
+
+  handlePromptResponse(clean, term, state);
+
+  if (hasStopNeedle) {
+    clearTimeout(timeout);
+    setTimeout(() => finishCapture(state, state.output, resolve), 1600);
+    return;
+  }
+
+  if (!state.sentUsage && (!hasUsageBlocker || hasUsageTrigger)) {
+    sendUsageCommand(term, state);
+  }
+
+  if (state.sentUsage && !hasStopNeedle && Date.now() - state.sentUsageAt > 4500) {
+    state.sentUsage = false;
+    sendUsageCommand(term, state);
+  }
 }
 
 async function runClaudeUsageCapture(binary: string): Promise<string> {
   if (usageInflight.claudeCapture) return usageInflight.claudeCapture;
 
   usageInflight.claudeCapture = new Promise<string>((resolve) => {
-    let settled = false;
-    let output = '';
-    let sentUsage = false;
-    let sentUsageAt = 0;
-    let lastPromptAt = 0;
-    let cleanup: (() => void) | null = null;
-    const triggered = new Set<string>();
-
-    const finish = (result: string) => {
-      if (settled) return;
-      settled = true;
-      if (cleanup) {
-        try {
-          cleanup();
-        } catch {}
-        claudeSession.listeners.delete(cleanup);
-      }
-      usageInflight.claudeCapture = null;
-      resolve(result);
-    };
-
-    const timeout = setTimeout(() => finish(output), 25000);
+    const state = createCaptureState();
+    const timeout = setTimeout(() => finishCapture(state, state.output, resolve), 25000);
 
     ensureClaudeProbeDir().then(() => {
       const term = startClaudeSession(binary);
-      const stopNeedle = 'current session';
-      const usageBlockers = ['do you trust the files in this folder?'];
-      const usageTriggers = [
-        'bypass permissions on',
-        'claude code',
-        'tips for getting started',
-        'yes, proceed',
-      ];
-      const sendUsage = () => {
-        if (sentUsage) return;
-        sentUsage = true;
-        sentUsageAt = Date.now();
-        try {
-          term.write('/usage\r');
-        } catch {}
-      };
 
-      cleanup = watchClaudeOutput(term, {
-        onData: (data) => {
-          output += data;
-          const clean = stripAnsi(output).toLowerCase();
-          const hasStopNeedle = clean.includes(stopNeedle);
-          const hasUsageBlocker = usageBlockers.some((needle) => clean.includes(needle));
-          const hasUsageTrigger = usageTriggers.some((needle) => clean.includes(needle));
-
-          for (const item of CLAUDE_PROMPT_RESPONSES) {
-            if (!clean.includes(item.needle)) continue;
-            if (triggered.has(item.needle) && !item.resend) continue;
-            const now = Date.now();
-            if (now - lastPromptAt < 800 && triggered.has(item.needle)) continue;
-            triggered.add(item.needle);
-            lastPromptAt = now;
-            try {
-              term.write(item.keys);
-            } catch {}
-          }
-
-          if (hasStopNeedle) {
-            clearTimeout(timeout);
-            setTimeout(() => finish(output), 1600);
-            return;
-          }
-
-          if (!sentUsage && (!hasUsageBlocker || hasUsageTrigger)) {
-            sendUsage();
-          }
-
-          if (sentUsage && !hasStopNeedle && Date.now() - sentUsageAt > 4500) {
-            sentUsage = false;
-            sendUsage();
-          }
-        },
+      state.cleanup = watchClaudeOutput(term, {
+        onData: (data) => handleClaudeData(data, term, state, timeout, resolve),
         onDone: () => {
           clearTimeout(timeout);
-          finish(output);
+          finishCapture(state, state.output, resolve);
         },
       });
 
-      claudeSession.listeners.add(cleanup);
+      claudeSession.listeners.add(state.cleanup);
 
       setTimeout(() => {
-        if (!sentUsage) {
-          sendUsage();
+        if (!state.sentUsage) {
+          sendUsageCommand(term, state);
         }
       }, 1400);
     });
@@ -348,11 +376,7 @@ function extractPercentAfterLabel(lines: string[], labelRegex: RegExp): number |
   return undefined;
 }
 
-function resetFromLine(line: string): string | undefined {
-  const match = line.match(/reset[s]?\s*(?:in|at)?\s*(.*)$/i);
-  if (match && match[1]) return match[1].trim();
-  return undefined;
-}
+
 
 function extractResetAfterLabel(lines: string[], labelRegex: RegExp): string | undefined {
   for (let i = 0; i < lines.length; i += 1) {
@@ -405,11 +429,15 @@ export async function getClaudeStatus(): Promise<ClaudeUsageResult> {
     const hint = clean.slice(0, 400).replace(/\s+/g, ' ').trim();
     const needsRun = lower.includes('welcome to claude code') && !lower.includes('current session');
     return {
-      error: needsRun
-        ? 'claude needs /usage (open claude once)'
-        : hint
-          ? `claude usage parse failed: ${hint}`
-          : 'claude usage parse failed',
+      error: (() => {
+        if (needsRun) {
+          return 'claude needs /usage (open claude once)';
+        } else if (hint) {
+          return `claude usage parse failed: ${hint}`;
+        } else {
+          return 'claude usage parse failed';
+        }
+      })(),
     };
   }
   return {
@@ -514,33 +542,4 @@ export async function getClaudeTokenUsage(days = 7): Promise<TokenUsage | null> 
   return result;
 }
 
-async function scanJsonlFile(filePath: string, onLine: (line: string) => void): Promise<void> {
-  return new Promise<void>((resolve) => {
-    const stream = fs.createReadStream(filePath, { encoding: 'utf8' });
-    let buffer = '';
-    stream.on('data', (chunk) => {
-      buffer += chunk;
-      let idx = buffer.indexOf('\n');
-      while (idx >= 0) {
-        const line = buffer.slice(0, idx);
-        buffer = buffer.slice(idx + 1);
-        if (line.trim().length > 0) onLine(line);
-        idx = buffer.indexOf('\n');
-      }
-    });
-    stream.on('end', () => {
-      if (buffer.trim().length > 0) onLine(buffer);
-      resolve();
-    });
-    stream.on('error', () => resolve());
-  });
-}
 
-function toInt(value: unknown): number {
-  if (typeof value === 'number' && Number.isFinite(value)) return value;
-  if (typeof value === 'string' && value.trim().length > 0) {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : 0;
-  }
-  return 0;
-}

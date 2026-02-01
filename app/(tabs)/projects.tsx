@@ -20,17 +20,8 @@ import { useLaunchSheet } from '@/lib/launch-sheet';
 import { theme } from '@/lib/theme';
 import { hostColors, systemColors } from '@/lib/colors';
 import { ThemeColors, useTheme } from '@/lib/useTheme';
-
-function formatTimeAgo(timestamp: number): string {
-  const diff = Date.now() - timestamp;
-  const minutes = Math.floor(diff / 60000);
-  if (minutes < 1) return 'just now';
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  return `${days}d ago`;
-}
+import { formatTimeAgo } from '@/lib/formatters';
+import { TIMING, LIMITS } from '@/lib/constants';
 
 export default function ProjectsTabScreen() {
   const router = useRouter();
@@ -50,12 +41,12 @@ export default function ProjectsTabScreen() {
   }, [projects]);
 
   const recentLaunchesToShow = useMemo(() => {
-    return recentLaunches.slice(0, 5);
+    return recentLaunches.slice(0, LIMITS.MAX_RECENT_LAUNCHES);
   }, [recentLaunches]);
 
   const handleRefresh = useCallback(() => {
     setIsManualRefresh(true);
-    setTimeout(() => setIsManualRefresh(false), 600);
+    setTimeout(() => setIsManualRefresh(false), TIMING.REFRESH_INDICATOR_MS);
   }, []);
 
   const handleRelaunch = useCallback(
@@ -306,16 +297,6 @@ const createStyles = (colors: ThemeColors) =>
       color: colors.textMuted,
       fontWeight: '600',
     },
-    countBadge: {
-      backgroundColor: colors.cardPressed,
-      paddingHorizontal: 8,
-      paddingVertical: 3,
-      borderRadius: 10,
-    },
-    countText: {
-      fontSize: 10,
-      color: colors.textMuted,
-    },
     addProjectButton: {
       padding: 4,
     },
@@ -349,32 +330,6 @@ const createStyles = (colors: ThemeColors) =>
       width: 8,
       height: 8,
       borderRadius: 4,
-    },
-    hostDotSmall: {
-      width: 6,
-      height: 6,
-      borderRadius: 3,
-    },
-    stateDot: {
-      width: 8,
-      height: 8,
-      borderRadius: 4,
-      backgroundColor: colors.textMuted,
-    },
-    stateDotRunning: {
-      backgroundColor: colors.green,
-      shadowColor: colors.green,
-      shadowOffset: { width: 0, height: 0 },
-      shadowOpacity: 0.6,
-      shadowRadius: 4,
-    },
-    stateDotIdle: {
-      backgroundColor: colors.orange,
-    },
-    sessionMeta: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 4,
     },
     hostGroup: {
       gap: theme.spacing.xs,

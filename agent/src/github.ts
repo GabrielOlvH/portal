@@ -39,10 +39,35 @@ export type CommitStatus = {
   state: 'pending' | 'success' | 'failure' | 'error';
   contexts: CommitStatusContext[];
   updatedAt: number;
+  // Local git state
+  ahead?: number;      // commits ahead of origin
+  behind?: number;     // commits behind origin
+  staged?: number;     // staged files count
+  unstaged?: number;   // unstaged changes count
 };
 
 const CACHE_TTL = 30000; // 30 seconds
+const MAX_STATUS_CACHE_SIZE = 200;
 const statusCache = new Map<string, { ts: number; value: CommitStatus }>();
+
+function evictStatusCache(): void {
+  const now = Date.now();
+  // First, remove expired entries
+  for (const [key, entry] of statusCache) {
+    if (now - entry.ts > CACHE_TTL) {
+      statusCache.delete(key);
+    }
+  }
+  // If still over limit, remove oldest entries
+  if (statusCache.size > MAX_STATUS_CACHE_SIZE) {
+    const entries = [...statusCache.entries()];
+    entries.sort((a, b) => a[1].ts - b[1].ts);
+    const toRemove = entries.slice(0, entries.length - MAX_STATUS_CACHE_SIZE);
+    for (const [key] of toRemove) {
+      statusCache.delete(key);
+    }
+  }
+}
 
 function getCacheKey(projectId: string, branch: string): string {
   return `${projectId}:${branch}`;
@@ -121,15 +146,77 @@ export async function getBranchesForProject(projectPath: string): Promise<string
 
 export async function getLatestCommit(projectPath: string, branch: string): Promise<string | null> {
   try {
+    // Use origin/branch to get the last pushed commit (what GitHub knows about)
     const { stdout } = await execFileAsync(
       'git',
-      ['-C', projectPath, 'rev-parse', branch],
+      ['-C', projectPath, 'rev-parse', `origin/${branch}`],
       { timeout: 5000 }
     );
     return stdout.trim() || null;
   } catch {
-    return null;
+    // Fall back to local branch if origin doesn't exist
+    try {
+      const { stdout } = await execFileAsync(
+        'git',
+        ['-C', projectPath, 'rev-parse', branch],
+        { timeout: 5000 }
+      );
+      return stdout.trim() || null;
+    } catch {
+      return null;
+    }
   }
+}
+
+export async function getGitDiffStats(projectPath: string, branch: string): Promise<{
+  ahead: number;
+  behind: number;
+  staged: number;
+  unstaged: number;
+}> {
+  const result = { ahead: 0, behind: 0, staged: 0, unstaged: 0 };
+  
+  try {
+    // Get ahead/behind counts
+    const { stdout: revList } = await execFileAsync(
+      'git',
+      ['-C', projectPath, 'rev-list', '--left-right', '--count', `origin/${branch}...${branch}`],
+      { timeout: 5000 }
+    ).catch(() => ({ stdout: '' }));
+    
+    if (revList.trim()) {
+      const [behind, ahead] = revList.trim().split(/\s+/).map(Number);
+      result.behind = behind || 0;
+      result.ahead = ahead || 0;
+    }
+    
+    // Get staged and unstaged counts
+    const { stdout: status } = await execFileAsync(
+      'git',
+      ['-C', projectPath, 'status', '--porcelain'],
+      { timeout: 5000 }
+    ).catch(() => ({ stdout: '' }));
+    
+    if (status.trim()) {
+      const lines = status.trim().split('\n');
+      for (const line of lines) {
+        const index = line[0];
+        const workTree = line[1];
+        // Staged: index has A, M, D, R, C (not ? or space)
+        if (index && index !== ' ' && index !== '?') {
+          result.staged++;
+        }
+        // Unstaged: work tree has M, D (not space or ?)
+        if (workTree && workTree !== ' ' && workTree !== '?') {
+          result.unstaged++;
+        }
+      }
+    }
+  } catch {
+    // Ignore errors, return zeros
+  }
+  
+  return result;
 }
 
 export async function getCommitStatus(
@@ -256,6 +343,7 @@ export async function getCommitStatus(
     // Parse legacy status
     let state: CommitStatus['state'] = 'pending';
     const contexts: CommitStatusContext[] = [];
+    let hasLegacyStatuses = false;
 
     if (statusResult) {
       const data = JSON.parse(statusResult.stdout) as {
@@ -268,7 +356,10 @@ export async function getCommitStatus(
         }>;
       };
 
-      state = data.state as CommitStatus['state'];
+      hasLegacyStatuses = data.statuses.length > 0;
+      if (hasLegacyStatuses) {
+        state = data.state as CommitStatus['state'];
+      }
 
       for (const s of data.statuses) {
         // Check if we have enhanced data from check runs
@@ -292,8 +383,11 @@ export async function getCommitStatus(
       contexts.push(checkContext);
     }
 
-    // If no legacy status but we have check runs, determine state from checks
-    if (!statusResult && checkRunsResult) {
+    // Determine state from all contexts (check runs + legacy statuses)
+    // The legacy status API only considers legacy statuses, not check runs,
+    // so we need to compute the combined state ourselves
+    if (contexts.length > 0 && !hasLegacyStatuses) {
+      // Only check runs, no legacy statuses - compute state from checks
       const hasPending = contexts.some((c) => c.state === 'pending');
       const hasFailure = contexts.some((c) => c.state === 'failure');
       const hasError = contexts.some((c) => c.state === 'error');
@@ -301,7 +395,17 @@ export async function getCommitStatus(
       if (hasFailure) state = 'failure';
       else if (hasError) state = 'error';
       else if (hasPending) state = 'pending';
-      else if (contexts.length > 0) state = 'success';
+      else state = 'success';
+    } else if (contexts.length > 0 && hasLegacyStatuses) {
+      // Both check runs and legacy statuses - recompute combined state
+      const hasPending = contexts.some((c) => c.state === 'pending');
+      const hasFailure = contexts.some((c) => c.state === 'failure');
+      const hasError = contexts.some((c) => c.state === 'error');
+
+      if (hasFailure) state = 'failure';
+      else if (hasError) state = 'error';
+      else if (hasPending) state = 'pending';
+      else state = 'success';
     }
 
     return { state, contexts };
@@ -336,6 +440,9 @@ export async function getProjectCommitStatus(
   const status = await getCommitStatus(repo, sha);
   if (!status) return null;
   
+  // Get local git state (ahead/behind/staged/unstaged)
+  const diffStats = await getGitDiffStats(projectPath, targetBranch);
+  
   const result: CommitStatus = {
     projectId,
     hostId,
@@ -345,9 +452,14 @@ export async function getProjectCommitStatus(
     state: status.state,
     contexts: status.contexts,
     updatedAt: now,
+    ahead: diffStats.ahead,
+    behind: diffStats.behind,
+    staged: diffStats.staged,
+    unstaged: diffStats.unstaged,
   };
   
   statusCache.set(cacheKey, { ts: now, value: result });
+  evictStatusCache();
   return result;
 }
 

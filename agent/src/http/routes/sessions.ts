@@ -28,7 +28,7 @@ export function registerSessionRoutes(app: Hono) {
   app.get('/sessions', async (c) => {
     try {
       const preview = c.req.query('preview') === '1';
-      const lines = Number(c.req.query('lines') || '6');
+      const lines = Number(c.req.query('lines') ?? '6');
       const includeInsights = c.req.query('insights') === '1';
       const sessions = await fetchSessions({
         preview,
@@ -43,7 +43,7 @@ export function registerSessionRoutes(app: Hono) {
 
   app.post('/sessions', async (c) => {
     try {
-      const body = (await c.req.json()) as CreateSessionBody;
+      const body = await c.req.json<CreateSessionBody>();
       const name = requireName(body.name);
       const windowName = body.windowName && typeof body.windowName === 'string' ? body.windowName.trim() : undefined;
       const command = body.command && typeof body.command === 'string' ? body.command.trim() : undefined;
@@ -61,7 +61,7 @@ export function registerSessionRoutes(app: Hono) {
   app.post('/sessions/:name/rename', async (c) => {
     try {
       const oldName = requireName(c.req.param('name'));
-      const body = (await c.req.json()) as RenameSessionBody;
+      const body = await c.req.json<RenameSessionBody>();
       const newName = requireName(body.name);
       await runTmux(['rename-session', '-t', oldName, newName]);
       return c.json({ ok: true });
@@ -83,7 +83,7 @@ export function registerSessionRoutes(app: Hono) {
   app.post('/sessions/:name/keys', async (c) => {
     try {
       const name = requireName(c.req.param('name'));
-      const body = (await c.req.json()) as SendKeysBody;
+      const body = await c.req.json<SendKeysBody>();
       if (typeof body.text === 'string' && body.text.length > 0) {
         await runTmux(['send-keys', '-l', '-t', sessionTarget(name), body.text]);
         return c.json({ ok: true });
@@ -101,7 +101,7 @@ export function registerSessionRoutes(app: Hono) {
   app.post('/sessions/:name/resize', async (c) => {
     try {
       const name = requireName(c.req.param('name'));
-      const body = (await c.req.json()) as ResizeSessionBody;
+      const body = await c.req.json<ResizeSessionBody>();
       const cols = Number(body.cols);
       const rows = Number(body.rows);
       if (!Number.isFinite(cols) || !Number.isFinite(rows)) {
@@ -117,7 +117,7 @@ export function registerSessionRoutes(app: Hono) {
   app.get('/sessions/:name/capture', async (c) => {
     try {
       const name = requireName(c.req.param('name'));
-      const lines = Number(c.req.query('lines') || '60');
+      const lines = Number(c.req.query('lines') ?? '60');
       const preview = await capturePane(name, lines);
       const includeCursor = c.req.query('cursor') === '1';
       if (!includeCursor) return c.json({ lines: preview });

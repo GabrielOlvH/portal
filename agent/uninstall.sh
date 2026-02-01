@@ -1,7 +1,6 @@
 #!/bin/bash
 # Bridge Agent Uninstaller
 
-RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
@@ -21,7 +20,7 @@ echo -e "${YELLOW}This will remove Bridge Agent from your system.${NC}\n"
 
 # Confirm
 echo -ne "${CYAN}Are you sure you want to uninstall? [y/N]: ${NC}"
-read confirm
+read -r confirm
 if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
     echo -e "${GREEN}Uninstall cancelled${NC}"
     exit 0
@@ -46,7 +45,7 @@ fi
 
 # Kill manual process if running
 if [ -f /tmp/bridge-agent.pid ]; then
-    kill $(cat /tmp/bridge-agent.pid) 2>/dev/null || true
+    kill "$(cat /tmp/bridge-agent.pid)" 2>/dev/null || true
     rm -f /tmp/bridge-agent.pid
 fi
 
@@ -58,7 +57,7 @@ echo -e "${GREEN}✓ Services stopped${NC}"
 # Ask about removing files
 echo
 echo -ne "${CYAN}Remove installation directory ($INSTALL_DIR)? [y/N]: ${NC}"
-read remove_files
+read -r remove_files
 if [[ "$remove_files" =~ ^[Yy]$ ]]; then
     rm -rf "$INSTALL_DIR"
     echo -e "${GREEN}✓ Installation directory removed${NC}"

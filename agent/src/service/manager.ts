@@ -1,11 +1,7 @@
-import { execFile, spawn } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, writeFileSync, chmodSync } from 'node:fs';
-import { promisify } from 'node:util';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { join } from 'node:path';
-
-const execFileAsync = promisify(execFile);
+import { exec } from '../utils/exec';
 
 export type PlatformType = 'linux' | 'macos' | 'windows' | 'unknown';
 export type InitSystem = 'systemd-system' | 'launchd' | 'windows-service' | 'openrc' | 'manual';
@@ -41,10 +37,6 @@ export function detectPlatform(): PlatformType {
   if (platform === 'win32') return 'windows';
   if (platform === 'linux') return 'linux';
   return 'unknown';
-}
-
-function getOSPlatform(): string {
-  return os.platform();
 }
 
 export async function detectInitSystem(): Promise<InitSystem> {
@@ -91,31 +83,6 @@ export function resolveInstallDir(): string {
   return candidates[0] ?? process.cwd();
 }
 
-async function exec(
-  command: string,
-  args: string[],
-  options: { cwd?: string; timeout?: number; ignoreError?: boolean } = {}
-): Promise<{ stdout: string; stderr: string; exitCode: number }> {
-  try {
-    const { stdout, stderr } = await execFileAsync(command, args, {
-      cwd: options.cwd,
-      timeout: options.timeout ?? 30000,
-      encoding: 'utf8',
-    });
-    return { stdout: stdout.trim(), stderr: stderr.trim(), exitCode: 0 };
-  } catch (error: unknown) {
-    if (options.ignoreError) {
-      const err = error as { stdout?: string; stderr?: string; code?: number };
-      return {
-        stdout: (err.stdout ?? '').trim(),
-        stderr: (err.stderr ?? '').trim(),
-        exitCode: err.code ?? 1,
-      };
-    }
-    throw error;
-  }
-}
-
 async function getSystemdStatus(): Promise<ServiceStatus> {
   // Try user service first
   const { stdout: userStdout, exitCode: userExit } = await exec(
@@ -142,7 +109,7 @@ async function getSystemdStatus(): Promise<ServiceStatus> {
   }
 
   // Fall back to system service
-  const { stdout, exitCode } = await exec(
+  const { stdout } = await exec(
     'systemctl',
     ['show', SERVICE_NAME, '--property=ActiveState,MainPID,Restart,ExecMainStartTimestamp'],
     { ignoreError: true }
@@ -263,7 +230,7 @@ async function getManualStatus(): Promise<ServiceStatus> {
 function parseElapsedTime(etime: string): number {
   // Parse ps etime format: [[dd-]hh:]mm:ss
   const parts = etime.split(/[-:]/);
-  if (parts.length === 1) return parseInt(parts[0], 10) || 0;
+  if (parts.length === 1) return parseInt(parts[0], 10) ?? 0;
   if (parts.length === 2) return parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
   if (parts.length === 3) {
     if (etime.includes('-')) {
@@ -485,211 +452,4 @@ export async function getServiceLogs(lines: number): Promise<string[]> {
   }
 }
 
-export async function installService(config: ServiceConfig): Promise<void> {
-  const platform = detectPlatform();
-  const initSystem = await detectInitSystem();
 
-  // Ensure we're running as root for system services
-  if (process.getuid && process.getuid() !== 0) {
-    throw new Error('Installation requires root privileges. Please run with sudo.');
-  }
-
-  switch (initSystem) {
-    case 'systemd-system':
-      await installSystemd(config);
-      break;
-    case 'launchd':
-      await installLaunchd(config);
-      break;
-    case 'windows-service':
-      await installWindowsService(config);
-      break;
-    case 'openrc':
-      await installOpenRC(config);
-      break;
-    default:
-      throw new Error(`Automatic installation not supported for platform: ${platform}`);
-  }
-}
-
-async function installSystemd(config: ServiceConfig): Promise<void> {
-  const serviceUser = config.serviceUser || 'bridge-agent';
-
-  // Create service user if it doesn't exist
-  try {
-    await exec('id', [serviceUser], { ignoreError: true });
-  } catch {
-    // User doesn't exist, create it
-    await exec('useradd', ['-r', '-s', '/bin/false', '-d', config.installDir, serviceUser]);
-  }
-
-  // Create systemd service file
-  const serviceContent = `[Unit]
-Description=Bridge Agent - Terminal Management Server
-Documentation=https://github.com/GabrielOlvH/bridge
-After=network.target
-
-[Service]
-Type=simple
-User=${serviceUser}
-Group=${serviceUser}
-WorkingDirectory=${config.installDir}
-ExecStart=/usr/bin/node ${config.installDir}/src/index.ts
-Restart=always
-RestartSec=5
-StandardOutput=journal
-StandardError=journal
-SyslogIdentifier=${SERVICE_NAME}
-Environment=NODE_ENV=production
-Environment=BRIDGE_AGENT_INSTALL_DIR=${config.installDir}
-Environment=TMUX_AGENT_PORT=${config.port}
-Environment=TMUX_AGENT_HOST=${config.hostLabel}
-Environment=TMUX_AGENT_TOKEN=${config.authToken}
-
-[Install]
-WantedBy=multi-user.target
-`;
-
-  const servicePath = `/etc/systemd/system/${SERVICE_NAME}.service`;
-  writeFileSync(servicePath, serviceContent, 'utf-8');
-
-  // Set permissions
-  await exec('chown', ['-R', `${serviceUser}:${serviceUser}`, config.installDir]);
-
-  // Reload systemd and enable service
-  await exec('systemctl', ['daemon-reload']);
-  await exec('systemctl', ['enable', SERVICE_NAME]);
-  await exec('systemctl', ['start', SERVICE_NAME]);
-}
-
-async function installLaunchd(config: ServiceConfig): Promise<void> {
-  const serviceUser = config.serviceUser || 'bridge-agent';
-
-  // Create service user if it doesn't exist
-  try {
-    await exec('id', [serviceUser], { ignoreError: true });
-  } catch {
-    await exec('sysadminctl', ['-addUser', serviceUser, '-shell', '/usr/bin/false']);
-  }
-
-  const plistContent = `<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>Label</key>
-    <string>${LAUNCHD_LABEL}</string>
-    <key>ProgramArguments</key>
-    <array>
-        <string>/usr/bin/node</string>
-        <string>${config.installDir}/src/index.ts</string>
-    </array>
-    <key>WorkingDirectory</key>
-    <string>${config.installDir}</string>
-    <key>UserName</key>
-    <string>${serviceUser}</string>
-    <key>GroupName</key>
-    <string>${serviceUser}</string>
-    <key>RunAtLoad</key>
-    <true/>
-    <key>KeepAlive</key>
-    <true/>
-    <key>StandardOutPath</key>
-    <string>/var/log/${SERVICE_NAME}.log</string>
-    <key>StandardErrorPath</key>
-    <string>/var/log/${SERVICE_NAME}.err</string>
-    <key>EnvironmentVariables</key>
-    <dict>
-        <key>NODE_ENV</key>
-        <string>production</string>
-        <key>BRIDGE_AGENT_INSTALL_DIR</key>
-        <string>${config.installDir}</string>
-        <key>TMUX_AGENT_PORT</key>
-        <string>${config.port}</string>
-        <key>TMUX_AGENT_HOST</key>
-        <string>${config.hostLabel}</string>
-        <key>TMUX_AGENT_TOKEN</key>
-        <string>${config.authToken}</string>
-    </dict>
-</dict>
-</plist>
-`;
-
-  const plistPath = `/Library/LaunchDaemons/${LAUNCHD_LABEL}.plist`;
-  writeFileSync(plistPath, plistContent, 'utf-8');
-  chmodSync(plistPath, 0o644);
-
-  // Set ownership
-  await exec('chown', ['-R', `${serviceUser}:${serviceUser}`, config.installDir]);
-
-  // Load the service
-  await exec('launchctl', ['load', plistPath]);
-}
-
-async function installWindowsService(config: ServiceConfig): Promise<void> {
-  // Create service using nssm or direct sc command
-  const nodePath = process.execPath;
-  const serviceArgs = `${config.installDir}/src/index.ts`;
-
-  // Delete existing service if present
-  await exec('sc', ['delete', WINDOWS_SERVICE_NAME], { ignoreError: true });
-
-  // Create new service
-  await exec('sc', ['create', WINDOWS_SERVICE_NAME, 'binPath=', `${nodePath} ${serviceArgs}`, 'start=', 'auto', 'obj=', 'LocalSystem']);
-
-  // Configure service to restart on failure
-  await exec('sc', ['failure', WINDOWS_SERVICE_NAME, 'reset=', '0', 'actions=', 'restart/5000/restart/5000/restart/5000']);
-
-  // Set environment variables in registry
-  // This is simplified - real implementation would use registry edits
-
-  // Start the service
-  await exec('sc', ['start', WINDOWS_SERVICE_NAME]);
-}
-
-async function installOpenRC(config: ServiceConfig): Promise<void> {
-  const serviceUser = config.serviceUser || 'bridge-agent';
-
-  // Create service user if it doesn't exist
-  try {
-    await exec('id', [serviceUser], { ignoreError: true });
-  } catch {
-    await exec('adduser', ['-S', '-D', '-H', serviceUser]);
-  }
-
-  const initScript = `#!/sbin/openrc-run
-
-name="${SERVICE_NAME}"
-description="Bridge Agent - Terminal Management Server"
-command="/usr/bin/node"
-command_args="${config.installDir}/src/index.ts"
-command_user="${serviceUser}"
-command_background=true
-pidfile="/run/\${RC_SVCNAME}.pid"
-directory="${config.installDir}"
-export BRIDGE_AGENT_INSTALL_DIR="${config.installDir}"
-export TMUX_AGENT_PORT="${config.port}"
-export TMUX_AGENT_HOST="${config.hostLabel}"
-export TMUX_AGENT_TOKEN="${config.authToken}"
-export NODE_ENV="production"
-
-depend() {
-    need net
-    after firewall
-}
-
-start_pre() {
-    checkpath -d -m 0755 -o "${serviceUser}:${serviceUser}" "${config.installDir}"
-}
-`;
-
-  const initPath = `/etc/init.d/${SERVICE_NAME}`;
-  writeFileSync(initPath, initScript, 'utf-8');
-  chmodSync(initPath, 0o755);
-
-  // Set ownership
-  await exec('chown', ['-R', `${serviceUser}:${serviceUser}`, config.installDir]);
-
-  // Enable and start
-  await exec('rc-update', ['add', SERVICE_NAME, 'default']);
-  await exec('rc-service', [SERVICE_NAME, 'start']);
-}

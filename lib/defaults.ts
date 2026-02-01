@@ -33,5 +33,6 @@ export function defaultPreferences(): AppPreferences {
     github: {
       enabled: false,
     },
+    sessionOrders: [],
   };
 }

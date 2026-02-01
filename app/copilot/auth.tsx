@@ -15,6 +15,7 @@ import { useStore } from '@/lib/store';
 import { theme } from '@/lib/theme';
 import { systemColors } from '@/lib/colors';
 import { ThemeColors, useTheme } from '@/lib/useTheme';
+import { TIMING, POLLING } from '@/lib/constants';
 import {
   startCopilotAuth,
   pollCopilotAuth,
@@ -80,7 +81,7 @@ export default function CopilotAuthScreen() {
     const { data } = authState;
     setAuthState({ status: 'polling', data });
 
-    const pollInterval = Math.max(data.interval * 1000, 5000);
+    const pollInterval = Math.max(data.interval * 1000, POLLING.OAUTH_POLL_MS);
 
     pollIntervalRef.current = setInterval(async () => {
       try {
@@ -131,7 +132,7 @@ export default function CopilotAuthScreen() {
     const { data } = authState;
     await Clipboard.setStringAsync(data.userCode);
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    setTimeout(() => setCopied(false), TIMING.COPIED_FEEDBACK_MS);
   }, [authState]);
 
   useEffect(() => {

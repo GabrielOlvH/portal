@@ -2,13 +2,17 @@ import { AppText } from '@/components/AppText';
 import { FadeIn } from '@/components/FadeIn';
 import { Card } from '@/components/Card';
 import { SwipeableRow } from '@/components/SwipeableRow';
+import { FAB } from '@/components/FAB';
 import { PlusIcon, ServerIcon, TerminalIcon } from '@/components/icons/HomeIcons';
 import { ProviderIcon, providerColors } from '@/components/icons/ProviderIcons';
+import { CompactUsageCard } from '@/components/CompactUsageCard';
+import { ExternalLink } from 'lucide-react-native';
 import { useLaunchSheet } from '@/lib/launch-sheet';
 import { Screen } from '@/components/Screen';
 import { SkeletonList } from '@/components/Skeleton';
 import { getUsage, killSession, renameSession } from '@/lib/api';
-import { hostColors, systemColors } from '@/lib/colors';
+import { hostColors, systemColors, withAlpha } from '@/lib/colors';
+import { formatTimeAgo } from '@/lib/formatters';
 import { useHostsLive } from '@/lib/live';
 import { useTaskLiveUpdates } from '@/lib/task-live-updates';
 import { useStore } from '@/lib/store';
@@ -16,11 +20,13 @@ import { useProjects } from '@/lib/projects-store';
 import { useGitHubStatus, groupStatusesByProject, getStatusSummary } from '@/lib/queries/github';
 import { theme } from '@/lib/theme';
 import { ThemeColors, useTheme } from '@/lib/useTheme';
+import { TIMING } from '@/lib/constants';
 import { Host, HostInfo, HostStatus, ProviderUsage, Session, SessionInsights, GitHubCommitStatus } from '@/lib/types';
 import { useRouter } from 'expo-router';
 import { useIsFocused } from '@react-navigation/native';
-import { Cpu, GitBranch, MemoryStick, Pencil, Plus, Trash2, Github, Check, X, Clock, ChevronDown, ChevronUp } from 'lucide-react-native';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Cpu, GitBranch, MemoryStick, Pencil, Plus, Trash2, Github, Check, X, Clock, ChevronDown, ChevronUp, GripVertical } from 'lucide-react-native';
+import * as Haptics from 'expo-haptics';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -29,168 +35,149 @@ import {
   ScrollView,
   StyleSheet,
   View,
+  Linking,
 } from 'react-native';
 
-type CompactUsageCardProps = {
-  provider: 'claude' | 'codex' | 'copilot' | 'kimi';
-  usage: ProviderUsage;
+type SessionWithHost = Session & { host: Host; hostStatus: HostStatus };
+
+// Draggable Session Row Component
+type SessionRowProps = {
+  session: SessionWithHost;
+  index: number;
+  totalSessions: number;
+  isLast: boolean;
+  isReordering: boolean;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+  onPress: () => void;
+  onKill: () => void;
+  onRename: () => void;
+  colors: ThemeColors;
+  styles: ReturnType<typeof createStyles>;
 };
 
-function formatReset(reset?: string): string {
-  if (!reset) return 'soon';
+function SessionRow({
+  session,
+  index,
+  totalSessions,
+  isLast,
+  isReordering,
+  onMoveUp,
+  onMoveDown,
+  onPress,
+  onKill,
+  onRename,
+  colors,
+  styles,
+}: SessionRowProps) {
+  const agentState = session.insights?.meta?.agentState ?? 'stopped';
+  const gitBranch = session.insights?.git?.branch;
+  const command = session.insights?.meta?.agentCommand;
+  const cwd = session.insights?.meta?.cwd;
+  const projectName = cwd?.split('/').filter(Boolean).pop();
+  const isRunning = agentState === 'running';
+  const isIdle = agentState === 'idle';
 
-  // If it's already a relative time like "5h 23m", clean and return
-  if (/^\d+[hmd]\s*/i.test(reset) || /^in\s+/i.test(reset)) {
-    return reset.replace(/^in\s+/i, '').trim() || 'soon';
-  }
-
-  // Try to parse as ISO date
-  const date = new Date(reset);
-  if (isNaN(date.getTime())) return reset;
-
-  const now = Date.now();
-  const diff = date.getTime() - now;
-  if (diff <= 0) return 'soon';
-
-  const hours = Math.floor(diff / (1000 * 60 * 60));
-  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-
-  if (hours > 24) {
-    const days = Math.floor(hours / 24);
-    return `${days}d ${hours % 24}h`;
-  }
-  if (hours > 0) {
-    return `${hours}h ${minutes}m`;
-  }
-  return `${minutes}m`;
-}
-
-function CompactUsageCard({ provider, usage }: CompactUsageCardProps) {
-  const { colors } = useTheme();
-  const sessionLeft = usage.session?.percentLeft;
-  const weeklyLeft = usage.weekly?.percentLeft;
-  const color = providerColors[provider];
-  const hasWeekly = provider !== 'copilot' && weeklyLeft != null;
-  const isWeeklyExhausted = hasWeekly && weeklyLeft <= 0;
-
-  if (sessionLeft == null) return null;
-
-  return (
-    <Card style={compactUsageStyles.card}>
-      <View style={compactUsageStyles.topRow}>
-        <View style={compactUsageStyles.iconContainer}>
-          <ProviderIcon provider={provider} size={32} percentRemaining={isWeeklyExhausted ? 0 : sessionLeft} />
-        </View>
-        <View style={compactUsageStyles.sessionInfo}>
-          <AppText
-            variant="mono"
+  if (isReordering) {
+    return (
+      <View style={[styles.sessionRow, !isLast && styles.sessionRowBorder]}>
+        <View style={styles.sessionRowContent}>
+          <View
             style={[
-              compactUsageStyles.percent,
-              { color: isWeeklyExhausted ? withAlpha(color, 0.3) : color },
-              isWeeklyExhausted && compactUsageStyles.strikethrough,
+              styles.stateDot,
+              isRunning && styles.stateDotRunning,
+              isIdle && styles.stateDotIdle,
             ]}
-          >
-            {Math.round(sessionLeft)}%
-          </AppText>
-          {usage.session?.reset && (
-            <AppText variant="label" tone="muted" style={compactUsageStyles.reset}>
-              {formatReset(usage.session.reset)}
+          />
+          <View style={styles.sessionTextContent}>
+            <AppText variant="body" style={styles.sessionName}>
+              {session.title || session.name}
             </AppText>
-          )}
+          </View>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <Pressable
+              onPress={onMoveUp}
+              disabled={index === 0}
+              style={({ pressed }) => [
+                styles.reorderButton,
+                index === 0 && styles.reorderButtonDisabled,
+                pressed && index !== 0 && styles.reorderButtonPressed,
+              ]}
+            >
+              <ChevronUp size={20} color={index === 0 ? colors.textMuted : colors.text} />
+            </Pressable>
+            <Pressable
+              onPress={onMoveDown}
+              disabled={index === totalSessions - 1}
+              style={({ pressed }) => [
+                styles.reorderButton,
+                index === totalSessions - 1 && styles.reorderButtonDisabled,
+                pressed && index !== totalSessions - 1 && styles.reorderButtonPressed,
+              ]}
+            >
+              <ChevronDown size={20} color={index === totalSessions - 1 ? colors.textMuted : colors.text} />
+            </Pressable>
+          </View>
         </View>
       </View>
-      {hasWeekly && (
-        <View style={compactUsageStyles.weeklySection}>
-          <View style={[compactUsageStyles.weeklyBar, { backgroundColor: colors.barBg }]}>
-            <View
-              style={[
-                compactUsageStyles.weeklyFill,
-                { width: `${Math.min(100, weeklyLeft)}%`, backgroundColor: color },
-              ]}
-            />
-          </View>
-          <View style={compactUsageStyles.weeklyInfo}>
-            <AppText variant="label" tone="muted" style={compactUsageStyles.weeklyLabel}>
-              {Math.round(weeklyLeft)}%
+    );
+  }
+
+  return (
+    <SwipeableRow
+      onRightAction={onKill}
+      rightActionIcon={<Trash2 size={20} color="#FFFFFF" />}
+      rightActionColor={systemColors.red}
+      onLeftAction={onRename}
+      leftActionIcon={<Pencil size={20} color="#FFFFFF" />}
+      leftActionColor={systemColors.blue}
+    >
+      <Pressable
+        onPress={onPress}
+        style={({ pressed }) => [
+          styles.sessionRow,
+          !isLast && styles.sessionRowBorder,
+          pressed && styles.sessionRowPressed,
+        ]}
+      >
+        <View style={styles.sessionRowContent}>
+          <View
+            style={[
+              styles.stateDot,
+              isRunning && styles.stateDotRunning,
+              isIdle && styles.stateDotIdle,
+            ]}
+          />
+          <View style={styles.sessionTextContent}>
+            <AppText variant="body" style={styles.sessionName}>
+              {session.title || session.name}
             </AppText>
-            {usage.weekly?.reset && (
-              <AppText variant="label" tone="muted" style={compactUsageStyles.weeklyReset}>
-                {formatReset(usage.weekly.reset)}
+            {(projectName || command) && (
+              <AppText
+                variant="mono"
+                tone="muted"
+                numberOfLines={1}
+                style={styles.sessionMeta}
+              >
+                {projectName && command
+                  ? `${projectName} · ${command}`
+                  : projectName || command}
               </AppText>
             )}
           </View>
+          {gitBranch && (
+            <View style={styles.gitPill}>
+              <GitBranch size={10} color={colors.textMuted} />
+              <AppText variant="mono" tone="muted" style={styles.gitPillText}>
+                {gitBranch}
+              </AppText>
+            </View>
+          )}
         </View>
-      )}
-    </Card>
+      </Pressable>
+    </SwipeableRow>
   );
 }
-
-function withAlpha(hex: string, alpha: number) {
-  const clean = hex.replace('#', '');
-  if (clean.length !== 6) return hex;
-  const r = parseInt(clean.slice(0, 2), 16);
-  const g = parseInt(clean.slice(2, 4), 16);
-  const b = parseInt(clean.slice(4, 6), 16);
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-}
-
-const compactUsageStyles = StyleSheet.create({
-  card: {
-    flex: 1,
-    padding: 10,
-    gap: 6,
-  },
-  topRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  iconContainer: {
-    flexShrink: 0,
-  },
-  sessionInfo: {
-    flex: 1,
-    alignItems: 'flex-end',
-  },
-  strikethrough: {
-    textDecorationLine: 'line-through',
-  },
-  percent: {
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  reset: {
-    fontSize: 9,
-  },
-  weeklySection: {
-    width: '100%',
-    marginTop: 4,
-    gap: 2,
-  },
-  weeklyBar: {
-    width: '100%',
-    height: 3,
-    borderRadius: 1.5,
-    overflow: 'hidden',
-  },
-  weeklyFill: {
-    height: '100%',
-    borderRadius: 1.5,
-  },
-  weeklyInfo: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  weeklyLabel: {
-    fontSize: 8,
-  },
-  weeklyReset: {
-    fontSize: 7,
-  },
-});
-
-type SessionWithHost = Session & { host: Host; hostStatus: HostStatus };
 
 // GitHub CI Status Section Component
 type GitHubStatusSectionProps = {
@@ -232,16 +219,47 @@ function GitHubStatusSection({ colors, styles }: GitHubStatusSectionProps) {
     }
   };
 
-  const formatTimeAgo = (timestamp: number) => {
-    const diff = Date.now() - timestamp;
-    const minutes = Math.floor(diff / 60000);
-    const hours = Math.floor(diff / 3600000);
-    const days = Math.floor(diff / 86400000);
+  const getStatusColor = (state: GitHubCommitStatus['state']) => {
+    switch (state) {
+      case 'success':
+        return colors.green;
+      case 'failure':
+      case 'error':
+        return colors.red;
+      case 'pending':
+        return colors.orange;
+      default:
+        return colors.textMuted;
+    }
+  };
 
-    if (minutes < 1) return 'now';
-    if (minutes < 60) return `${minutes}m ago`;
-    if (hours < 24) return `${hours}h ago`;
-    return `${days}d ago`;
+  const openGitHubRepo = (repo: string) => {
+    const url = `https://github.com/${repo}`;
+    Linking.openURL(url).catch(() => {
+      Alert.alert('Error', 'Could not open GitHub');
+    });
+  };
+
+  const openGitHubActions = (repo: string, branch: string) => {
+    const url = `https://github.com/${repo}/actions?query=branch:${encodeURIComponent(branch)}`;
+    Linking.openURL(url).catch(() => {
+      Alert.alert('Error', 'Could not open GitHub Actions');
+    });
+  };
+
+  const openUrl = (url: string) => {
+    Linking.openURL(url).catch(() => {
+      Alert.alert('Error', 'Could not open URL');
+    });
+  };
+
+  const getShortSha = (sha: string) => sha.slice(0, 7);
+
+  // Get latest status per project for the summary view
+  const getLatestStatus = (projectId: string): GitHubCommitStatus | null => {
+    const projectStatuses = grouped.get(projectId) || [];
+    if (projectStatuses.length === 0) return null;
+    return projectStatuses.sort((a: GitHubCommitStatus, b: GitHubCommitStatus) => b.updatedAt - a.updatedAt)[0];
   };
 
   return (
@@ -252,22 +270,30 @@ function GitHubStatusSection({ colors, styles }: GitHubStatusSectionProps) {
           style={styles.ciHeader}
         >
           <View style={styles.ciHeaderLeft}>
-            <Github size={18} color={hasFailures ? colors.red : hasPending ? colors.orange : colors.green} />
-            <AppText variant="subtitle" style={styles.ciTitle}>
-              CI Status
+            <Github size={16} color={hasFailures ? colors.red : hasPending ? colors.orange : colors.green} />
+            <AppText variant="label" style={styles.ciTitle}>
+              {summary.total > 0
+                ? `${summary.success} ok · ${summary.failure + summary.error} fail · ${summary.pending} run`
+                : 'CI'}
             </AppText>
-            {isLoading && <ActivityIndicator size="small" color={colors.textSecondary} style={styles.ciLoader} />}
           </View>
           <View style={styles.ciHeaderRight}>
-            <AppText variant="label" tone="muted">
-              {summary.total > 0
-                ? `${projects.length} proj, ${summary.total} branch${summary.total !== 1 ? 'es' : ''}`
-                : 'No CI data'}
-            </AppText>
+            {isLoading && <ActivityIndicator size="small" color={colors.textSecondary} />}
+            {!isExpanded && summary.total > 0 && (
+              <View style={styles.ciSummaryDots}>
+                {projects.slice(0, 4).map((project) => {
+                  const latest = getLatestStatus(project.id);
+                  if (!latest) return null;
+                  return (
+                    <View key={project.id} style={[styles.ciStatusDot, { backgroundColor: getStatusColor(latest.state) }]} />
+                  );
+                })}
+              </View>
+            )}
             {isExpanded ? (
-              <ChevronUp size={16} color={colors.textSecondary} />
+              <ChevronUp size={16} color={colors.textMuted} />
             ) : (
-              <ChevronDown size={16} color={colors.textSecondary} />
+              <ChevronDown size={16} color={colors.textMuted} />
             )}
           </View>
         </Pressable>
@@ -275,44 +301,47 @@ function GitHubStatusSection({ colors, styles }: GitHubStatusSectionProps) {
         {isExpanded && (
           <View style={styles.ciContent}>
             {statuses && statuses.length > 0 ? (
-              <View style={styles.ciProjects}>
-                {projects.map((project) => {
-                  const projectStatuses = grouped.get(project.id) || [];
-                  if (projectStatuses.length === 0) return null;
-
+              <View style={styles.ciBranches}>
+                {statuses.map((status: GitHubCommitStatus) => {
+                  const primaryContext = status.contexts.find(c => c.targetUrl) || status.contexts[0];
+                  const ciUrl = primaryContext?.targetUrl;
+                  const repoName = status.repo.split('/')[1];
+                  
+                  // Build diff info string
+                  const diffParts: string[] = [];
+                  if (status.ahead && status.ahead > 0) diffParts.push(`+${status.ahead}`);
+                  if (status.behind && status.behind > 0) diffParts.push(`-${status.behind}`);
+                  if (status.staged && status.staged > 0) diffParts.push(`${status.staged}s`);
+                  if (status.unstaged && status.unstaged > 0) diffParts.push(`${status.unstaged}u`);
+                  const diffInfo = diffParts.length > 0 ? diffParts.join(' ') : null;
+                  
                   return (
-                    <View key={project.id} style={styles.ciProject}>
-                      <AppText variant="label" style={styles.ciProjectName}>
-                        {project.name}
+                    <Pressable
+                      key={`${status.projectId}-${status.branch}`}
+                      style={styles.ciBranch}
+                      onPress={() => ciUrl ? openUrl(ciUrl) : openGitHubActions(status.repo, status.branch)}
+                    >
+                      {getStatusIcon(status.state)}
+                      <AppText variant="mono" style={styles.ciBranchName} numberOfLines={1}>
+                        {repoName}/{status.branch}
                       </AppText>
-                      <View style={styles.ciBranches}>
-                        {projectStatuses.map((status: GitHubCommitStatus) => (
-                          <View key={`${status.projectId}-${status.branch}`} style={styles.ciBranch}>
-                            <View style={styles.ciBranchLeft}>
-                              {getStatusIcon(status.state)}
-                              <AppText variant="mono" style={styles.ciBranchName}>
-                                {status.branch}
-                              </AppText>
-                            </View>
-                            <AppText variant="label" tone="muted" style={styles.ciTime}>
-                              {formatTimeAgo(status.updatedAt)}
-                            </AppText>
-                          </View>
-                        ))}
-                      </View>
-                    </View>
+                      <AppText variant="mono" tone="muted" style={styles.ciCommitSha}>
+                        {getShortSha(status.sha)}
+                      </AppText>
+                      {diffInfo && (
+                        <AppText variant="mono" tone="warning" style={styles.ciDiffInfo}>
+                          {diffInfo}
+                        </AppText>
+                      )}
+                      <ExternalLink size={10} color={colors.textMuted} />
+                    </Pressable>
                   );
                 })}
               </View>
             ) : (
-              <View style={styles.ciEmpty}>
-                <AppText variant="label" tone="muted">
-                  {isLoading ? 'Loading...' : 'No CI status available'}
-                </AppText>
-                <AppText variant="label" tone="muted" style={styles.ciEmptyHint}>
-                  Run "gh auth login" on your host
-                </AppText>
-              </View>
+              <AppText variant="label" tone="muted" style={styles.ciEmpty}>
+                {isLoading ? 'Loading...' : 'No CI data · run "gh auth login"'}
+              </AppText>
             )}
           </View>
         )}
@@ -324,8 +353,9 @@ function GitHubStatusSection({ colors, styles }: GitHubStatusSectionProps) {
 export default function SessionsScreen() {
   const router = useRouter();
   const { colors, isDark } = useTheme();
-  const { hosts, ready, preferences } = useStore();
+  const { hosts, ready, preferences, updateSessionOrder } = useStore();
   const [isManualRefresh, setIsManualRefresh] = useState(false);
+  const [reorderingHostId, setReorderingHostId] = useState<string | null>(null);
   const { open: openLaunchSheet } = useLaunchSheet();
   const isFocused = useIsFocused();
 
@@ -538,6 +568,19 @@ export default function SessionsScreen() {
       }
     });
 
+    // Apply manual ordering per host
+    groups.forEach((group) => {
+      const order = preferences.sessionOrders.find((o) => o.hostId === group.host.id);
+      if (order && order.sessionNames.length > 0) {
+        const orderMap = new Map(order.sessionNames.map((name, index) => [name, index]));
+        group.sessions.sort((a, b) => {
+          const aIndex = orderMap.get(a.name) ?? Infinity;
+          const bIndex = orderMap.get(b.name) ?? Infinity;
+          return aIndex - bIndex;
+        });
+      }
+    });
+
     return Array.from(groups.values()).sort((a, b) => {
       const aTimes = a.sessions.map((s) => s.lastAttached || s.createdAt || 0);
       const bTimes = b.sessions.map((s) => s.lastAttached || s.createdAt || 0);
@@ -545,29 +588,25 @@ export default function SessionsScreen() {
       const bLatest = bTimes.length > 0 ? Math.max(...bTimes) : 0;
       return bLatest - aLatest;
     });
-  }, [sessions, stateMap]);
+  }, [sessions, stateMap, preferences.sessionOrders]);
+
+  // Reorder handlers
+  const handleMoveSession = useCallback((hostId: string, fromIndex: number, toIndex: number) => {
+    const group = groupedSessions.find((g) => g.host.id === hostId);
+    if (!group) return;
+
+    const newOrder = [...group.sessions];
+    const [movedSession] = newOrder.splice(fromIndex, 1);
+    newOrder.splice(toIndex, 0, movedSession);
+
+    const sessionNames = newOrder.map((s) => s.name);
+    updateSessionOrder(hostId, sessionNames);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  }, [groupedSessions, updateSessionOrder]);
 
   return (
     <>
       <Screen>
-        {/* Header */}
-        <View style={styles.header}>
-          <View>
-            <AppText variant="title">Portal</AppText>
-          </View>
-          {hosts.length > 0 && (
-            <Pressable
-              style={styles.launchButton}
-              onPress={openLaunchSheet}
-            >
-              <Plus size={18} color={colors.accentText} />
-              <AppText variant="label" style={styles.launchButtonText}>
-                Launch
-              </AppText>
-            </Pressable>
-          )}
-        </View>
-
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
@@ -578,7 +617,7 @@ export default function SessionsScreen() {
                 setIsManualRefresh(true);
                 refreshAll();
                 void refreshUsage();
-                setTimeout(() => setIsManualRefresh(false), 600);
+                setTimeout(() => setIsManualRefresh(false), TIMING.REFRESH_INDICATOR_MS);
               }}
               tintColor={systemColors.blue as string}
             />
@@ -587,26 +626,18 @@ export default function SessionsScreen() {
           {/* Usage Cards */}
           {hasUsageCards && (
             <FadeIn>
-              <View style={styles.usageCardsGrid}>
+              <View style={styles.usageCardsRow}>
                 {usageVisibility.claude && aggregatedUsage.claude && (
-                  <View style={styles.usageCardGridItem}>
-                    <CompactUsageCard provider="claude" usage={aggregatedUsage.claude} />
-                  </View>
+                  <CompactUsageCard provider="claude" usage={aggregatedUsage.claude} />
                 )}
                 {usageVisibility.codex && aggregatedUsage.codex && (
-                  <View style={styles.usageCardGridItem}>
-                    <CompactUsageCard provider="codex" usage={aggregatedUsage.codex} />
-                  </View>
+                  <CompactUsageCard provider="codex" usage={aggregatedUsage.codex} />
                 )}
                 {usageVisibility.copilot && aggregatedUsage.copilot && (
-                  <View style={styles.usageCardGridItem}>
-                    <CompactUsageCard provider="copilot" usage={aggregatedUsage.copilot} />
-                  </View>
+                  <CompactUsageCard provider="copilot" usage={aggregatedUsage.copilot} />
                 )}
                 {usageVisibility.kimi && aggregatedUsage.kimi && (
-                  <View style={styles.usageCardGridItem}>
-                    <CompactUsageCard provider="kimi" usage={aggregatedUsage.kimi} />
-                  </View>
+                  <CompactUsageCard provider="kimi" usage={aggregatedUsage.kimi} />
                 )}
               </View>
             </FadeIn>
@@ -687,78 +718,39 @@ export default function SessionsScreen() {
                             </AppText>
                           </View>
                         )}
+                        <Pressable
+                          onPress={() => setReorderingHostId(reorderingHostId === group.host.id ? null : group.host.id)}
+                          style={({ pressed }) => [
+                            styles.reorderToggle,
+                            pressed && styles.reorderTogglePressed,
+                            reorderingHostId === group.host.id && styles.reorderToggleActive,
+                          ]}
+                        >
+                          <GripVertical size={14} color={reorderingHostId === group.host.id ? colors.accentText : colors.textMuted} />
+                        </Pressable>
                       </View>
                       <View style={styles.hostGroupSessions}>
-                        {group.sessions.map((session, sessionIndex) => {
-                          const agentState = session.insights?.meta?.agentState ?? 'stopped';
-                          const gitBranch = session.insights?.git?.branch;
-                          const command = session.insights?.meta?.agentCommand;
-                          const cwd = session.insights?.meta?.cwd;
-                          const projectName = cwd?.split('/').filter(Boolean).pop();
-                          const isRunning = agentState === 'running';
-                          const isIdle = agentState === 'idle';
-                          const isLast = sessionIndex === group.sessions.length - 1;
-
-                          return (
-                            <SwipeableRow
-                              key={session.name}
-                              onRightAction={() => handleKillSession(group.host, session.name)}
-                              rightActionIcon={<Trash2 size={20} color="#FFFFFF" />}
-                              rightActionColor={systemColors.red}
-                              onLeftAction={() => handleRenameStart(group.host, session.name)}
-                              leftActionIcon={<Pencil size={20} color="#FFFFFF" />}
-                              leftActionColor={systemColors.blue}
-                            >
-                              <Pressable
-                                onPress={() =>
-                                  router.push(
-                                    `/session/${group.host.id}/${encodeURIComponent(session.name)}/terminal`
-                                  )
-                                }
-                                style={({ pressed }) => [
-                                  styles.sessionRow,
-                                  !isLast && styles.sessionRowBorder,
-                                  pressed && styles.sessionRowPressed,
-                                ]}
-                              >
-                                <View style={styles.sessionRowContent}>
-                                  <View
-                                    style={[
-                                      styles.stateDot,
-                                      isRunning && styles.stateDotRunning,
-                                      isIdle && styles.stateDotIdle,
-                                    ]}
-                                  />
-                                  <View style={styles.sessionTextContent}>
-                                    <AppText variant="body" numberOfLines={1} style={styles.sessionName}>
-                                      {session.title || session.name}
-                                    </AppText>
-                                    {(projectName || command) && (
-                                      <AppText
-                                        variant="mono"
-                                        tone="muted"
-                                        numberOfLines={1}
-                                        style={styles.sessionMeta}
-                                      >
-                                        {projectName && command
-                                          ? `${projectName} · ${command}`
-                                          : projectName || command}
-                                      </AppText>
-                                    )}
-                                  </View>
-                                  {gitBranch && (
-                                    <View style={styles.gitPill}>
-                                      <GitBranch size={10} color={colors.textMuted} />
-                                      <AppText variant="mono" tone="muted" style={styles.gitPillText}>
-                                        {gitBranch}
-                                      </AppText>
-                                    </View>
-                                  )}
-                                </View>
-                              </Pressable>
-                            </SwipeableRow>
-                          );
-                        })}
+                        {group.sessions.map((session, sessionIndex) => (
+                          <SessionRow
+                            key={session.name}
+                            session={session}
+                            index={sessionIndex}
+                            totalSessions={group.sessions.length}
+                            isLast={sessionIndex === group.sessions.length - 1}
+                            isReordering={reorderingHostId === group.host.id}
+                            onMoveUp={() => handleMoveSession(group.host.id, sessionIndex, sessionIndex - 1)}
+                            onMoveDown={() => handleMoveSession(group.host.id, sessionIndex, sessionIndex + 1)}
+                            onPress={() =>
+                              router.push(
+                                `/session/${group.host.id}/${encodeURIComponent(session.name)}/terminal`
+                              )
+                            }
+                            onKill={() => handleKillSession(group.host, session.name)}
+                            onRename={() => handleRenameStart(group.host, session.name)}
+                            colors={colors}
+                            styles={styles}
+                          />
+                        ))}
                       </View>
                     </Card>
                   </FadeIn>
@@ -767,6 +759,13 @@ export default function SessionsScreen() {
             </View>
           )}
         </ScrollView>
+
+        {/* FAB for launching sessions */}
+        {hosts.length > 0 && (
+          <View style={styles.fabContainer}>
+            <FAB onPress={openLaunchSheet} icon="rocket" size="medium" />
+          </View>
+        )}
       </Screen>
     </>
   );
@@ -774,36 +773,18 @@ export default function SessionsScreen() {
 
 const createStyles = (colors: ThemeColors, _isDark: boolean) => {
   return StyleSheet.create({
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  launchButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: colors.accent,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-  },
-  launchButtonText: {
-    color: colors.accentText,
-    fontWeight: '600',
+  fabContainer: {
+    position: 'absolute',
+    right: 20,
+    bottom: 90,
   },
   scrollContent: {
     paddingBottom: 40,
     gap: 16,
   },
-  usageCardsGrid: {
+  usageCardsRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
-  usageCardGridItem: {
-    width: '48%',
+    gap: 8,
   },
   usageRow: {
     gap: 4,
@@ -984,50 +965,70 @@ const createStyles = (colors: ThemeColors, _isDark: boolean) => {
   gitPillText: {
     fontSize: 10,
   },
+  reorderButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: colors.cardPressed,
+  },
+  reorderButtonDisabled: {
+    opacity: 0.3,
+  },
+  reorderButtonPressed: {
+    backgroundColor: colors.separator,
+  },
+  reorderToggle: {
+    padding: 6,
+    borderRadius: 6,
+    marginLeft: 8,
+  },
+  reorderTogglePressed: {
+    backgroundColor: colors.cardPressed,
+  },
+  reorderToggleActive: {
+    backgroundColor: colors.accent,
+  },
   // CI Status styles
   ciCard: {
     padding: 0,
     overflow: 'hidden',
   },
   ciCardError: {
-    borderLeftWidth: 3,
+    borderLeftWidth: 2,
     borderLeftColor: colors.red,
   },
   ciHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
   },
   ciHeaderLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
   },
   ciHeaderRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
   },
   ciTitle: {
     fontWeight: '600',
+    fontSize: 12,
   },
-  ciLoader: {
-    marginLeft: 8,
+  ciSummaryDots: {
+    flexDirection: 'row',
+    gap: 4,
+  },
+  ciStatusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
   ciContent: {
-    paddingHorizontal: 14,
-    paddingBottom: 14,
-  },
-  ciProjects: {
-    gap: 12,
-  },
-  ciProject: {
-    gap: 6,
-  },
-  ciProjectName: {
-    fontWeight: '600',
-    fontSize: 13,
+    paddingHorizontal: 12,
+    paddingBottom: 10,
   },
   ciBranches: {
     gap: 4,
@@ -1035,27 +1036,23 @@ const createStyles = (colors: ThemeColors, _isDark: boolean) => {
   ciBranch: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingLeft: 20,
-  },
-  ciBranchLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+    gap: 6,
+    paddingVertical: 2,
   },
   ciBranchName: {
-    fontSize: 12,
-  },
-  ciTime: {
     fontSize: 11,
+    flex: 1,
+  },
+  ciCommitSha: {
+    fontSize: 10,
+  },
+  ciDiffInfo: {
+    fontSize: 10,
   },
   ciEmpty: {
-    alignItems: 'center',
-    paddingVertical: 20,
-    gap: 4,
-  },
-  ciEmptyHint: {
     fontSize: 11,
+    textAlign: 'center',
+    paddingVertical: 8,
   },
   });
 };

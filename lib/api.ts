@@ -74,7 +74,7 @@ async function request<T>(
 
     if (!response.ok) {
       const message = await response.text();
-      throw new Error(message || `Request failed (${response.status})`);
+      throw new Error(message ?? `Request failed (${response.status})`);
     }
 
     return (await response.json()) as T;
@@ -105,7 +105,7 @@ export async function probeHealth(
     }
     if (!response.ok) {
       const message = await response.text();
-      return { status: 'error', statusCode: response.status, message: message || undefined };
+      return { status: 'error', statusCode: response.status, message: message ?? undefined };
     }
     try {
       const payload = (await response.json()) as HealthResponse;
@@ -117,7 +117,7 @@ export async function probeHealth(
       return { status: 'invalid-response' };
     }
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err || '');
+    const message = err instanceof Error ? err.message : String(err ?? '');
     return { status: 'unreachable', message };
   } finally {
     clearTimeout(timeout);
@@ -146,7 +146,7 @@ export async function probePing(
     }
     if (!response.ok) {
       const message = await response.text();
-      return { status: 'error', statusCode: response.status, message: message || undefined };
+      return { status: 'error', statusCode: response.status, message: message ?? undefined };
     }
     try {
       const payload = (await response.json()) as PingResponse;
@@ -158,15 +158,11 @@ export async function probePing(
       return { status: 'invalid-response' };
     }
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err || '');
+    const message = err instanceof Error ? err.message : String(err ?? '');
     return { status: 'unreachable', message };
   } finally {
     clearTimeout(timeout);
   }
-}
-
-export async function getHealth(host: Host): Promise<HealthResponse> {
-  return request(host, '/health', { method: 'GET' });
 }
 
 export async function getSessions(
@@ -444,13 +440,6 @@ export async function restartService(host: Host): Promise<{ success: boolean; me
   return request(host, '/service/restart', { method: 'POST' });
 }
 
-export async function getServiceLogs(host: Host, lines?: number): Promise<ServiceLogs> {
-  const params = new URLSearchParams();
-  if (lines) params.set('lines', String(lines));
-  const query = params.toString();
-  return request(host, `/service/logs${query ? `?${query}` : ''}`, { method: 'GET' });
-}
-
 // New System Management API
 
 export type SystemStatus = {
@@ -498,16 +487,6 @@ export async function triggerUpdate(host: Host): Promise<{ success: boolean; mes
   return request(host, '/system/update', { method: 'POST' });
 }
 
-export async function getUpdateStatus(host: Host): Promise<{
-  inProgress: boolean;
-  lastAttempt: SystemStatus['health']['lastUpdateAttempt'] | null;
-  updateAvailable: boolean;
-  currentVersion: string;
-  latestVersion: string;
-}> {
-  return request(host, '/system/update/status', { method: 'GET' });
-}
-
 export async function pollUpdateStatus(host: Host): Promise<{
   inProgress: boolean;
   lastAttempt: SystemStatus['health']['lastUpdateAttempt'] | null;
@@ -543,10 +522,18 @@ export function createUpdateStream(
         const attempt = status.lastAttempt;
         if (attempt.updateId === updateId) {
           const event: UpdateProgressEvent = {
-            type: attempt.status === 'success' ? 'complete' : attempt.status === 'rollback' ? 'rollback' : 'error',
+            type: (() => {
+              if (attempt.status === 'success') {
+                return 'complete';
+              } else if (attempt.status === 'rollback') {
+                return 'rollback';
+              } else {
+                return 'error';
+              }
+            })(),
             message: attempt.status === 'success' 
               ? 'Update completed successfully' 
-              : attempt.error || 'Update failed',
+              : attempt.error ?? 'Update failed',
             updateId,
             progress: 100,
             error: attempt.error,

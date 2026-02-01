@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { gitCache } from './state';
+import { gitCache, evictGitCache } from './state';
 
 import type { GitStatus } from './state';
 
@@ -37,10 +37,12 @@ export async function getGitStatus(repoPath?: string | null): Promise<GitStatus>
     }
     const value = { repo: true, branch, ahead, behind, dirty, path: repoPath };
     gitCache.set(repoPath, { ts: now, value });
+    evictGitCache();
     return value;
   } catch {
     const value = { repo: false };
     gitCache.set(repoPath, { ts: now, value });
+    evictGitCache();
     return value;
   }
 }

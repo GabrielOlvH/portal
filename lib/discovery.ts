@@ -51,7 +51,9 @@ function buildExistingHostSet(hosts: Host[]): Set<string> {
       const url = new URL(host.baseUrl);
       const port = url.port || (url.protocol === 'https:' ? '443' : '80');
       set.add(`${url.hostname}:${port}`);
-    } catch {}
+    } catch (error) {
+      console.warn('[Discovery] Failed to parse host URL:', host.baseUrl, error);
+    }
   });
   return set;
 }

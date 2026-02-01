@@ -34,7 +34,8 @@ export function startTaskLiveActivity(state: TaskLiveActivityState): string | nu
         timerType: 'digital',
       }
     ) as string;
-  } catch {
+  } catch (error) {
+    console.warn('[LiveActivity] Failed to start activity:', error);
     return null;
   }
 }
@@ -47,7 +48,9 @@ export function updateTaskLiveActivity(activityId: string, state: TaskLiveActivi
       title: state.title,
       subtitle: state.subtitle ?? '',
     });
-  } catch {}
+  } catch (error) {
+    console.warn('[LiveActivity] Failed to update activity:', activityId, error);
+  }
 }
 
 export function endTaskLiveActivity(activityId: string, state?: TaskLiveActivityState): void {
@@ -58,5 +61,7 @@ export function endTaskLiveActivity(activityId: string, state?: TaskLiveActivity
       title: state?.title ?? '',
       subtitle: state?.subtitle ?? '',
     });
-  } catch {}
+  } catch (error) {
+    console.warn('[LiveActivity] Failed to stop activity:', activityId, error);
+  }
 }

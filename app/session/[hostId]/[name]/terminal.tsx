@@ -47,7 +47,9 @@ import { useTheme } from '@/lib/useTheme';
 import { useHostLive } from '@/lib/live';
 import { uploadImage } from '@/lib/api';
 import { buildTerminalHtml, TERMINAL_HTML_VERSION, TerminalFontConfig } from '@/lib/terminal-html';
+import { buildSessionWsUrl } from '@/lib/ws-urls';
 import type { ThemeColors } from '@/lib/useTheme';
+import { withAlpha } from '@/lib/colors';
 
 type HelperKeyIcon = React.ComponentType<{ size: number; color: string }>;
 type HelperKey = {
@@ -71,7 +73,12 @@ type TerminalStyles = {
   pagerContent: ViewStyle;
   page: ViewStyle;
   pageLabel: ViewStyle;
-  pageLabelText: TextStyle;
+  pageLabelContent: ViewStyle;
+  pageLabelTitle: TextStyle;
+  pageLabelMeta: TextStyle;
+  pageLabelStatus: ViewStyle;
+  pageLabelStatusDot: ViewStyle;
+  pageLabelStatusText: TextStyle;
   terminal: ViewStyle;
   webview: ViewStyle;
   helperOverlay: ViewStyle;
@@ -104,17 +111,6 @@ const expandedHelperKeys: HelperKey[] = [
   { label: 'PgUp', data: '\u001b[5~' },
   { label: 'PgDn', data: '\u001b[6~' },
 ];
-
-function buildWsUrl(host: { baseUrl: string; authToken?: string }, sessionName: string): string {
-  try {
-    const base = new URL(host.baseUrl);
-    const protocol = base.protocol === 'https:' ? 'wss:' : 'ws:';
-    const token = host.authToken ? `&token=${encodeURIComponent(host.authToken)}` : '';
-    return `${protocol}//${base.host}/ws?session=${encodeURIComponent(sessionName)}&cols=80&rows=24${token}`;
-  } catch {
-    return '';
-  }
-}
 
 export default function SessionTerminalScreen(): React.ReactElement {
   const router = useRouter();
@@ -163,8 +159,21 @@ export default function SessionTerminalScreen(): React.ReactElement {
   );
   const previousSessionRef = useRef<string | null>(null);
 
-  const { state, refresh } = useHostLive(host, { sessions: true, enabled: isFocused });
-  const sessions = state?.sessions ?? [];
+  const { state, refresh } = useHostLive(host, { sessions: true, insights: true, enabled: isFocused });
+
+  // Apply manual ordering to sessions
+  const sessions = useMemo(() => {
+    const rawSessions = state?.sessions ?? [];
+    const order = preferences.sessionOrders.find((o) => o.hostId === host?.id);
+    if (!order || order.sessionNames.length === 0) return rawSessions;
+
+    const orderMap = new Map(order.sessionNames.map((name, index) => [name, index]));
+    return [...rawSessions].sort((a, b) => {
+      const aIndex = orderMap.get(a.name) ?? Infinity;
+      const bIndex = orderMap.get(b.name) ?? Infinity;
+      return aIndex - bIndex;
+    });
+  }, [state?.sessions, preferences.sessionOrders, host?.id]);
   const sessionCount = sessions.length;
   const initialIndex = sessions.findIndex((session) => session.name === initialSessionName);
 
@@ -177,7 +186,7 @@ export default function SessionTerminalScreen(): React.ReactElement {
   const getSourceForSession = useCallback(
     (sessionName: string) => {
       if (!host) return undefined;
-      const wsUrl = buildWsUrl(host, sessionName);
+      const wsUrl = buildSessionWsUrl(host, sessionName);
       if (!wsUrl) return undefined;
       const cacheKey = `${wsUrl}|${themeKey}|${fontKey}|${TERMINAL_HTML_VERSION}|session`;
       const cached = sourceCache.current[sessionName];
@@ -545,11 +554,33 @@ export default function SessionTerminalScreen(): React.ReactElement {
         >
           {sessions.map((session) => {
             const isCurrent = session.name === currentSessionName;
+            const agentState = session.insights?.meta?.agentState ?? 'stopped';
+            const cwd = session.insights?.meta?.cwd;
+            const projectName = cwd?.split('/').filter(Boolean).pop();
+            const command = session.insights?.meta?.agentCommand;
+            const isRunning = agentState === 'running';
+            const isIdle = agentState === 'idle';
+            const statusColor = isRunning ? colors.green : isIdle ? colors.orange : colors.textMuted;
+
             return (
               <View key={session.name} style={[styles.page, { width: screenWidth, height: pagerHeight }]}>
                 {!isCurrent && (
                   <View style={styles.pageLabel}>
-                    <AppText variant="caps" style={styles.pageLabelText}>{session.title || session.name}</AppText>
+                    <View style={styles.pageLabelContent}>
+                      <AppText variant="body" style={styles.pageLabelTitle} numberOfLines={2}>{session.title || session.name}</AppText>
+                      {projectName && (
+                        <AppText variant="mono" style={styles.pageLabelMeta}>{projectName}</AppText>
+                      )}
+                      {command && (
+                        <AppText variant="mono" style={[styles.pageLabelMeta, { fontSize: 11 }]} numberOfLines={1}>
+                          {command}
+                        </AppText>
+                      )}
+                      <View style={styles.pageLabelStatus}>
+                        <View style={[styles.pageLabelStatusDot, { backgroundColor: statusColor }]} />
+                        <AppText variant="label" style={styles.pageLabelStatusText}>{agentState}</AppText>
+                      </View>
+                    </View>
                   </View>
                 )}
                 <View
@@ -753,15 +784,6 @@ export default function SessionTerminalScreen(): React.ReactElement {
   );
 }
 
-function withAlpha(hex: string, alpha: number): string {
-  const clean = hex.replace('#', '');
-  if (clean.length !== 6) return hex;
-  const r = parseInt(clean.slice(0, 2), 16);
-  const g = parseInt(clean.slice(2, 4), 16);
-  const b = parseInt(clean.slice(4, 6), 16);
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-}
-
 function createStyles(colors: ThemeColors): TerminalStyles {
   return StyleSheet.create<TerminalStyles>({
     header: {
@@ -809,19 +831,48 @@ function createStyles(colors: ThemeColors): TerminalStyles {
     },
     pageLabel: {
       position: 'absolute',
-      top: 8,
+      top: '50%',
       left: 0,
       right: 0,
       alignItems: 'center',
+      justifyContent: 'center',
+      transform: [{ translateY: -40 }],
       zIndex: 5,
     },
-    pageLabelText: {
+    pageLabelContent: {
+      alignItems: 'center',
+      backgroundColor: withAlpha(colors.terminalBackground, 0.95),
+      paddingHorizontal: 20,
+      paddingVertical: 16,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.terminalBorder,
+      gap: 8,
+    },
+    pageLabelTitle: {
+      color: colors.terminalForeground,
+      fontSize: 18,
+      fontWeight: '600',
+    },
+    pageLabelMeta: {
       color: colors.terminalMuted,
-      backgroundColor: withAlpha(colors.terminalBackground, 0.8),
-      paddingHorizontal: 12,
-      paddingVertical: 6,
-      borderRadius: 8,
-      overflow: 'hidden',
+      fontSize: 13,
+    },
+    pageLabelStatus: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      marginTop: 4,
+    },
+    pageLabelStatusDot: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+    },
+    pageLabelStatusText: {
+      color: colors.terminalMuted,
+      fontSize: 12,
+      textTransform: 'capitalize',
     },
     terminal: {
       flex: 1,

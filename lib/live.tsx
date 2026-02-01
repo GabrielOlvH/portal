@@ -47,7 +47,19 @@ type ConnectionEntry = {
 };
 
 const CONNECTION_PROBE_TIMEOUT_MS = 2500;
+const MAX_LIVE_STATE_CACHE_SIZE = 100;
 const liveStateCache = new Map<string, HostLiveState>();
+
+function evictLiveStateCache(): void {
+  if (liveStateCache.size <= MAX_LIVE_STATE_CACHE_SIZE) return;
+  // Evict oldest entries (by lastUpdate timestamp, or insertion order if no timestamp)
+  const entries = [...liveStateCache.entries()];
+  entries.sort((a, b) => (a[1].lastUpdate ?? 0) - (b[1].lastUpdate ?? 0));
+  const toRemove = entries.slice(0, entries.length - MAX_LIVE_STATE_CACHE_SIZE);
+  for (const [key] of toRemove) {
+    liveStateCache.delete(key);
+  }
+}
 
 function describeNoAgentMessage(baseUrl: string): string {
   try {
@@ -155,6 +167,7 @@ export function useHostsLive(hosts: Host[], options: LiveOptions) {
       const current = prev[hostId] || liveStateCache.get(hostId) || { status: 'checking', sessions: [] };
       const nextState = updater(current);
       liveStateCache.set(hostId, nextState);
+      evictLiveStateCache();
       return { ...prev, [hostId]: nextState };
     });
   }, []);

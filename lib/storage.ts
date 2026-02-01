@@ -9,7 +9,9 @@ export async function loadHosts(): Promise<Host[]> {
   const raw = await AsyncStorage.getItem(HOSTS_KEY);
   if (!raw) return [];
   try {
-    return JSON.parse(raw) as Host[];
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed as Host[];
   } catch {
     return [];
   }
@@ -25,6 +27,7 @@ function normalizePreferences(raw: Partial<AppPreferences> | null): AppPreferenc
   const notifications: Partial<AppPreferences['notifications']> = raw?.notifications ?? {};
   const terminal: Partial<AppPreferences['terminal']> = raw?.terminal ?? {};
   const github: Partial<AppPreferences['github']> = raw?.github ?? {};
+  const sessionOrders = raw?.sessionOrders ?? [];
   const validThemes = ['light', 'dark', 'system'] as const;
   const validFonts = ['JetBrains Mono', 'Fira Code', 'Source Code Pro', 'SF Mono', 'Menlo'] as const;
   const theme = raw?.theme && validThemes.includes(raw.theme) ? raw.theme : defaults.theme;
@@ -57,6 +60,7 @@ function normalizePreferences(raw: Partial<AppPreferences> | null): AppPreferenc
     github: {
       enabled: typeof github.enabled === 'boolean' ? github.enabled : defaults.github.enabled,
     },
+    sessionOrders: Array.isArray(sessionOrders) ? sessionOrders : [],
   };
 }
 
@@ -64,8 +68,11 @@ export async function loadPreferences(): Promise<AppPreferences> {
   const raw = await AsyncStorage.getItem(PREFERENCES_KEY);
   if (!raw) return defaultPreferences();
   try {
-    const parsed = JSON.parse(raw) as Partial<AppPreferences>;
-    return normalizePreferences(parsed);
+    const parsed: unknown = JSON.parse(raw);
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+      return defaultPreferences();
+    }
+    return normalizePreferences(parsed as Partial<AppPreferences>);
   } catch {
     return defaultPreferences();
   }

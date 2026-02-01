@@ -8,6 +8,7 @@ import { runPtyCommand } from './pty-runner';
 import { stripAnsi } from './utils';
 import { tokenCache } from './state';
 import { MAX_TOKEN_FILES } from './config';
+import { toInt, scanJsonlFile, resetFromLine } from './utils/jsonl';
 
 import type { ProviderUsage, TokenUsage } from './state';
 
@@ -49,16 +50,10 @@ function percentLeftFromLine(line: string): number | undefined {
   return any ? Number(any[1]) : undefined;
 }
 
-function resetFromLine(line: string): string | null {
-  const match = line.match(/reset[s]?\s*(?:in|at)?\s*(.*)$/i);
-  if (match && match[1]) return match[1].trim();
-  return null;
-}
-
 export async function getCodexStatus(): Promise<CodexStatus | { error: string }> {
   const binary = await resolveBinary('codex', 'TMUX_AGENT_CODEX_BIN');
   if (!binary) return { error: 'codex not installed' };
-  const rpc = (await getCodexStatusRPC(binary)) as CodexRpcResult | { error: string } | null;
+  const rpc = await getCodexStatusRPC(binary);
   if (rpc && !('error' in rpc)) return rpc as CodexStatus;
   const fallbackError = rpc && 'error' in rpc ? String(rpc.error) : null;
   const output = await runPtyCommand(binary, ['-s', 'read-only', '-a', 'untrusted'], '/status\n', {
@@ -83,13 +78,13 @@ export async function getCodexStatus(): Promise<CodexStatus | { error: string }>
   const session = fiveLine
     ? {
         percentLeft: percentLeftFromLine(fiveLine),
-        reset: resetFromLine(fiveLine) || undefined,
+        reset: resetFromLine(fiveLine) ?? undefined,
       }
     : undefined;
   const weekly = weekLine
     ? {
         percentLeft: percentLeftFromLine(weekLine),
-        reset: resetFromLine(weekLine) || undefined,
+        reset: resetFromLine(weekLine) ?? undefined,
       }
     : undefined;
   const percentLines = lines.filter((line) => /\b\d{1,3}%\b/.test(line));
@@ -113,27 +108,138 @@ type RpcResponse = {
   result?: unknown;
 } & Record<string, unknown>;
 
+type RpcState = {
+  settled: boolean;
+  pending: Map<number, RpcPending>;
+  nextId: number;
+};
+
+function createRpcState(): RpcState {
+  return {
+    settled: false,
+    pending: new Map<number, RpcPending>(),
+    nextId: 1,
+  };
+}
+
+function finishRpc(
+  state: RpcState,
+  result: CodexRpcResult | { error: string },
+  proc: ReturnType<typeof spawn>,
+  resolve: (value: CodexRpcResult | { error: string } | null) => void
+): void {
+  if (state.settled) return;
+  state.settled = true;
+  try {
+    proc.kill();
+  } catch {}
+  resolve(result);
+}
+
+function sendRpc(proc: ReturnType<typeof spawn>, payload: Record<string, unknown>): void {
+  try {
+    if (proc.stdin) {
+      proc.stdin.write(`${JSON.stringify(payload)}\n`);
+    }
+  } catch {}
+}
+
+function createRpcRequest(
+  state: RpcState,
+  proc: ReturnType<typeof spawn>
+): (method: string, params?: Record<string, unknown>) => Promise<RpcResponse> {
+  return (method: string, params?: Record<string, unknown>): Promise<RpcResponse> => {
+    const id = state.nextId++;
+    return new Promise<RpcResponse>((resolveReq, rejectReq) => {
+      const timer = setTimeout(() => {
+        state.pending.delete(id);
+        rejectReq(new Error('request timeout'));
+      }, 5000);
+      state.pending.set(id, {
+        resolve: (msg) => {
+          clearTimeout(timer);
+          resolveReq(msg);
+        },
+        reject: rejectReq,
+      });
+      sendRpc(proc, { id, method, params: params || {} });
+    });
+  };
+}
+
+function buildRateLimitResult(result: RateLimitsPayload): CodexRpcResult {
+  const rateLimits = result.rateLimits || result;
+  const primary = rateLimits.primary;
+  const secondary = rateLimits.secondary;
+  const credits = rateLimits.credits;
+  
+  const session = primary
+    ? {
+        percentLeft:
+          typeof primary.usedPercent === 'number' ? Math.max(0, Math.round(100 - primary.usedPercent)) : undefined,
+        reset:
+          primary.resetsAt != null
+            ? new Date(primary.resetsAt * 1000).toISOString()
+            : undefined,
+      }
+    : undefined;
+    
+  const weekly = secondary
+    ? {
+        percentLeft:
+          typeof secondary.usedPercent === 'number'
+            ? Math.max(0, Math.round(100 - secondary.usedPercent))
+            : undefined,
+        reset:
+          secondary.resetsAt != null
+            ? new Date(secondary.resetsAt * 1000).toISOString()
+            : undefined,
+      }
+    : undefined;
+    
+  const creditValue = credits?.balance != null ? Number(String(credits.balance).replace(/,/g, '')) : undefined;
+  
+  return {
+    session,
+    weekly,
+    credits: Number.isFinite(creditValue) ? creditValue : undefined,
+    source: 'rpc',
+  };
+}
+
+async function executeRpcFlow(
+  state: RpcState,
+  proc: ReturnType<typeof spawn>,
+  timeout: ReturnType<typeof setTimeout>,
+  resolve: (value: CodexRpcResult | { error: string } | null) => void
+): Promise<void> {
+  const request = createRpcRequest(state, proc);
+  
+  try {
+    await request('initialize', { clientInfo: { name: 'ter', version: '0.1' } });
+    sendRpc(proc, { method: 'initialized', params: {} });
+    const rateLimitsResponse = await request('account/rateLimits/read', {});
+    const result = (rateLimitsResponse.result || rateLimitsResponse) as RateLimitsPayload;
+    const rpcResult = buildRateLimitResult(result);
+    clearTimeout(timeout);
+    finishRpc(state, rpcResult, proc, resolve);
+  } catch (err) {
+    clearTimeout(timeout);
+    const message = err instanceof Error ? err.message : String(err ?? 'rpc failed');
+    finishRpc(state, { error: `codex rpc failed: ${message}` }, proc, resolve);
+  }
+}
+
 async function getCodexStatusRPC(binary: string): Promise<CodexRpcResult | { error: string } | null> {
   return new Promise<CodexRpcResult | { error: string } | null>((resolve) => {
-    let settled = false;
-    const pending = new Map<number, RpcPending>();
-    let nextId = 1;
+    const state = createRpcState();
 
     const proc = spawn(binary, ['-s', 'read-only', '-a', 'untrusted', 'app-server'], {
-      env: { ...process.env, PATH: process.env.PATH || '' },
+      env: { ...process.env, PATH: process.env.PATH ?? '' },
       stdio: ['pipe', 'pipe', 'pipe'],
     });
 
-    const finish = (result: CodexRpcResult | { error: string }) => {
-      if (settled) return;
-      settled = true;
-      try {
-        proc.kill();
-      } catch {}
-      resolve(result);
-    };
-
-    const timeout = setTimeout(() => finish({ error: 'codex rpc timeout' }), 7000);
+    const timeout = setTimeout(() => finishRpc(state, { error: 'codex rpc timeout' }, proc, resolve), 7000);
 
     const rl = readline.createInterface({ input: proc.stdout });
     rl.on('line', (line) => {
@@ -143,97 +249,24 @@ async function getCodexStatusRPC(binary: string): Promise<CodexRpcResult | { err
       } catch {
         return;
       }
-      if (msg && msg.id != null && pending.has(msg.id)) {
-        const pendingReq = pending.get(msg.id);
+      if (msg && msg.id != null && state.pending.has(msg.id)) {
+        const pendingReq = state.pending.get(msg.id);
         if (!pendingReq) return;
-        pending.delete(msg.id);
+        state.pending.delete(msg.id);
         pendingReq.resolve(msg);
       }
     });
 
     proc.on('exit', () => {
       clearTimeout(timeout);
-      finish({ error: 'codex rpc closed' });
+      finishRpc(state, { error: 'codex rpc closed' }, proc, resolve);
     });
 
-    function send(payload: Record<string, unknown>) {
-      try {
-        proc.stdin.write(`${JSON.stringify(payload)}\n`);
-      } catch {}
-    }
-
-    function request(method: string, params?: Record<string, unknown>): Promise<RpcResponse> {
-      const id = nextId++;
-      return new Promise<RpcResponse>((resolveReq, rejectReq) => {
-        const timer = setTimeout(() => {
-          pending.delete(id);
-          rejectReq(new Error('request timeout'));
-        }, 5000);
-        pending.set(id, {
-          resolve: (msg) => {
-            clearTimeout(timer);
-            resolveReq(msg);
-          },
-          reject: rejectReq,
-        });
-        send({ id, method, params: params || {} });
-      });
-    }
-
-    (async () => {
-      try {
-        await request('initialize', { clientInfo: { name: 'ter', version: '0.1' } });
-        send({ method: 'initialized', params: {} });
-        const rateLimitsResponse = await request('account/rateLimits/read', {});
-        const result = (rateLimitsResponse.result || rateLimitsResponse) as RateLimitsPayload;
-        const rateLimits = result.rateLimits || result;
-        const primary = rateLimits.primary;
-        const secondary = rateLimits.secondary;
-        const credits = rateLimits.credits;
-        const session = primary
-          ? {
-              percentLeft:
-                typeof primary.usedPercent === 'number' ? Math.max(0, Math.round(100 - primary.usedPercent)) : undefined,
-              reset:
-                primary.resetsAt != null
-                  ? new Date(primary.resetsAt * 1000).toISOString()
-                  : undefined,
-            }
-          : undefined;
-        const weekly = secondary
-          ? {
-              percentLeft:
-                typeof secondary.usedPercent === 'number'
-                  ? Math.max(0, Math.round(100 - secondary.usedPercent))
-                  : undefined,
-              reset:
-                secondary.resetsAt != null
-                  ? new Date(secondary.resetsAt * 1000).toISOString()
-                  : undefined,
-            }
-          : undefined;
-        const creditValue = credits?.balance != null ? Number(String(credits.balance).replace(/,/g, '')) : undefined;
-        clearTimeout(timeout);
-        finish({ session, weekly, credits: Number.isFinite(creditValue) ? creditValue : undefined, source: 'rpc' });
-      } catch (err) {
-        clearTimeout(timeout);
-        const message = err instanceof Error ? err.message : String(err || 'rpc failed');
-        finish({ error: `codex rpc failed: ${message}` });
-      }
-    })().catch((err) => {
-      const message = err instanceof Error ? err.message : String(err || 'rpc failed');
-      finish({ error: `codex rpc failed: ${message}` });
+    executeRpcFlow(state, proc, timeout, resolve).catch((err) => {
+      const message = err instanceof Error ? err.message : String(err ?? 'rpc failed');
+      finishRpc(state, { error: `codex rpc failed: ${message}` }, proc, resolve);
     });
   });
-}
-
-function toInt(value: unknown): number {
-  if (typeof value === 'number' && Number.isFinite(value)) return value;
-  if (typeof value === 'string' && value.trim().length > 0) {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : 0;
-  }
-  return 0;
 }
 
 type TokenUsageSnapshot = {
@@ -268,28 +301,6 @@ async function listCodexFiles(root: string, days: number): Promise<string[]> {
     } catch {}
   }
   return files;
-}
-
-async function scanJsonlFile(filePath: string, onLine: (line: string) => void): Promise<void> {
-  return new Promise<void>((resolve) => {
-    const stream = fs.createReadStream(filePath, { encoding: 'utf8' });
-    let buffer = '';
-    stream.on('data', (chunk) => {
-      buffer += chunk;
-      let idx = buffer.indexOf('\n');
-      while (idx >= 0) {
-        const line = buffer.slice(0, idx);
-        buffer = buffer.slice(idx + 1);
-        if (line.trim().length > 0) onLine(line);
-        idx = buffer.indexOf('\n');
-      }
-    });
-    stream.on('end', () => {
-      if (buffer.trim().length > 0) onLine(buffer);
-      resolve();
-    });
-    stream.on('error', () => resolve());
-  });
 }
 
 export async function getCodexTokenUsage(days = 7): Promise<TokenUsage | null> {

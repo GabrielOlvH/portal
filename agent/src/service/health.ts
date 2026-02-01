@@ -1,11 +1,8 @@
-import { execFile } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { promisify } from 'node:util';
 import path from 'node:path';
 import os from 'node:os';
 import { detectPlatform, detectInitSystem, getServiceStatus, resolveInstallDir, type PlatformType, type InitSystem } from './manager';
-
-const execFileAsync = promisify(execFile);
+import { exec } from '../utils/exec';
 
 export interface UpdateInfo {
   available: boolean;
@@ -55,31 +52,6 @@ const UPDATE_CHECK_INTERVAL_MS = 60000; // 1 minute for testing
 const HEALTH_CHECK_INTERVAL_MS = 60000; // 1 minute
 const MAX_CONSECUTIVE_FAILURES = 3;
 
-async function exec(
-  command: string,
-  args: string[],
-  options: { cwd?: string; timeout?: number; ignoreError?: boolean } = {}
-): Promise<{ stdout: string; stderr: string; exitCode: number }> {
-  try {
-    const { stdout, stderr } = await execFileAsync(command, args, {
-      cwd: options.cwd,
-      timeout: options.timeout ?? 30000,
-      encoding: 'utf8',
-    });
-    return { stdout: stdout.trim(), stderr: stderr.trim(), exitCode: 0 };
-  } catch (error: unknown) {
-    if (options.ignoreError) {
-      const err = error as { stdout?: string; stderr?: string; code?: number };
-      return {
-        stdout: (err.stdout ?? '').trim(),
-        stderr: (err.stderr ?? '').trim(),
-        exitCode: err.code ?? 1,
-      };
-    }
-    throw error;
-  }
-}
-
 export async function getCurrentVersion(): Promise<string> {
   const installDir = resolveInstallDir();
   try {
@@ -126,7 +98,6 @@ export async function checkForUpdates(): Promise<UpdateInfo | null> {
 
     // Try main first, then master
     let remoteVersion = '';
-    let branch = 'main';
     try {
       const { stdout } = await exec('git', ['rev-parse', '--short', 'origin/main'], {
         cwd: installDir,
@@ -139,7 +110,6 @@ export async function checkForUpdates(): Promise<UpdateInfo | null> {
         ignoreError: true,
       });
       remoteVersion = stdout;
-      branch = 'master';
     }
 
     const available = currentVersion !== remoteVersion && remoteVersion !== '';

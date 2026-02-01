@@ -169,25 +169,6 @@ export function closeTunnel(id: string): { success: boolean; error?: string } {
 }
 
 /**
- * Get a specific tunnel by ID.
- */
-export function getTunnel(id: string): Tunnel | undefined {
-  const tunnel = activeTunnels.get(id);
-  if (!tunnel) return undefined;
-
-  return {
-    id: tunnel.id,
-    listenPort: tunnel.listenPort,
-    targetHost: tunnel.targetHost,
-    targetPort: tunnel.targetPort,
-    status: tunnel.status,
-    connections: tunnel.connections,
-    createdAt: tunnel.createdAt,
-    error: tunnel.error,
-  };
-}
-
-/**
  * Cleanup all tunnels on shutdown.
  */
 export function cleanupTunnels(): void {
