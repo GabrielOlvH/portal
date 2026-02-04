@@ -12,6 +12,7 @@ import { registerSessionRoutes } from './routes/sessions';
 import { registerTunnelRoutes } from './routes/tunnels';
 import { registerSystemRoutes } from './routes/system';
 import { registerUpdateRoutes } from './routes/update';
+import { registerProjectRoutes } from './routes/projects';
 
 export function buildApp() {
   const app = new Hono();
@@ -41,6 +42,7 @@ export function buildApp() {
   registerSystemRoutes(app);
   registerUpdateRoutes(app);
   registerCopilotRoutes(app);
+  registerProjectRoutes(app);
 
   return app;
 }

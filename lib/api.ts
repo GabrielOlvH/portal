@@ -269,6 +269,51 @@ export async function fetchProjectIcon(
   return request(host, `/project/icon?${params.toString()}`, { method: 'GET' });
 }
 
+// Project type for API (no hostId - it's implicit per host)
+export type RemoteProject = {
+  id: string;
+  name: string;
+  path: string;
+};
+
+// Get all projects from a host
+export async function getProjects(host: Host): Promise<{ projects: RemoteProject[] }> {
+  return request(host, '/projects', { method: 'GET' });
+}
+
+// Add a project to a host
+export async function addRemoteProject(
+  host: Host,
+  project: { name: string; path: string }
+): Promise<{ project: RemoteProject }> {
+  return request(host, '/projects', {
+    method: 'POST',
+    body: JSON.stringify(project),
+  });
+}
+
+// Update a project on a host
+export async function updateRemoteProject(
+  host: Host,
+  id: string,
+  updates: { name?: string; path?: string }
+): Promise<{ project: RemoteProject }> {
+  return request(host, `/projects/${encodeURIComponent(id)}`, {
+    method: 'PUT',
+    body: JSON.stringify(updates),
+  });
+}
+
+// Remove a project from a host
+export async function removeRemoteProject(
+  host: Host,
+  id: string
+): Promise<{ ok: boolean }> {
+  return request(host, `/projects/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+  });
+}
+
 export async function fetchDirectoryListing(
   host: Host,
   path?: string

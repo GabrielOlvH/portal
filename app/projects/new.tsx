@@ -33,7 +33,7 @@ export default function NewProjectScreen() {
   const canSubmit = selectedHostId && name.trim() && path.trim();
 
   const handleSubmit = async () => {
-    if (!canSubmit || submitting) return;
+    if (!canSubmit || submitting || !selectedHost) return;
 
     setSubmitting(true);
     try {
@@ -41,6 +41,7 @@ export default function NewProjectScreen() {
         hostId: selectedHostId!,
         name: name.trim(),
         path: path.trim(),
+        host: selectedHost,
       });
       router.back();
     } catch (err) {

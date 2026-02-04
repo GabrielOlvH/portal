@@ -12,6 +12,7 @@ import { getNavTheme } from '@/lib/theme';
 import { StoreProvider, useStore } from '@/lib/store';
 import { registerNotificationsForHosts, unregisterNotificationsForHosts } from '@/lib/notifications';
 import { ProjectsProvider } from '@/lib/projects-store';
+import { ProjectSyncManager } from '@/lib/project-sync';
 import { SnippetsProvider } from '@/lib/snippets-store';
 import { QueryProvider } from '@/lib/query';
 import { LaunchSheetProvider, useLaunchSheet } from '@/lib/launch-sheet';
@@ -84,6 +85,7 @@ function NavigationRoot() {
 
   return (
     <ProjectsProvider>
+      <ProjectSyncManager />
       <SnippetsProvider>
         <LaunchSheetProvider>
           <ThemeProvider value={navTheme}>
