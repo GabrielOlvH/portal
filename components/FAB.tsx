@@ -178,23 +178,23 @@ export function OrbitalAction({
   const Icon = iconMap[icon];
 
   return (
-    <AnimatedPressable
-      onPress={onPress}
-      style={[
-        styles.orbitalContainer,
-        {
-          backgroundColor: colors.card,
-          shadowColor: colors.shadow,
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.2,
-          shadowRadius: 8,
-          elevation: 5,
-        },
-        animatedStyle,
-      ]}
-    >
-      <Icon size={20} color={colors.accent} strokeWidth={2} />
-    </AnimatedPressable>
+      <AnimatedPressable
+        onPress={onPress}
+        style={[
+          styles.orbitalContainer,
+          {
+            backgroundColor: colors.accent,
+            shadowColor: colors.shadow,
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.2,
+            shadowRadius: 8,
+            elevation: 5,
+          },
+          animatedStyle,
+        ]}
+      >
+        <Icon size={20} color={colors.accentText} strokeWidth={2} />
+      </AnimatedPressable>
   );
 }
 

@@ -158,7 +158,7 @@ export function buildTerminalHtml(profile: TerminalHtmlProfile, wsUrl: string, t
   const config = buildConfig(profile, wsUrl, theme, font);
   const googleFontsLink = getGoogleFontsLink(font.fontFamily);
   const configJson = JSON.stringify(config);
-  const overlayMarkup = config.enableOverlay ? '<div id="overlay"></div>' : '';
+  const overlayMarkup = config.enableOverlay ? '<div id="overlay"></div><div id="selection-handle-start" class="selection-handle"></div><div id="selection-handle-end" class="selection-handle"></div>' : '';
   const baseStyles = config.enableOverlay
     ? `
       body { position: relative; }
@@ -169,6 +169,44 @@ export function buildTerminalHtml(profile: TerminalHtmlProfile, wsUrl: string, t
         -webkit-user-select: none;
         user-select: none;
         -webkit-touch-callout: none;
+      }
+      .selection-handle {
+        position: absolute;
+        width: 16px;
+        height: 16px;
+        background: ${theme.cursor || theme.foreground};
+        border-radius: 50%;
+        z-index: 10;
+        display: none;
+        pointer-events: auto;
+        touch-action: none;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+      }
+      .selection-handle::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 44px;
+        height: 44px;
+        transform: translate(-50%, -50%);
+        border-radius: 50%;
+      }
+      .selection-handle::after {
+        content: '';
+        position: absolute;
+        left: 50%;
+        top: 100%;
+        width: 2px;
+        height: 16px;
+        background: ${theme.cursor || theme.foreground};
+        transform: translateX(-50%);
+      }
+      .selection-handle.active {
+        display: block;
+      }
+      .selection-handle.dragging {
+        transform: scale(1.3);
       }
     `
     : `
@@ -202,6 +240,19 @@ export function buildTerminalHtml(profile: TerminalHtmlProfile, wsUrl: string, t
     <script src="https://unpkg.com/xterm/lib/xterm.js"></script>
     <script src="https://unpkg.com/xterm-addon-fit/lib/xterm-addon-fit.js"></script>
     <script>
+      // Error handling
+      window.onerror = function(msg, url, line, col, error) {
+        const errorDiv = document.createElement('div');
+        errorDiv.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#ff4444;color:white;padding:10px;z-index:9999;font-family:monospace;font-size:12px;white-space:pre-wrap;word-break:break-all;max-height:50vh;overflow:auto;';
+        errorDiv.textContent = 'Error: ' + msg + '\\nLine: ' + line + '\\nStack: ' + (error && error.stack ? error.stack : 'N/A');
+        document.body.appendChild(errorDiv);
+        if (window.ReactNativeWebView) {
+          window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'error', message: msg, line: line, stack: error && error.stack }));
+        }
+        return false;
+      };
+      
+      try {
       const config = ${configJson};
       const termOptions = {
         cursorBlink: config.mode === 'interactive',
@@ -536,6 +587,7 @@ export function buildTerminalHtml(profile: TerminalHtmlProfile, wsUrl: string, t
         });
         bindFocusEvents();
       }
+
       term.onRender(() => {
         if (hasFitted) return;
         requestDimensions();
@@ -802,6 +854,13 @@ export function buildTerminalHtml(profile: TerminalHtmlProfile, wsUrl: string, t
         let selectionStartRow = 0;
         const LONG_PRESS_DURATION = 400;
         const MOVE_THRESHOLD = 10;
+        const DOUBLE_TAP_DELAY = 250;
+        const TRIPLE_TAP_DELAY = 300;
+        let lastTapTime = 0;
+        let lastTapX = 0;
+        let lastTapY = 0;
+        let tapCount = 0;
+        let tapTimeout = null;
 
         function touchToCell(clientX, clientY) {
           const terminalEl = document.getElementById('terminal');
@@ -814,6 +873,9 @@ export function buildTerminalHtml(profile: TerminalHtmlProfile, wsUrl: string, t
           const maxRow = Math.max(0, term.rows - 1);
           return { col: clamp(col, 0, maxCol), row: clamp(row, 0, maxRow) };
         }
+
+        let isDraggingSelectionHandle = false;
+        let shouldClearSelectionOnTap = false;
 
         if (overlay) overlay.addEventListener('touchstart', (e) => {
           if (e.touches.length === 1) {
@@ -830,7 +892,9 @@ export function buildTerminalHtml(profile: TerminalHtmlProfile, wsUrl: string, t
             }
             isSelectionMode = false;
             isVerticalScroll = null;
-            term.clearSelection();
+            // Mark that we should clear selection on tap, but don't clear yet
+            // This gives handles time to set isDraggingSelectionHandle
+            shouldClearSelectionOnTap = term.hasSelection();
           }
         }, { passive: true });
 
@@ -893,14 +957,199 @@ export function buildTerminalHtml(profile: TerminalHtmlProfile, wsUrl: string, t
           }
         }, { passive: false });
 
-        if (overlay) overlay.addEventListener('touchend', () => {
+        if (overlay) overlay.addEventListener('touchend', (e) => {
           if (!touchMoved && !isSelectionMode) {
-            term.focus();
+            const now = Date.now();
+            const x = e.changedTouches[0]?.clientX || 0;
+            const y = e.changedTouches[0]?.clientY || 0;
+            const timeSinceLastTap = now - lastTapTime;
+            const distance = Math.sqrt(Math.pow(x - lastTapX, 2) + Math.pow(y - lastTapY, 2));
+            
+            if (timeSinceLastTap < DOUBLE_TAP_DELAY && distance < 20) {
+              // This is a multi-tap
+              tapCount++;
+              if (tapTimeout) {
+                clearTimeout(tapTimeout);
+                tapTimeout = null;
+              }
+              
+              const cell = touchToCell(x, y);
+              const absoluteRow = cell.row + term.buffer.active.viewportY;
+              
+              if (tapCount === 2) {
+                // Triple tap - select entire line
+                term.select(0, absoluteRow, term.cols);
+                sendToRN({ type: 'haptic' });
+                tapCount = 0;
+              } else if (tapCount === 1) {
+                // Double tap - select word at position
+                const line = term.buffer.active.getLine(absoluteRow);
+                if (line) {
+                  const text = line.translateToString(true);
+                  const wordRegex = /[\\w./-]+/g;
+                  let match;
+                  while ((match = wordRegex.exec(text)) !== null) {
+                    if (match.index <= cell.col && match.index + match[0].length > cell.col) {
+                      term.select(match.index, absoluteRow, match[0].length);
+                      break;
+                    }
+                  }
+                }
+                sendToRN({ type: 'haptic' });
+                // Wait to see if it's a triple tap
+                tapTimeout = setTimeout(() => {
+                  tapCount = 0;
+                  tapTimeout = null;
+                }, TRIPLE_TAP_DELAY);
+              }
+            } else {
+              // Single tap - focus terminal and clear selection
+              tapCount = 0;
+              if (shouldClearSelectionOnTap && !isDraggingSelectionHandle) {
+                term.clearSelection();
+              }
+              shouldClearSelectionOnTap = false;
+              term.focus();
+            }
+            
+            lastTapTime = now;
+            lastTapX = x;
+            lastTapY = y;
           }
           if (isVerticalScroll && !isSelectionMode && config.enableSgrScroll) {
             startMomentum();
           }
         }, { passive: true });
+
+        // Selection handles - follow xterm's native selection
+        const handleStart = document.getElementById('selection-handle-start');
+        const handleEnd = document.getElementById('selection-handle-end');
+        let draggingHandle = null;
+        let selectionAnchor = null; // Track which end is anchored during drag
+
+        function updateSelectionHandles() {
+          const sel = term.getSelectionPosition();
+
+          if (!handleStart || !handleEnd || !sel) {
+            if (handleStart) handleStart.classList.remove('active');
+            if (handleEnd) handleEnd.classList.remove('active');
+            return;
+          }
+
+          const terminalEl = document.getElementById('terminal');
+          if (!terminalEl) return;
+
+          const rect = getTerminalContentRect(terminalEl);
+          const cellSize = getCellSize(terminalEl);
+          const viewportY = term.buffer.active.viewportY;
+
+          // xterm: 1-based coords, convert to 0-based
+          const startCol = sel.start.x - 1;
+          const startRow = sel.start.y - 1;
+          const endCol = Math.max(0, sel.end.x - 2);  // end.x is exclusive
+          const endRow = sel.end.y - 1;
+
+          // Calculate pixel positions
+          const startX = rect.left + startCol * cellSize.width;
+          const startY = rect.top + (startRow - viewportY) * cellSize.height + cellSize.height;
+          const endX = rect.left + endCol * cellSize.width;
+          const endY = rect.top + (endRow - viewportY) * cellSize.height + cellSize.height;
+
+          // Only show handles if selection is visible in viewport
+          const startVisible = startRow >= viewportY && startRow < viewportY + term.rows;
+          const endVisible = endRow >= viewportY && endRow < viewportY + term.rows;
+
+          if (startVisible) {
+            handleStart.style.left = (startX - 8) + 'px';
+            handleStart.style.top = (startY - 8) + 'px';
+            handleStart.classList.add('active');
+          } else {
+            handleStart.classList.remove('active');
+          }
+
+          if (endVisible) {
+            handleEnd.style.left = (endX - 8) + 'px';
+            handleEnd.style.top = (endY - 8) + 'px';
+            handleEnd.classList.add('active');
+          } else {
+            handleEnd.classList.remove('active');
+          }
+        }
+
+        function setupHandleDrag(handle, isStartHandle) {
+          if (!handle) return;
+
+          handle.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            isDraggingSelectionHandle = true;
+            shouldClearSelectionOnTap = false; // Don't clear - we're using the handle
+            draggingHandle = isStartHandle ? 'start' : 'end';
+            handle.classList.add('dragging');
+
+            // Store anchor from xterm's selection position
+            // xterm returns 1-based coords, convert to 0-based to match touchToCell + viewportY
+            const sel = term.getSelectionPosition();
+            if (sel) {
+              if (isStartHandle) {
+                // Anchor is the END position (col is exclusive -2, row is 1-based -1)
+                selectionAnchor = { col: Math.max(0, sel.end.x - 2), row: sel.end.y - 1 };
+              } else {
+                // Anchor is the START position (col -1, row -1 for 0-based)
+                selectionAnchor = { col: sel.start.x - 1, row: sel.start.y - 1 };
+              }
+            }
+          }, { capture: true, passive: false });
+
+          handle.addEventListener('touchmove', (e) => {
+            if (!draggingHandle || !selectionAnchor) return;
+            e.preventDefault();
+            e.stopPropagation();
+
+            const touch = e.touches[0];
+            const cellPos = touchToCell(touch.clientX, touch.clientY);
+            const newRow = cellPos.row + term.buffer.active.viewportY;
+            const newCol = cellPos.col;
+
+            // Calculate selection from anchor to new position (all 0-based)
+            const anchorRow = selectionAnchor.row;
+            const anchorCol = selectionAnchor.col;
+
+            // Determine start and end based on position
+            let sCol, sRow, eCol, eRow;
+            if (newRow < anchorRow || (newRow === anchorRow && newCol < anchorCol)) {
+              sCol = newCol; sRow = newRow;
+              eCol = anchorCol; eRow = anchorRow;
+            } else {
+              sCol = anchorCol; sRow = anchorRow;
+              eCol = newCol; eRow = newRow;
+            }
+
+            // Calculate length and call term.select()
+            let length;
+            if (sRow === eRow) {
+              length = Math.max(1, eCol - sCol + 1);
+            } else {
+              length = (term.cols - sCol) + (eRow - sRow - 1) * term.cols + eCol + 1;
+            }
+            // term.select uses 0-based column but buffer row (absolute)
+            term.select(sCol, sRow, length);
+          }, { passive: false });
+
+          handle.addEventListener('touchend', () => {
+            isDraggingSelectionHandle = false;
+            draggingHandle = null;
+            selectionAnchor = null;
+            handle.classList.remove('dragging');
+          });
+        }
+
+        setupHandleDrag(handleStart, true);
+        setupHandleDrag(handleEnd, false);
+
+        // Update handles when selection or scroll changes
+        term.onScroll(() => updateSelectionHandles());
+        term.onSelectionChange(() => updateSelectionHandles());
       }
 
       loadFonts();
@@ -935,6 +1184,15 @@ export function buildTerminalHtml(profile: TerminalHtmlProfile, wsUrl: string, t
       });
       
       connect();
+      } catch (e) {
+        const errorDiv = document.createElement('div');
+        errorDiv.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#ff4444;color:white;padding:10px;z-index:9999;font-family:monospace;font-size:12px;white-space:pre-wrap;word-break:break-all;max-height:50vh;overflow:auto;';
+        errorDiv.textContent = 'Fatal Error: ' + (e && e.message ? e.message : String(e)) + '\\nStack: ' + (e && e.stack ? e.stack : 'N/A');
+        document.body.appendChild(errorDiv);
+        if (window.ReactNativeWebView) {
+          window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'fatalError', message: e && e.message ? e.message : String(e), stack: e && e.stack ? e.stack : 'N/A' }));
+        }
+      }
     </script>
   </body>
 </html>`;

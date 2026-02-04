@@ -236,7 +236,7 @@ function UsageIcon({
             style={[
               styles.tooltip,
               {
-                backgroundColor: colors.card,
+                backgroundColor: colors.background,
                 left: tooltipPosition.x,
                 top: tooltipPosition.y,
                 borderColor: colors.separator,

@@ -135,8 +135,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     width: 50,
   },
   pathBar: {
-    backgroundColor: colors.card,
-    borderRadius: theme.radii.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.separator,
     padding: theme.spacing.sm,
     marginBottom: theme.spacing.md,
   },

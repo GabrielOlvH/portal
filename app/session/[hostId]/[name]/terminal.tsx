@@ -15,12 +15,6 @@ import {
   ViewStyle,
   View,
 } from 'react-native';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  Easing,
-} from 'react-native-reanimated';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useIsFocused } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -50,6 +44,7 @@ import { TerminalWebView } from '@/components/TerminalWebView';
 import { useStore } from '@/lib/store';
 import { useSnippets } from '@/lib/snippets-store';
 import { useTheme } from '@/lib/useTheme';
+import { useDeviceType } from '@/lib/useDeviceType';
 import { useHostLive } from '@/lib/live';
 import { uploadImage } from '@/lib/api';
 import { buildTerminalHtml, TERMINAL_HTML_VERSION, TerminalFontConfig } from '@/lib/terminal-html';
@@ -102,6 +97,12 @@ type TerminalStyles = {
   dictationInput: TextStyle;
   sendButton: ViewStyle;
   sendButtonDisabled: ViewStyle;
+  sessionBar: ViewStyle;
+  sessionBarContent: ViewStyle;
+  sessionPill: ViewStyle;
+  sessionPillActive: ViewStyle;
+  sessionPillText: TextStyle;
+  sessionPillTextActive: TextStyle;
 };
 
 const mainHelperKeys: HelperKey[] = [
@@ -136,6 +137,7 @@ export default function SessionTerminalScreen(): React.ReactElement {
   const isFocused = useIsFocused();
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const insets = useSafeAreaInsets();
+  const { isTablet } = useDeviceType();
 
   // Calculate pager height directly - no need to wait for onLayout
   const pagerHeight = screenHeight - insets.top;
@@ -154,51 +156,6 @@ export default function SessionTerminalScreen(): React.ReactElement {
   const sourceCache = useRef<Record<string, SourceCacheEntry>>({});
   const styles = useMemo(() => createStyles(colors), [colors]);
   const fitScript = 'window.__fitTerminal && window.__fitTerminal(); true;';
-
-  // Animated keyboard height for smooth push-up animation
-  const keyboardHeight = useSharedValue(0);
-  const helperHeightValue = useSharedValue(0);
-  
-  useEffect(() => {
-    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
-    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
-    
-    // iOS keyboard curve (UIViewAnimationCurveKeyboard = 7, approximated as cubic bezier)
-    const iosKeyboardEasing = Easing.bezier(0.33, 0.01, 0.0, 1.0);
-    
-    const showListener = Keyboard.addListener(showEvent, (e) => {
-      const duration = e.duration || 250;
-      keyboardHeight.value = withTiming(e.endCoordinates.height, {
-        duration,
-        easing: iosKeyboardEasing,
-      });
-    });
-    
-    const hideListener = Keyboard.addListener(hideEvent, (e) => {
-      const duration = e.duration || 250;
-      keyboardHeight.value = withTiming(0, {
-        duration,
-        easing: iosKeyboardEasing,
-      });
-    });
-    
-    return () => {
-      showListener.remove();
-      hideListener.remove();
-    };
-  }, [keyboardHeight]);
-
-  const animatedContainerStyle = useAnimatedStyle(() => {
-    // Only apply helper height offset when keyboard is open
-    const helperOffset = keyboardHeight.value > 0 ? helperHeightValue.value : 0;
-    return {
-      transform: [{ translateY: -(keyboardHeight.value + helperOffset) }],
-    };
-  });
-  const animatedHelperStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: -keyboardHeight.value }],
-    opacity: keyboardHeight.value > 0 ? 1 : 0,
-  }));
 
   const terminalTheme = useMemo(
     () => ({
@@ -533,7 +490,7 @@ export default function SessionTerminalScreen(): React.ReactElement {
       ref.injectJavaScript(fitScript);
     }, 50);
     return () => clearTimeout(timeout);
-  }, [currentSessionName, isFocused, pagerHeight]);
+  }, [currentSessionName, isFocused, pagerHeight, keyboardInset, helperHeight]);
 
 
   // Track the previous session name to detect actual changes
@@ -611,7 +568,7 @@ export default function SessionTerminalScreen(): React.ReactElement {
         </View>
       </View>
 
-      <Animated.View style={[styles.pagerFrame, animatedContainerStyle]}>
+      <View style={styles.pagerFrame}>
         <ScrollView
           ref={pagerRef}
           horizontal
@@ -659,7 +616,7 @@ export default function SessionTerminalScreen(): React.ReactElement {
                   </View>
                 )}
                 <View
-                  style={styles.terminal}
+                  style={[styles.terminal, keyboardInset > 0 && isCurrent && { paddingBottom: keyboardInset + helperHeight }]}
                 >
                   <TerminalWebView
                     setRef={(ref) => { webRefs.current[session.name] = ref; }}
@@ -724,13 +681,13 @@ export default function SessionTerminalScreen(): React.ReactElement {
             );
           })}
         </ScrollView>
-      </Animated.View>
+      </View>
 
-      <Animated.View style={[styles.helperOverlay, animatedHelperStyle]} pointerEvents={keyboardInset > 0 ? 'auto' : 'none'}>
+      {keyboardInset > 0 && (
+        <View style={[styles.helperOverlay, { bottom: keyboardInset }]}>
         <View style={styles.helperBar} onLayout={(e) => {
           const height = e.nativeEvent.layout.height;
           setHelperHeight(height);
-          helperHeightValue.value = height;
         }}>
           <ScrollView
             horizontal
@@ -859,7 +816,8 @@ export default function SessionTerminalScreen(): React.ReactElement {
               )
             )}
           </View>
-        </Animated.View>
+        </View>
+      )}
     </Screen>
   );
 }
@@ -1043,6 +1001,35 @@ function createStyles(colors: ThemeColors): TerminalStyles {
     },
     sendButtonDisabled: {
       opacity: 0.5,
+    },
+    sessionBar: {
+      backgroundColor: colors.terminalBackground,
+      borderTopWidth: 1,
+      borderTopColor: colors.terminalBorder,
+      paddingVertical: 8,
+    },
+    sessionBarContent: {
+      paddingHorizontal: 12,
+      gap: 8,
+    },
+    sessionPill: {
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 16,
+      backgroundColor: colors.terminalPressed,
+      borderWidth: 1,
+      borderColor: colors.terminalBorder,
+    },
+    sessionPillActive: {
+      backgroundColor: colors.blue,
+      borderColor: colors.blue,
+    },
+    sessionPillText: {
+      color: colors.terminalForeground,
+      fontSize: 13,
+    },
+    sessionPillTextActive: {
+      color: '#fff',
     },
   });
 }

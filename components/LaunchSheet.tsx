@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   Dimensions,
   Image,
+  ViewStyle,
 } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -175,29 +176,34 @@ function ProjectIcon({
   project: Project;
   host: Host | null;
   colors: ThemeColors;
-  style: ReturnType<typeof createStepStyles>['projectIcon'];
+  style: ViewStyle;
 }) {
   const [iconUrl, setIconUrl] = useState<string | null>(project.iconUrl || null);
-  const [loading, setLoading] = useState(!project.iconUrl && !!host);
+  const [loading, setLoading] = useState(false);
+  const [attempted, setAttempted] = useState(false);
+  const [imageError, setImageError] = useState(false);
 
   useEffect(() => {
-    if (project.iconUrl || !host) {
-      setLoading(false);
+    if (project.iconUrl || !host || attempted) {
       return;
     }
 
     let cancelled = false;
+    setLoading(true);
+    
     async function loadIcon() {
       try {
         const result = await fetchProjectIcon(host!, project.path);
         if (!cancelled && result.found) {
           setIconUrl(result.data);
+          setImageError(false);
         }
-      } catch {
-        // Ignore errors, fallback to letter
+      } catch (err) {
+        console.warn(`[ProjectIcon] Failed to fetch icon for ${project.name}:`, err);
       } finally {
         if (!cancelled) {
           setLoading(false);
+          setAttempted(true);
         }
       }
     }
@@ -205,30 +211,41 @@ function ProjectIcon({
     return () => {
       cancelled = true;
     };
-  }, [project.id, project.path, project.iconUrl, host]);
+  }, [project.id, project.path, project.iconUrl, host, attempted]);
+
+  const baseStyle: ViewStyle = {
+    ...style,
+    backgroundColor: colors.accent + '20',
+    alignItems: 'center',
+    justifyContent: 'center',
+  };
 
   if (loading) {
     return (
-      <View style={[style, { backgroundColor: colors.accent + '20' }]}>
+      <View style={baseStyle}>
         <ActivityIndicator size="small" color={colors.accent} />
       </View>
     );
   }
 
-  if (iconUrl) {
+  if (iconUrl && !imageError) {
     return (
-      <View style={[style, { backgroundColor: colors.accent + '10' }]}>
+      <View style={{ ...baseStyle, backgroundColor: colors.accent + '10' }}>
         <Image
           source={{ uri: iconUrl }}
           style={{ width: 22, height: 22, borderRadius: 4 }}
           resizeMode="contain"
+          onError={() => {
+            console.warn(`[ProjectIcon] Image failed to load for ${project.name}`);
+            setImageError(true);
+          }}
         />
       </View>
     );
   }
 
   return (
-    <View style={[style, { backgroundColor: colors.accent + '20' }]}>
+    <View style={baseStyle}>
       <AppText variant="subtitle" style={{ color: colors.accent, fontSize: 14 }}>
         {project.name.charAt(0).toUpperCase()}
       </AppText>

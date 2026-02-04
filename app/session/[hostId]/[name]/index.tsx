@@ -267,7 +267,6 @@ const createStyles = (colors: ThemeColors, isDark: boolean) => {
     fontFamily: 'JetBrainsMono_400Regular',
     fontSize: 14,
     color: colors.text,
-    backgroundColor: colors.card,
   },
   actionButton: {
     backgroundColor: colors.blue,

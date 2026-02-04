@@ -32,7 +32,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   input: {
     borderWidth: 1,
     borderColor: colors.border,
-    backgroundColor: colors.card,
     borderRadius: theme.radii.md,
     paddingHorizontal: 12,
     paddingVertical: 10,

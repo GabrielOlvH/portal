@@ -20,10 +20,10 @@ type NotifeeModule = {
     };
   }): Promise<string>;
   cancelNotification(notificationId: string): Promise<void>;
-  AndroidImportance: {
-    HIGH: number;
-  };
 };
+
+// Android notification importance levels (from notifee)
+const IMPORTANCE_HIGH = 4;
 
 const CHANNEL_ID = 'task-updates';
 const NOTIFICATION_ID = 'task-ongoing';
@@ -35,7 +35,9 @@ function getNotifee(): NotifeeModule | null {
   if (Platform.OS !== 'android') return null;
   if (moduleCache !== undefined) return moduleCache;
   try {
-    moduleCache = require('@notifee/react-native') as NotifeeModule;
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const mod = require('@notifee/react-native');
+    moduleCache = mod.default as NotifeeModule;
   } catch (error) {
     console.warn('[OngoingNotifications] Failed to load notifee module:', error);
     moduleCache = null;
@@ -48,7 +50,7 @@ async function ensureChannel(notifee: NotifeeModule): Promise<string> {
   await notifee.createChannel({
     id: CHANNEL_ID,
     name: 'Task updates',
-    importance: notifee.AndroidImportance.HIGH,
+    importance: IMPORTANCE_HIGH,
   });
   channelReady = true;
   return CHANNEL_ID;

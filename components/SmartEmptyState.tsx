@@ -49,7 +49,7 @@ const emptyStateContent = {
 };
 
 // Animated illustration components
-function TerminalIllustration({ colors, isDark }: { colors: { accent: string; textMuted: string; card: string; text: string }; isDark: boolean }) {
+function TerminalIllustration({ colors, isDark }: { colors: { accent: string; textMuted: string; card: string; text: string; barBg: string }; isDark: boolean }) {
   const cursorOpacity = useSharedValue(1);
   
   React.useEffect(() => {
@@ -89,7 +89,7 @@ function TerminalIllustration({ colors, isDark }: { colors: { accent: string; te
   );
 }
 
-function ServerIllustration({ colors, isDark }: { colors: { accent: string; textMuted: string; card: string; text: string }; isDark: boolean }) {
+function ServerIllustration({ colors, isDark }: { colors: { accent: string; textMuted: string; card: string; text: string; barBg: string }; isDark: boolean }) {
   const pulseScale = useSharedValue(1);
   
   React.useEffect(() => {
@@ -129,7 +129,7 @@ function ServerIllustration({ colors, isDark }: { colors: { accent: string; text
   );
 }
 
-function FolderIllustration({ colors, isDark }: { colors: { accent: string; textMuted: string; card: string; text: string }; isDark: boolean }) {
+function FolderIllustration({ colors, isDark }: { colors: { accent: string; textMuted: string; card: string; text: string; barBg: string }; isDark: boolean }) {
   // Theme-aware folder tab color - use accent with transparency for better theme contrast
   const folderTabBg = withAlpha(colors.accent, 0.3);
 
@@ -146,7 +146,7 @@ function FolderIllustration({ colors, isDark }: { colors: { accent: string; text
   );
 }
 
-function SparklesIllustration({ colors, isDark }: { colors: { accent: string; textMuted: string; card: string; text: string }; isDark: boolean }) {
+function SparklesIllustration({ colors, isDark }: { colors: { accent: string; textMuted: string; card: string; text: string; barBg: string }; isDark: boolean }) {
   const rotate = useSharedValue(0);
   
   React.useEffect(() => {
