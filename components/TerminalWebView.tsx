@@ -60,14 +60,16 @@ export function TerminalWebView({
     const layout = layoutRef.current;
     if (!layout || layout.width <= 0 || layout.height <= 0) return;
     if (!request.proposed || request.proposed.cols <= 0 || request.proposed.rows <= 0) return;
-    // Verify container matches RN layout (within tolerance)
-    const tolerance = 8;
-    const widthMatch = Math.abs(request.container.width - layout.width) < tolerance;
-    const heightMatch = Math.abs(request.container.height - layout.height) < tolerance;
-    if (widthMatch && heightMatch) {
+    // The WebView computes proposed cols/rows from its own DOM measurements.
+    // RN `onLayout` can differ by a couple px (rounding/safe-area/transform),
+    // and being too strict here can permanently prevent fitting, leaving blank
+    // space on the right/bottom.
+    const dw = Math.abs(request.container.width - layout.width);
+    const dh = Math.abs(request.container.height - layout.height);
+    const hugeMismatch = dw > 64 || dh > 64;
+    if (!hugeMismatch) {
       confirmDimensions(request.proposed.cols, request.proposed.rows);
     }
-    // If mismatch, don't confirm - WebView will retry
   }, [autoFit, confirmDimensions]);
 
   const handleMessage = useCallback((event: WebViewMessageEvent) => {
@@ -151,7 +153,12 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
   },
   webview: {
-    ...StyleSheet.absoluteFillObject,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    // iOS can show a tiny right/bottom seam due to fractional layout rounding.
+    // Overscan by a couple px to ensure the terminal paints to the edges.
+    right: Platform.OS === 'ios' ? -2 : 0,
+    bottom: Platform.OS === 'ios' ? -2 : 0,
   },
 });
-

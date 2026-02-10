@@ -14,10 +14,10 @@ import {
   useWindowDimensions,
   ViewStyle,
   View,
+  PixelRatio,
 } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useIsFocused } from '@react-navigation/native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { WebView } from 'react-native-webview';
 import {
   ChevronDown,
@@ -136,11 +136,12 @@ export default function SessionTerminalScreen(): React.ReactElement {
   );
   const isFocused = useIsFocused();
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
-  const insets = useSafeAreaInsets();
   const { isTablet } = useDeviceType();
 
-  // Calculate pager height directly - no need to wait for onLayout
-  const pagerHeight = screenHeight - insets.top;
+  // Use the ScrollView viewport's measured size; that's what `pagingEnabled` snaps to.
+  const [pagerViewport, setPagerViewport] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
+  const pageWidth = pagerViewport.width > 0 ? pagerViewport.width : screenWidth;
+  const pageHeight = pagerViewport.height > 0 ? pagerViewport.height : screenHeight;
 
   const [currentSessionName, setCurrentSessionName] = useState(initialSessionName);
   const [keyboardOffset, setKeyboardOffset] = useState(0);
@@ -427,6 +428,7 @@ export default function SessionTerminalScreen(): React.ReactElement {
 
 
   const pagerRef = useRef<ScrollView | null>(null);
+  const prevPageWidthRef = useRef(pageWidth);
 
   const updateCurrentSession = useCallback((index: number) => {
     const session = sessions[index];
@@ -464,19 +466,21 @@ export default function SessionTerminalScreen(): React.ReactElement {
   const lastSnappedIndexRef = useRef<number | null>(null);
 
   const handlePagerScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const nextIndex = Math.round(event.nativeEvent.contentOffset.x / screenWidth);
+    if (pageWidth <= 0) return;
+    const nextIndex = Math.round(event.nativeEvent.contentOffset.x / pageWidth);
     if (!Number.isFinite(nextIndex)) return;
     if (lastSnappedIndexRef.current !== null && nextIndex !== lastSnappedIndexRef.current) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
     lastSnappedIndexRef.current = nextIndex;
-  }, [screenWidth]);
+  }, [pageWidth]);
 
   const handlePagerMomentumEnd = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const nextIndex = Math.round(event.nativeEvent.contentOffset.x / screenWidth);
+    if (pageWidth <= 0) return;
+    const nextIndex = Math.round(event.nativeEvent.contentOffset.x / pageWidth);
     if (!Number.isFinite(nextIndex)) return;
     updateCurrentSession(nextIndex);
-  }, [screenWidth, updateCurrentSession]);
+  }, [pageWidth, updateCurrentSession]);
 
   const keyboardInset = focusedSessionName === currentSessionName ? Math.max(0, keyboardOffset) : 0;
 
@@ -490,7 +494,7 @@ export default function SessionTerminalScreen(): React.ReactElement {
       ref.injectJavaScript(fitScript);
     }, 50);
     return () => clearTimeout(timeout);
-  }, [currentSessionName, isFocused, pagerHeight, keyboardInset, helperHeight]);
+  }, [currentSessionName, isFocused, pageWidth, pageHeight, keyboardInset, helperHeight]);
 
 
   // Track the previous session name to detect actual changes
@@ -506,12 +510,28 @@ export default function SessionTerminalScreen(): React.ReactElement {
     
     const index = sessions.findIndex((session) => session.name === currentSessionName);
     if (index < 0) return;
-    const x = index * screenWidth;
+    if (pageWidth <= 0) return;
+    const x = index * pageWidth;
     // Use requestAnimationFrame to ensure layout is complete before scrolling
     requestAnimationFrame(() => {
       pagerRef.current?.scrollTo({ x, animated: false });
     });
-  }, [currentSessionName, sessions, screenWidth]);
+  }, [currentSessionName, sessions, pageWidth]);
+
+  // Keep the pager snapped correctly when the window width changes (rotation, iPad split view, etc).
+  // Without this, the ScrollView can end up "between pages", leaving blank space and making the
+  // terminal look like it isn't filling the screen.
+  useEffect(() => {
+    if (!currentSessionName) return;
+    if (pageWidth <= 0) return;
+    if (prevPageWidthRef.current === pageWidth) return;
+    prevPageWidthRef.current = pageWidth;
+    const index = sessions.findIndex((session) => session.name === currentSessionName);
+    if (index < 0) return;
+    requestAnimationFrame(() => {
+      pagerRef.current?.scrollTo({ x: index * pageWidth, animated: false });
+    });
+  }, [currentSessionName, pageWidth, sessions]);
 
   useEffect(() => {
     if (!currentSessionName) return;
@@ -539,6 +559,7 @@ export default function SessionTerminalScreen(): React.ReactElement {
 
   return (
     <Screen variant="terminal">
+      <Stack.Screen options={{ contentStyle: { backgroundColor: colors.terminalBackground } }} />
       <View style={styles.header}>
         <View style={styles.headerFloating}>
           <Pressable
@@ -568,20 +589,39 @@ export default function SessionTerminalScreen(): React.ReactElement {
         </View>
       </View>
 
-      <View style={styles.pagerFrame}>
+      <View
+        style={styles.pagerFrame}
+      >
         <ScrollView
           ref={pagerRef}
           horizontal
           pagingEnabled
           showsHorizontalScrollIndicator={false}
           scrollEnabled={!isSelecting}
+          contentInsetAdjustmentBehavior="never"
           onScroll={handlePagerScroll}
           onMomentumScrollEnd={handlePagerMomentumEnd}
           scrollEventThrottle={16}
           style={styles.pager}
+          onLayout={(e) => {
+            const { width, height } = e.nativeEvent.layout;
+            if (width <= 0 || height <= 0) return;
+            // Round up to the nearest physical pixel. Rounding down is how you get
+            // a 1px "gap" on the right/bottom where the previous screen shows through.
+            const scale = PixelRatio.get();
+            const w = Math.ceil(width * scale) / scale;
+            const h = Math.ceil(height * scale) / scale;
+            setPagerViewport((prev) => (prev.width === w && prev.height === h ? prev : { width: w, height: h }));
+          }}
           contentContainerStyle={[
             styles.pagerContent,
-            { height: pagerHeight, width: screenWidth * Math.max(1, sessionCount) },
+            (() => {
+              const count = Math.max(1, sessionCount);
+              const scale = PixelRatio.get();
+              const contentWidth = Math.ceil((pageWidth * count) * scale) / scale;
+              const contentHeight = Math.ceil(pageHeight * scale) / scale;
+              return { height: contentHeight, width: contentWidth };
+            })(),
           ]}
         >
           {sessions.map((session) => {
@@ -595,7 +635,7 @@ export default function SessionTerminalScreen(): React.ReactElement {
             const statusColor = isRunning ? colors.green : isIdle ? colors.orange : colors.textMuted;
 
             return (
-              <View key={session.name} style={[styles.page, { width: screenWidth, height: pagerHeight }]}>
+              <View key={session.name} style={[styles.page, { width: pageWidth, height: pageHeight }]}>
                 {!isCurrent && (
                   <View style={styles.pageLabel}>
                     <View style={styles.pageLabelContent}>
@@ -854,9 +894,13 @@ function createStyles(colors: ThemeColors): TerminalStyles {
     pager: {
       flex: 1,
       paddingTop: 4,
+      backgroundColor: colors.terminalBackground,
+      width: '100%',
     },
     pagerFrame: {
       flex: 1,
+      backgroundColor: colors.terminalBackground,
+      width: '100%',
     },
     pagerContent: {
       height: '100%',
@@ -866,6 +910,7 @@ function createStyles(colors: ThemeColors): TerminalStyles {
       flex: 1,
       height: '100%',
       backgroundColor: colors.terminalBackground,
+      width: '100%',
     },
     pageLabel: {
       position: 'absolute',

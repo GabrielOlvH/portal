@@ -58,7 +58,8 @@ type TerminalHtmlConfig = {
   allowCopyAll: boolean;
 };
 
-export const TERMINAL_HTML_VERSION = 'xterm-shared-v1';
+// Bump to force WebView HTML refresh when the markup/CSS changes.
+export const TERMINAL_HTML_VERSION = 'xterm-shared-v3';
 
 function buildConfig(profile: TerminalHtmlProfile, wsUrl: string, theme: TerminalTheme, font: TerminalFontConfig): TerminalHtmlConfig {
   const cursor = theme.cursor ?? theme.foreground;
@@ -161,9 +162,8 @@ export function buildTerminalHtml(profile: TerminalHtmlProfile, wsUrl: string, t
   const overlayMarkup = config.enableOverlay ? '<div id="overlay"></div><div id="selection-handle-start" class="selection-handle"></div><div id="selection-handle-end" class="selection-handle"></div>' : '';
   const baseStyles = config.enableOverlay
     ? `
-      body { position: relative; }
-      #root { position: relative; width: 100%; height: 100%; overflow: hidden; }
-      #terminal { width: 100%; height: 100%; padding: 0; box-sizing: border-box; }
+      #root { position: absolute; inset: 0; overflow: hidden; }
+      #terminal { position: absolute; inset: 0; padding: 0; box-sizing: border-box; }
       #overlay { position: absolute; inset: 0; z-index: 2; }
       #terminal, #overlay {
         -webkit-user-select: none;
@@ -210,8 +210,8 @@ export function buildTerminalHtml(profile: TerminalHtmlProfile, wsUrl: string, t
       }
     `
     : `
-      #root { width: 100%; height: 100%; overflow: hidden; }
-      #terminal { height: 100%; width: 100%; padding: 0; box-sizing: border-box; }
+      #root { position: absolute; inset: 0; overflow: hidden; }
+      #terminal { position: absolute; inset: 0; padding: 0; box-sizing: border-box; }
     `;
   const textareaStyles = config.hideTextarea
     ? '.xterm-helper-textarea { font-size: 16px; opacity: 0; pointer-events: none; }'
@@ -227,7 +227,9 @@ export function buildTerminalHtml(profile: TerminalHtmlProfile, wsUrl: string, t
     ${googleFontsLink}` : ''}
     <link id="xterm-css" rel="stylesheet" href="https://unpkg.com/xterm/css/xterm.css" />
     <style>
+      /* Use fixed/absolute insets to avoid WKWebView 100% height quirks after long sessions/resize/keyboard. */
       html, body { height: 100%; width: 100%; margin: 0; background: ${config.theme.background}; overflow: hidden; -webkit-text-size-adjust: 100%; }
+      body { position: fixed; inset: 0; }
       ${baseStyles}
       ${textareaStyles}
     </style>
@@ -439,11 +441,16 @@ export function buildTerminalHtml(profile: TerminalHtmlProfile, wsUrl: string, t
           if (!proposed || !proposed.cols || !proposed.rows) return;
           dimensionRequestPending = true;
           pendingProposed = proposed;
+          // Best-effort: notify RN (for visibility / optional validation), but do not
+          // block fitting on RN confirmation. iOS in particular can report container
+          // sizes that differ by 1-2px between RN and WKWebView, which previously
+          // caused the terminal to never fit and left unused space on the right/bottom.
           sendToRN({
             type: 'dimensionRequest',
             container: { width: Math.round(rect.width), height: Math.round(rect.height) },
             proposed: { cols: proposed.cols, rows: proposed.rows }
           });
+          applyDimensions(proposed.cols, proposed.rows);
           // Retry once if not confirmed
           if (dimensionRetryTimer) clearTimeout(dimensionRetryTimer);
           dimensionRetryTimer = setTimeout(() => {
