@@ -14,11 +14,13 @@ import {
   useWindowDimensions,
   ViewStyle,
   View,
-  PixelRatio,
 } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useIsFocused } from '@react-navigation/native';
 import type { WebView } from 'react-native-webview';
+import PagerView from 'react-native-pager-view';
+import type { PagerViewOnPageScrollEvent, PagerViewOnPageSelectedEvent } from 'react-native-pager-view';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   ChevronDown,
   ChevronUp,
@@ -36,7 +38,6 @@ import {
 import * as Haptics from 'expo-haptics';
 import * as Clipboard from 'expo-clipboard';
 import * as ImagePicker from 'expo-image-picker';
-import type { NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
 
 import { Screen } from '@/components/Screen';
 import { AppText } from '@/components/AppText';
@@ -119,6 +120,9 @@ const expandedHelperKeys: HelperKey[] = [
   { label: 'PgDn', data: '\u001b[6~' },
 ];
 
+// This screen is kept for deep link compatibility (e.g. notification links).
+// The main terminal flow now uses app/(tabs)/index.tsx (PagerView).
+// TODO: redirect to main pager at matching index once deep link routing supports it.
 export default function SessionTerminalScreen(): React.ReactElement {
   const router = useRouter();
   const { colors } = useTheme();
@@ -137,8 +141,9 @@ export default function SessionTerminalScreen(): React.ReactElement {
   const isFocused = useIsFocused();
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const { isTablet } = useDeviceType();
+  const insets = useSafeAreaInsets();
 
-  // Use the ScrollView viewport's measured size; that's what `pagingEnabled` snaps to.
+  // Use the PagerView's measured size for terminal fit calculations.
   const [pagerViewport, setPagerViewport] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
   const pageWidth = pagerViewport.width > 0 ? pagerViewport.width : screenWidth;
   const pageHeight = pagerViewport.height > 0 ? pagerViewport.height : screenHeight;
@@ -184,7 +189,6 @@ export default function SessionTerminalScreen(): React.ReactElement {
       return aIndex - bIndex;
     });
   }, [state?.sessions, preferences.sessionOrders, host?.id]);
-  const sessionCount = sessions.length;
   const initialIndex = sessions.findIndex((session) => session.name === initialSessionName);
 
   const themeKey = useMemo(
@@ -427,8 +431,7 @@ export default function SessionTerminalScreen(): React.ReactElement {
   }, []);
 
 
-  const pagerRef = useRef<ScrollView | null>(null);
-  const prevPageWidthRef = useRef(pageWidth);
+  const pagerRef = useRef<PagerView | null>(null);
 
   const updateCurrentSession = useCallback((index: number) => {
     const session = sessions[index];
@@ -465,22 +468,19 @@ export default function SessionTerminalScreen(): React.ReactElement {
 
   const lastSnappedIndexRef = useRef<number | null>(null);
 
-  const handlePagerScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    if (pageWidth <= 0) return;
-    const nextIndex = Math.round(event.nativeEvent.contentOffset.x / pageWidth);
-    if (!Number.isFinite(nextIndex)) return;
-    if (lastSnappedIndexRef.current !== null && nextIndex !== lastSnappedIndexRef.current) {
+  const handlePageScroll = useCallback((e: PagerViewOnPageScrollEvent) => {
+    const { position, offset } = e.nativeEvent;
+    // Fire haptic when crossing the halfway point between pages
+    const approachingIndex = offset > 0.5 ? position + 1 : position;
+    if (lastSnappedIndexRef.current !== null && approachingIndex !== lastSnappedIndexRef.current) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      lastSnappedIndexRef.current = approachingIndex;
     }
-    lastSnappedIndexRef.current = nextIndex;
-  }, [pageWidth]);
+  }, []);
 
-  const handlePagerMomentumEnd = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    if (pageWidth <= 0) return;
-    const nextIndex = Math.round(event.nativeEvent.contentOffset.x / pageWidth);
-    if (!Number.isFinite(nextIndex)) return;
-    updateCurrentSession(nextIndex);
-  }, [pageWidth, updateCurrentSession]);
+  const handlePageSelected = useCallback((e: PagerViewOnPageSelectedEvent) => {
+    updateCurrentSession(e.nativeEvent.position);
+  }, [updateCurrentSession]);
 
   const keyboardInset = focusedSessionName === currentSessionName ? Math.max(0, keyboardOffset) : 0;
 
@@ -502,36 +502,20 @@ export default function SessionTerminalScreen(): React.ReactElement {
 
   useEffect(() => {
     if (!currentSessionName || sessions.length === 0) return;
-    
-    // Only scroll programmatically when currentSessionName actually changes,
+
+    // Only navigate programmatically when currentSessionName actually changes,
     // not when sessions array updates from live polling (which would snap back mid-scroll)
     if (prevCurrentSessionNameRef.current === currentSessionName) return;
     prevCurrentSessionNameRef.current = currentSessionName;
-    
-    const index = sessions.findIndex((session) => session.name === currentSessionName);
-    if (index < 0) return;
-    if (pageWidth <= 0) return;
-    const x = index * pageWidth;
-    // Use requestAnimationFrame to ensure layout is complete before scrolling
-    requestAnimationFrame(() => {
-      pagerRef.current?.scrollTo({ x, animated: false });
-    });
-  }, [currentSessionName, sessions, pageWidth]);
 
-  // Keep the pager snapped correctly when the window width changes (rotation, iPad split view, etc).
-  // Without this, the ScrollView can end up "between pages", leaving blank space and making the
-  // terminal look like it isn't filling the screen.
-  useEffect(() => {
-    if (!currentSessionName) return;
-    if (pageWidth <= 0) return;
-    if (prevPageWidthRef.current === pageWidth) return;
-    prevPageWidthRef.current = pageWidth;
     const index = sessions.findIndex((session) => session.name === currentSessionName);
     if (index < 0) return;
+    // Use requestAnimationFrame to ensure layout is complete before navigating
     requestAnimationFrame(() => {
-      pagerRef.current?.scrollTo({ x: index * pageWidth, animated: false });
+      pagerRef.current?.setPageWithoutAnimation(index);
     });
-  }, [currentSessionName, pageWidth, sessions]);
+  }, [currentSessionName, sessions]);
+  // PagerView handles re-snap automatically on rotation/resize — no manual re-snap needed.
 
   useEffect(() => {
     if (!currentSessionName) return;
@@ -589,40 +573,21 @@ export default function SessionTerminalScreen(): React.ReactElement {
         </View>
       </View>
 
-      <View
-        style={styles.pagerFrame}
-      >
-        <ScrollView
+      <View style={styles.pagerFrame}>
+        <PagerView
           ref={pagerRef}
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          scrollEnabled={!isSelecting}
-          contentInsetAdjustmentBehavior="never"
-          onScroll={handlePagerScroll}
-          onMomentumScrollEnd={handlePagerMomentumEnd}
-          scrollEventThrottle={16}
           style={styles.pager}
+          initialPage={initialIndex >= 0 ? initialIndex : 0}
+          scrollEnabled={!isSelecting}
+          onPageScroll={handlePageScroll}
+          onPageSelected={handlePageSelected}
           onLayout={(e) => {
             const { width, height } = e.nativeEvent.layout;
             if (width <= 0 || height <= 0) return;
-            // Round up to the nearest physical pixel. Rounding down is how you get
-            // a 1px "gap" on the right/bottom where the previous screen shows through.
-            const scale = PixelRatio.get();
-            const w = Math.ceil(width * scale) / scale;
-            const h = Math.ceil(height * scale) / scale;
-            setPagerViewport((prev) => (prev.width === w && prev.height === h ? prev : { width: w, height: h }));
+            setPagerViewport((prev) =>
+              prev.width === width && prev.height === height ? prev : { width, height }
+            );
           }}
-          contentContainerStyle={[
-            styles.pagerContent,
-            (() => {
-              const count = Math.max(1, sessionCount);
-              const scale = PixelRatio.get();
-              const contentWidth = Math.ceil((pageWidth * count) * scale) / scale;
-              const contentHeight = Math.ceil(pageHeight * scale) / scale;
-              return { height: contentHeight, width: contentWidth };
-            })(),
-          ]}
         >
           {sessions.map((session) => {
             const isCurrent = session.name === currentSessionName;
@@ -635,7 +600,7 @@ export default function SessionTerminalScreen(): React.ReactElement {
             const statusColor = isRunning ? colors.green : isIdle ? colors.orange : colors.textMuted;
 
             return (
-              <View key={session.name} style={[styles.page, { width: pageWidth, height: pageHeight }]}>
+              <View key={session.name} style={styles.page} collapsable={false}>
                 {!isCurrent && (
                   <View style={styles.pageLabel}>
                     <View style={styles.pageLabelContent}>
@@ -699,13 +664,11 @@ export default function SessionTerminalScreen(): React.ReactElement {
                           case 'focus':
                             if (payload.focused) {
                               setFocusedSessionName(session.name);
-                              return;
                             }
-                            // Don't reset keyboard state if we're in text input mode
-                            if (isTextInputMode) return;
-                            setFocusedSessionName((prev) => (prev === session.name ? null : prev));
-                            setKeyboardOffset(0);
-                            setIsAccessoryExpanded(false);
+                            // Ignore blur events — keyboard state is driven by native
+                            // keyboardDidShow/keyboardDidHide and explicit blurTerminal() calls.
+                            // Reacting to xterm blur causes a flash on Android tablets where
+                            // the WebView textarea loses focus transiently during layout changes.
                             return;
                           case 'sessionEnded':
                             router.back();
@@ -720,8 +683,38 @@ export default function SessionTerminalScreen(): React.ReactElement {
               </View>
             );
           })}
-        </ScrollView>
+        </PagerView>
       </View>
+
+      {isTablet && sessions.length >= 1 && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          style={styles.sessionBar}
+          contentContainerStyle={[styles.sessionBarContent, insets.bottom > 0 && { paddingBottom: insets.bottom }]}
+        >
+          {sessions.map((session, index) => (
+            <Pressable
+              key={session.name}
+              style={[styles.sessionPill, session.name === currentSessionName && styles.sessionPillActive]}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setCurrentSessionName(session.name);
+                pagerRef.current?.setPage(index);
+              }}
+            >
+              <AppText
+                variant="caps"
+                style={[styles.sessionPillText, session.name === currentSessionName && styles.sessionPillTextActive]}
+                numberOfLines={1}
+              >
+                {session.title || session.name}
+              </AppText>
+            </Pressable>
+          ))}
+        </ScrollView>
+      )}
 
       {keyboardInset > 0 && (
         <View style={[styles.helperOverlay, { bottom: keyboardInset }]}>
@@ -734,6 +727,7 @@ export default function SessionTerminalScreen(): React.ReactElement {
             directionalLockEnabled
             alwaysBounceVertical={false}
             showsHorizontalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
             contentContainerStyle={styles.helperContent}
           >
             <Pressable
@@ -802,6 +796,7 @@ export default function SessionTerminalScreen(): React.ReactElement {
                   directionalLockEnabled
                   alwaysBounceVertical={false}
                   showsHorizontalScrollIndicator={false}
+                  keyboardShouldPersistTaps="handled"
                   style={styles.expandedRow}
                   contentContainerStyle={styles.helperContent}
                 >

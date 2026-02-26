@@ -17,6 +17,7 @@ export function Screen({
   if (variant === 'terminal') {
     // Keep top safe area, but paint a full-screen background behind it to avoid
     // 1-2px rounding gaps showing the previous screen on some devices.
+    // Also account for left/right insets (landscape tablets with camera cutouts).
     return (
       <View style={[styles.root, { backgroundColor, width: '100%' }]}>
         <StatusBar style={isDark ? 'light' : 'dark'} />
@@ -25,7 +26,7 @@ export function Screen({
           style={[
             styles.content,
             styles.contentTerminal,
-            { backgroundColor, width: '100%' },
+            { backgroundColor, width: '100%', paddingLeft: insets.left, paddingRight: insets.right },
             style,
           ]}
           {...props}

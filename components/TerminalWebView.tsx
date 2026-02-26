@@ -133,8 +133,7 @@ export function TerminalWebView({
         overScrollMode="never"
         nestedScrollEnabled={true}
         scalesPageToFit={false}
-        androidLayerType={Platform.OS === 'android' ? 'software' : undefined}
-        renderToHardwareTextureAndroid={true}
+        renderToHardwareTextureAndroid={Platform.OS === 'android'}
         keyboardDisplayRequiresUserAction={keyboardEnabled ? false : undefined}
         hideKeyboardAccessoryView={keyboardEnabled ? true : undefined}
         style={webViewStyle}

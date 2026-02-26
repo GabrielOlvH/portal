@@ -14,6 +14,17 @@ type CursorAuth = {
   value: string;
 };
 
+function decodeCookie(value: string): string {
+  // Env vars and shell may store URL-encoded cookies (e.g. %3A%3A instead of ::)
+  // Decode once; if it wasn't encoded the string is returned unchanged
+  try {
+    const decoded = decodeURIComponent(value);
+    return decoded;
+  } catch {
+    return value;
+  }
+}
+
 async function getCursorCookieFromShell(): Promise<string | null> {
   try {
     // Source login shell to get vars from ~/.profile
@@ -23,7 +34,7 @@ async function getCursorCookieFromShell(): Promise<string | null> {
     });
     const cookie = stdout.trim();
     if (cookie && cookie !== '$CURSOR_COOKIE') {
-      return cookie;
+      return decodeCookie(cookie);
     }
   } catch {
     // Ignore errors
@@ -60,9 +71,9 @@ except: pass
 }
 
 async function resolveCursorAuth(): Promise<CursorAuth | null> {
-  // 1. Check environment variable (cookie format)
+  // 1. Check environment variable (cookie format) — may be URL-encoded
   const envHeader = (process.env.CURSOR_COOKIE || '').trim();
-  if (envHeader) return { type: 'cookie', value: envHeader };
+  if (envHeader) return { type: 'cookie', value: decodeCookie(envHeader) };
 
   // 2. Check environment variable (token format)
   const envToken = (process.env.CURSOR_TOKEN || '').trim();
@@ -105,6 +116,7 @@ type CursorAuthResult = { data: any } | { error: string };
 
 type CursorUsage = {
   session?: { percentLeft?: number; reset?: string };
+  weekly?: { percentLeft?: number; reset?: string };
   source?: string;
   error?: string;
 };
@@ -162,10 +174,29 @@ export async function getCursorStatus(): Promise<CursorUsage> {
   }
   const summary = result.data || {};
   const billingCycleEnd = summary.billingCycleEnd || summary.billing_cycle_end;
-  const planUsed = Number(summary.individualUsage?.plan?.totalPercentUsed ?? summary.individual_usage?.plan?.total_percent_used ?? 0);
+
+  // Billing cycle quota (primary quota — shown in outer "weekly" ring)
+  const plan = summary.individualUsage?.plan ?? summary.individual_usage?.plan;
+  const planUsed = Number(plan?.totalPercentUsed ?? plan?.total_percent_used ?? NaN);
   const planPercentLeft = Number.isFinite(planUsed) ? Math.max(0, Math.round(100 - planUsed)) : undefined;
+  const billingWindow = planPercentLeft !== undefined
+    ? { percentLeft: planPercentLeft, reset: billingCycleEnd }
+    : undefined;
+
+  // On-demand quota (shown in inner "session" ring when available)
+  const onDemand = summary.individualUsage?.onDemand ?? summary.individual_usage?.on_demand;
+  let sessionWindow: { percentLeft: number; reset?: string } | undefined;
+  if (onDemand && Number.isFinite(Number(onDemand.limit)) && Number(onDemand.limit) > 0) {
+    const remaining = Number(onDemand.remaining ?? (Number(onDemand.limit) - Number(onDemand.used ?? 0)));
+    const percentLeft = Math.max(0, Math.round((remaining / Number(onDemand.limit)) * 100));
+    sessionWindow = { percentLeft, reset: billingCycleEnd };
+  }
+
   const value = {
-    session: Number.isFinite(planPercentLeft) ? { percentLeft: planPercentLeft, reset: billingCycleEnd } : undefined,
+    // outer ring = billing cycle (weekly semantics = longer quota window)
+    weekly: billingWindow,
+    // inner ring = on-demand budget if available, else fall back to billing cycle
+    session: sessionWindow ?? billingWindow,
     source: 'web',
   };
   oauthCache.cursor = { ts: now, value, error: null };
