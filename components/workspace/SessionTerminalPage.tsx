@@ -3,6 +3,7 @@ import {
   ActionSheetIOS,
   Alert,
   AppState,
+  Dimensions,
   type AppStateStatus,
   Keyboard,
   Platform,
@@ -13,6 +14,16 @@ import {
   View,
 } from 'react-native';
 import { useIsFocused } from '@react-navigation/native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, {
+  FadeIn,
+  FadeOut,
+  runOnJS,
+  SensorType,
+  useAnimatedReaction,
+  useAnimatedSensor,
+  useSharedValue,
+} from 'react-native-reanimated';
 import type { WebView } from 'react-native-webview';
 import {
   ChevronDown,
@@ -90,16 +101,31 @@ export function SessionTerminalPage({
   const webRef = useRef<WebView | null>(null);
 
   const [keyboardOffset, setKeyboardOffset] = useState(0);
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const [helperHeight, setHelperHeight] = useState(0);
   const [isAccessoryExpanded, setIsAccessoryExpanded] = useState(false);
-  const [isFocusedOnTerminal, setIsFocusedOnTerminal] = useState(false);
   const [appState, setAppState] = useState<AppStateStatus>(AppState.currentState);
   const [inputText, setInputText] = useState('');
   const [isTextInputMode, setIsTextInputMode] = useState(false);
 
   const keyboardVisibleRef = useRef(false);
+
+  // Gesture debug toast
+  const [gestureToast, setGestureToast] = useState<string | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showGestureToast = useCallback((label: string) => {
+    if (!preferences.debug.gestureToasts) return;
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    setGestureToast(label);
+    toastTimer.current = setTimeout(() => setGestureToast(null), 1200);
+  }, [preferences.debug.gestureToasts]);
   const textInputRef = useRef<React.ElementRef<typeof TextInput>>(null);
   const sourceCache = useRef<SourceCacheEntry | null>(null);
+  const shakeCooldownRef = useRef(0);
+
+  const shakeEnabled = useSharedValue(0);
+  const lastShakeAt = useSharedValue(0);
+  const accel = useAnimatedSensor(SensorType.ACCELEROMETER, { interval: 100 });
 
   const fontConfig: TerminalFontConfig = useMemo(
     () => ({
@@ -140,6 +166,10 @@ export function SessionTerminalPage({
     if (isActive) wasEverActive.current = true;
   }, [isActive]);
 
+  useEffect(() => {
+    shakeEnabled.value = isActive && isFocused ? 1 : 0;
+  }, [isActive, isFocused, shakeEnabled]);
+
   const fitScript = 'window.__fitTerminal && window.__fitTerminal(); true;';
 
   const sendToTerminal = useCallback((data: string) => {
@@ -153,11 +183,80 @@ export function SessionTerminalPage({
     keyboardVisibleRef.current = false;
     setKeyboardOffset(0);
     setIsAccessoryExpanded(false);
-    setIsFocusedOnTerminal(false);
     webRef.current?.injectJavaScript(
       'window.__blurTerminal && window.__blurTerminal(); true;'
     );
   }, []);
+
+  const sendEsc = useCallback(() => {
+    const now = Date.now();
+    if (now - shakeCooldownRef.current < 900) return;
+    shakeCooldownRef.current = now;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    sendToTerminal('\u001b');
+    showGestureToast('Shake: ESC');
+  }, [sendToTerminal, showGestureToast]);
+
+  useAnimatedReaction(
+    () => {
+      if (!shakeEnabled.value) return 0;
+      const { x, y, z } = accel.sensor.value;
+      const magnitude = Math.sqrt(x * x + y * y + z * z);
+      return Math.abs(magnitude - 9.81);
+    },
+    (delta, prevDelta) => {
+      if (!shakeEnabled.value) return;
+      const crossed = delta > 13 && (prevDelta ?? 0) <= 13;
+      if (!crossed) return;
+      const now = Date.now();
+      if (now - lastShakeAt.value < 900) return;
+      lastShakeAt.value = now;
+      runOnJS(sendEsc)();
+    },
+    [sendEsc]
+  );
+
+  const forceKillTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearForceKillTimer = useCallback(() => {
+    if (forceKillTimer.current) {
+      clearTimeout(forceKillTimer.current);
+      forceKillTimer.current = null;
+    }
+  }, []);
+
+  const sendForceKill = useCallback(() => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    const send = (data: string) =>
+      webRef.current?.injectJavaScript(
+        `window.__sendToTerminal&&window.__sendToTerminal(${JSON.stringify(data)});true;`
+      );
+    // Ctrl+C
+    send('\u0003');
+    // Ctrl+Z to suspend, then kill -9 the job
+    setTimeout(() => send('\u001a'), 100);
+    setTimeout(() => send('kill -9 %% 2>/dev/null\n'), 200);
+    showGestureToast('2-finger long hold: Force Kill');
+  }, [showGestureToast]);
+
+  const sendCtrlC = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    webRef.current?.injectJavaScript(
+      'if (window.__sendCtrlC) { window.__sendCtrlC(); } else if (window.__sendToTerminal) { window.__sendToTerminal("\\u0003"); } true;'
+    );
+    showGestureToast('2-finger hold: Ctrl+C');
+    // Start timer for force kill if fingers stay held
+    clearForceKillTimer();
+    forceKillTimer.current = setTimeout(sendForceKill, 900);
+  }, [showGestureToast, clearForceKillTimer, sendForceKill]);
+
+  const copyCurrentTmuxView = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    webRef.current?.injectJavaScript(
+      'window.__copySelection && window.__copySelection(); true;'
+    );
+    showGestureToast('3-finger hold: Copy');
+  }, [showGestureToast]);
 
   const handleSendInput = useCallback(() => {
     if (!inputText.trim()) return;
@@ -226,18 +325,39 @@ export function SessionTerminalPage({
   // Keyboard handling
   useEffect(() => {
     if (!isActive) return;
-    const updateKeyboardOffset = (height: number) => {
+    const getKeyboardInset = (event: { endCoordinates?: { height?: number; screenY?: number } }): number => {
+      const screenY = event.endCoordinates?.screenY;
+      if (typeof screenY === 'number') {
+        const insetFromScreenY = Math.max(0, Dimensions.get('window').height - screenY);
+        if (insetFromScreenY > 0) return insetFromScreenY;
+      }
+      return Math.max(0, event.endCoordinates?.height ?? 0);
+    };
+    const updateKeyboardOffset = (height: number, visible: boolean) => {
       if (!isFocused || appState !== 'active') return;
       const nextHeight = Math.max(0, height);
-      keyboardVisibleRef.current = nextHeight > 0;
+      keyboardVisibleRef.current = visible;
+      setIsKeyboardVisible(visible);
       setKeyboardOffset(nextHeight);
     };
-    const show = Keyboard.addListener('keyboardDidShow', (e) => updateKeyboardOffset(e.endCoordinates.height));
-    const hide = Keyboard.addListener('keyboardDidHide', () => {
-      updateKeyboardOffset(0);
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const frameEvent = Platform.OS === 'ios' ? 'keyboardWillChangeFrame' : 'keyboardDidChangeFrame';
+
+    const show = Keyboard.addListener(showEvent, (e) => {
+      const inset = getKeyboardInset(e);
+      const visible = (e.endCoordinates?.height ?? 0) > 0 || inset > 0;
+      updateKeyboardOffset(inset, visible);
+    });
+    const hide = Keyboard.addListener(hideEvent, () => {
+      updateKeyboardOffset(0, false);
       webRef.current?.injectJavaScript('window.__blurTerminal && window.__blurTerminal(); true;');
     });
-    const changeFrame = Keyboard.addListener('keyboardDidChangeFrame', (e) => updateKeyboardOffset(e.endCoordinates.height));
+    const changeFrame = Keyboard.addListener(frameEvent, (e) => {
+      const inset = getKeyboardInset(e);
+      const visible = (e.endCoordinates?.height ?? 0) > 0 || inset > 0;
+      updateKeyboardOffset(inset, visible);
+    });
     return () => { show.remove(); hide.remove(); changeFrame.remove(); };
   }, [isActive, appState, isFocused]);
 
@@ -248,21 +368,25 @@ export function SessionTerminalPage({
 
   useEffect(() => {
     if (!isFocused || !isActive) {
+      if (!isActive) {
+        webRef.current?.injectJavaScript('window.__blurTerminal && window.__blurTerminal(); true;');
+        Keyboard.dismiss();
+      }
       keyboardVisibleRef.current = false;
+      setIsKeyboardVisible(false);
       setKeyboardOffset(0);
       setIsAccessoryExpanded(false);
       setIsTextInputMode(false);
-      setIsFocusedOnTerminal(false);
     }
   }, [isFocused, isActive]);
 
   useEffect(() => {
     if (appState === 'active') return;
     keyboardVisibleRef.current = false;
+    setIsKeyboardVisible(false);
     setKeyboardOffset(0);
     setIsAccessoryExpanded(false);
     setIsTextInputMode(false);
-    setIsFocusedOnTerminal(false);
   }, [appState]);
 
   // Refit terminal when active and keyboard changes
@@ -275,8 +399,41 @@ export function SessionTerminalPage({
   }, [isActive, isFocused, keyboardOffset, helperHeight, fitScript]);
 
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const isGestureEnabled = isActive && isFocused;
 
-  const keyboardInset = isFocusedOnTerminal ? Math.max(0, keyboardOffset) : 0;
+  const terminalGestures = useMemo(
+    () =>
+      Gesture.Simultaneous(
+        Gesture.Pan()
+          .enabled(isGestureEnabled)
+          .minPointers(2)
+          .maxPointers(2)
+          .activateAfterLongPress(650)
+          .failOffsetX([-12, 12])
+          .failOffsetY([-12, 12])
+          .onStart(() => {
+            runOnJS(sendCtrlC)();
+          })
+          .onFinalize(() => {
+            runOnJS(clearForceKillTimer)();
+          }),
+        Gesture.Pan()
+          .enabled(isGestureEnabled)
+          .minPointers(3)
+          .maxPointers(3)
+          .activateAfterLongPress(650)
+          .failOffsetX([-16, 16])
+          .failOffsetY([-16, 16])
+          .onStart(() => {
+            runOnJS(copyCurrentTmuxView)();
+          })
+      ),
+    [isGestureEnabled, sendCtrlC, clearForceKillTimer, copyCurrentTmuxView]
+  );
+
+  const keyboardInset = Math.max(0, keyboardOffset);
+  const helperVisible = isActive && isFocused && isKeyboardVisible;
+  const helperBottomOffset = keyboardInset;
 
   if (!isActive && !wasEverActive.current) {
     return <View style={{ flex: 1, backgroundColor: colors.terminalBackground }} />;
@@ -285,56 +442,57 @@ export function SessionTerminalPage({
   return (
     <View style={styles.container}>
       {/* Terminal */}
-      <View style={[styles.terminal, keyboardInset > 0 && { paddingBottom: keyboardInset + helperHeight }]}>
-        <TerminalWebView
-          setRef={(ref) => { webRef.current = ref; }}
-          source={terminalSource}
-          style={styles.webview}
-          autoFit
-          onMessage={async (event) => {
-            try {
-              const payload = JSON.parse(event.nativeEvent.data) as {
-                type?: string;
-                text?: unknown;
-                state?: string;
-                focused?: boolean;
-              };
-              if (!payload || typeof payload !== 'object') return;
-              switch (payload.type) {
-                case 'copy': {
-                  if (typeof payload.text !== 'string' || !payload.text) return;
-                  await Clipboard.setStringAsync(payload.text);
-                  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                  return;
-                }
-                case 'haptic':
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                  return;
-                case 'hapticLight':
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  return;
-                case 'selectionStart':
-                  onSelectingChange?.(true);
-                  return;
-                case 'selectionEnd':
-                  onSelectingChange?.(false);
-                  return;
-                case 'focus':
-                  if (payload.focused) {
-                    setIsFocusedOnTerminal(true);
+      <GestureDetector gesture={terminalGestures}>
+        <View style={[styles.terminal, helperVisible && { paddingBottom: helperBottomOffset + helperHeight }]}>
+          <TerminalWebView
+            setRef={(ref) => { webRef.current = ref; }}
+            source={terminalSource}
+            style={styles.webview}
+            autoFit
+            onMessage={async (event) => {
+              try {
+                const payload = JSON.parse(event.nativeEvent.data) as {
+                  type?: string;
+                  text?: unknown;
+                  state?: string;
+                  focused?: boolean;
+                };
+                if (!payload || typeof payload !== 'object') return;
+                switch (payload.type) {
+                  case 'copy': {
+                    if (typeof payload.text !== 'string' || !payload.text) return;
+                    await Clipboard.setStringAsync(payload.text);
+                    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                    return;
                   }
-                  return;
-                default:
-                  return;
-              }
-            } catch {}
-          }}
-        />
-      </View>
+                  case 'haptic':
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                    return;
+                  case 'hapticLight':
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    return;
+                  case 'selectionStart':
+                    onSelectingChange?.(true);
+                    return;
+                  case 'selectionEnd':
+                    onSelectingChange?.(false);
+                    return;
+                  case 'focus':
+                    // Focus messages are informational; accessory visibility is
+                    // driven by keyboard height so it remains reliable.
+                    return;
+                  default:
+                    return;
+                }
+              } catch {}
+            }}
+          />
+        </View>
+      </GestureDetector>
 
       {/* Helper keys bar */}
-      {keyboardInset > 0 && (
-        <View style={[styles.helperOverlay, { bottom: keyboardInset }]}>
+      {helperVisible && (
+        <View style={[styles.helperOverlay, { bottom: helperBottomOffset }]}>
           <View
             style={styles.helperBar}
             onLayout={(e) => setHelperHeight(e.nativeEvent.layout.height)}
@@ -475,6 +633,31 @@ export function SessionTerminalPage({
         </View>
       )}
 
+      {/* Gesture debug toast */}
+      {gestureToast && (
+        <Animated.View
+          entering={FadeIn.duration(150)}
+          exiting={FadeOut.duration(300)}
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            top: 50,
+            left: 0,
+            right: 0,
+            alignItems: 'center',
+            zIndex: 999,
+          }}
+        >
+          <View style={{
+            backgroundColor: 'rgba(0,0,0,0.8)',
+            paddingHorizontal: 14,
+            paddingVertical: 6,
+            borderRadius: 8,
+          }}>
+            <AppText style={{ color: '#fff', fontSize: 12 }}>{gestureToast}</AppText>
+          </View>
+        </Animated.View>
+      )}
     </View>
   );
 }

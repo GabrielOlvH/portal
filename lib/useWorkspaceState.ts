@@ -150,12 +150,22 @@ export function useWorkspaceState(allSessions: SessionWithHost[]): UseWorkspaceS
   // ─── Actions ──────────────────────────────────────────────────────
 
   const addWindow = useCallback((wsIndex: number, route: string, params?: Record<string, string>) => {
+    const MULTI_INSTANCE_ROUTES = new Set(['terminal', 'browser']);
+
     setWorkspaces(prev => {
-      // Check for singleton (non-terminal, non-browser routes open at most once per workspace)
-      if (route !== 'terminal' && route !== 'browser' && wsIndex < prev.length) {
-        const existing = prev[wsIndex].windows.findIndex(w => w.route === route);
+      if (!MULTI_INSTANCE_ROUTES.has(route) && wsIndex < prev.length) {
+        // Parameterized singleton: route must match AND all params must match
+        const existing = prev[wsIndex].windows.findIndex(w => {
+          if (w.route !== route) return false;
+          const wp = w.params ?? {};
+          const rp = params ?? {};
+          const allKeys = new Set([...Object.keys(wp), ...Object.keys(rp)]);
+          for (const k of allKeys) {
+            if (wp[k] !== rp[k]) return false;
+          }
+          return true;
+        });
         if (existing >= 0) {
-          // Navigate to it instead
           setActiveWindowIndices(m => new Map(m).set(wsIndex, existing));
           return prev;
         }

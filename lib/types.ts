@@ -61,6 +61,9 @@ export type AppPreferences = {
   terminal: TerminalSettings;
   github: GitHubPreferences;
   sessionOrders: SessionOrder[];
+  debug: {
+    gestureToasts: boolean;
+  };
 };
 
 export type HostStatus = 'unknown' | 'checking' | 'online' | 'offline';

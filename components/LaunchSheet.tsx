@@ -21,7 +21,7 @@ import BottomSheet, {
 } from '@gorhom/bottom-sheet';
 import { Play } from 'lucide-react-native';
 import { ThemeColors, useTheme } from '@/lib/useTheme';
-import { useRouter } from 'expo-router';
+
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppText } from '@/components/AppText';
 import { providerIcons } from '@/components/icons/ProviderIcons';
@@ -765,7 +765,7 @@ const createStepStyles = (colors: ThemeColors) =>
 
 // Main Component
 export function LaunchSheet({ isOpen, onClose }: LaunchSheetProps) {
-  const router = useRouter();
+
   const insets = useSafeAreaInsets();
   const sheetRef = useRef<BottomSheet>(null);
   const { hosts } = useStore();
@@ -945,14 +945,13 @@ export function LaunchSheet({ isOpen, onClose }: LaunchSheetProps) {
         });
 
         onClose();
-        router.push(`/session/${selectedHost.id}/${encodeURIComponent(sessionName)}/terminal`);
       } catch (err) {
         console.error('Failed to launch:', err);
       } finally {
         setLaunching(false);
       }
     },
-    [selectedHost, selectedProject, launching, addRecentLaunch, onClose, router]
+    [selectedHost, selectedProject, launching, addRecentLaunch, onClose]
   );
 
   const handleBlankLaunch = useCallback(async () => {
@@ -964,13 +963,12 @@ export function LaunchSheet({ isOpen, onClose }: LaunchSheetProps) {
     try {
       await createSession(selectedHost, sessionName);
       onClose();
-      router.push(`/session/${selectedHost.id}/${encodeURIComponent(sessionName)}/terminal`);
     } catch (err) {
       console.error('Failed to create blank session:', err);
     } finally {
       setLaunching(false);
     }
-  }, [selectedHost, launching, onClose, router]);
+  }, [selectedHost, launching, onClose]);
 
   const handleBlankSnippetLaunch = useCallback(
     async (snippet: Command) => {
@@ -984,14 +982,13 @@ export function LaunchSheet({ isOpen, onClose }: LaunchSheetProps) {
         await new Promise((resolve) => setTimeout(resolve, 100));
         await sendText(selectedHost, sessionName, `${snippet.command}\n`);
         onClose();
-        router.push(`/session/${selectedHost.id}/${encodeURIComponent(sessionName)}/terminal`);
       } catch (err) {
         console.error('Failed to create blank snippet session:', err);
       } finally {
         setLaunching(false);
       }
     },
-    [selectedHost, launching, onClose, router]
+    [selectedHost, launching, onClose]
   );
 
   // Animated style for pager

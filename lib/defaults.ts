@@ -35,5 +35,8 @@ export function defaultPreferences(): AppPreferences {
       enabled: false,
     },
     sessionOrders: [],
+    debug: {
+      gestureToasts: false,
+    },
   };
 }

@@ -20,8 +20,12 @@
     "/home/gabrielolv/Documents/Projects/ter/app/(tabs)/_layout.tsx",
     "/home/gabrielolv/Documents/Projects/ter/app/(tabs)/projects.tsx",
     "/home/gabrielolv/Documents/Projects/ter/app/(tabs)/hosts.tsx",
-    "/home/gabrielolv/Documents/Projects/ter/app/session/[hostId]/[name]/index.tsx"
+    "/home/gabrielolv/Documents/Projects/ter/app/session/[hostId]/[name]/index.tsx",
+    "/home/gabrielolv/Documents/Projects/portal/app/_layout.tsx",
+    "/home/gabrielolv/Documents/Projects/portal/app/(tabs)/index.tsx",
+    "/home/gabrielolv/Documents/Projects/portal/app/(tabs)/more.tsx",
+    "/home/gabrielolv/Documents/Projects/portal/app/(tabs)/hosts.tsx"
   ],
   "first_dirty_at": "2026-01-18T13:44:18.412893Z",
-  "last_dirty_at": "2026-01-25T15:47:32.606280Z"
+  "last_dirty_at": "2026-02-27T21:55:57.537806Z"
 }

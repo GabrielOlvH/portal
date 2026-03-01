@@ -5,6 +5,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { ChevronRight } from 'lucide-react-native';
 
 import { useStore } from '@/lib/store';
+import { useWindowActionsIfAvailable } from '@/lib/useWindowActions';
 import { getCopilotAuthStatus, logoutCopilot, getUsage, sendTestPushNotification } from '@/lib/api';
 import { registerNotificationsForHostsWithResult, sendTestNotification } from '@/lib/notifications';
 import type { ProviderUsage, TerminalFontFamily, ThemeSetting } from '@/lib/types';
@@ -194,8 +195,9 @@ function FontSizeSelector({ value, onChange, styles, colors }: FontSizeSelectorP
 
 export default function MoreTabScreen() {
   const router = useRouter();
+  const windowActions = useWindowActionsIfAvailable();
   const { colors } = useTheme();
-  const { hosts, preferences, updateUsageCardVisibility, updateNotificationSettings, updateTheme, updateTerminalSettings } = useStore();
+  const { hosts, preferences, updateUsageCardVisibility, updateNotificationSettings, updateTheme, updateTerminalSettings, updateDebugSettings } = useStore();
   const host = hosts[0];
 
   const [copilotLoading, setCopilotLoading] = useState(false);
@@ -289,7 +291,7 @@ export default function MoreTabScreen() {
             <MenuItem
               title="Snippets"
               subtitle="Global commands to reuse anywhere"
-              onPress={() => router.push('/snippets')}
+              onPress={() => windowActions ? windowActions.openWindow('snippets') : router.push('/snippets')}
               styles={styles}
               chevronColor={colors.textSecondary}
             />
@@ -297,7 +299,7 @@ export default function MoreTabScreen() {
             <MenuItem
               title="Ports"
               subtitle="View and manage active ports"
-              onPress={() => router.push('/ports')}
+              onPress={() => windowActions ? windowActions.openWindow('ports') : router.push('/ports')}
               styles={styles}
               chevronColor={colors.textSecondary}
             />
@@ -305,7 +307,7 @@ export default function MoreTabScreen() {
             <MenuItem
               title="GitHub CI Status"
               subtitle={preferences.github.enabled ? 'CI monitoring enabled' : 'Configure CI status monitoring'}
-              onPress={() => router.push('/github/settings')}
+              onPress={() => windowActions ? windowActions.openWindow('github') : router.push('/github/settings')}
               styles={styles}
               chevronColor={colors.textSecondary}
             />
@@ -496,7 +498,7 @@ export default function MoreTabScreen() {
                   }
 
                   const result = await sendTestPushNotification(host, {
-                    title: 'Bridge',
+                    title: 'Portal',
                     body: 'Test push notification',
                   });
                   if (result.count && result.count > 0) {
@@ -653,6 +655,23 @@ export default function MoreTabScreen() {
                 colors={colors}
               />
             </View>
+          </View>
+        </View>
+
+        {/* Debug Section */}
+        <View style={styles.section}>
+          <AppText variant="caps" tone="muted" style={styles.sectionLabel}>
+            Debug
+          </AppText>
+          <View style={styles.sectionContent}>
+            <ToggleItem
+              title="Gesture toasts"
+              subtitle="Show overlay labels when gestures are recognized"
+              value={preferences.debug.gestureToasts}
+              onValueChange={(value) => updateDebugSettings({ gestureToasts: value })}
+              styles={styles}
+              colors={colors}
+            />
           </View>
         </View>
       </ScrollView>

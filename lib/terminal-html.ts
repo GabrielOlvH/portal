@@ -947,10 +947,12 @@ export function buildTerminalHtml(profile: TerminalHtmlProfile, wsUrl: string, t
 
             if (!config.enableSgrScroll) return;
             if (isVerticalScroll === null) {
-              if (Math.abs(dy) > 8 && Math.abs(dy) > Math.abs(dx) + 4) {
+              if (Math.abs(dy) > MOVE_THRESHOLD && Math.abs(dy) > Math.abs(dx) + 4) {
                 isVerticalScroll = true;
-              } else if (Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy) + 4) {
+                touchMoved = true;
+              } else if (Math.abs(dx) > MOVE_THRESHOLD && Math.abs(dx) > Math.abs(dy) + 4) {
                 isVerticalScroll = false;
+                touchMoved = true;
               } else {
                 return;
               }

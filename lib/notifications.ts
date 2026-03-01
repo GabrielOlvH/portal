@@ -218,7 +218,7 @@ export async function sendTestNotification(): Promise<TestNotificationResult> {
 
     const id = await Notifications.scheduleNotificationAsync({
       content: {
-        title: 'Bridge',
+        title: 'Portal',
         body: 'Notifications are working on this device.',
         sound: 'default',
       },

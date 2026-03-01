@@ -91,16 +91,10 @@ function NavigationRoot() {
           <ThemeProvider value={navTheme}>
             <Stack screenOptions={{ headerShown: false }}>
               <Stack.Screen name="(tabs)" />
-              <Stack.Screen name="session/[hostId]/[name]/terminal" />
-              <Stack.Screen name="hosts/[id]/index" />
               <Stack.Screen name="hosts/new" />
               <Stack.Screen name="hosts/[id]/edit" />
-              <Stack.Screen name="hosts/[id]/docker/[containerId]/index" />
               <Stack.Screen name="projects/index" />
               <Stack.Screen name="projects/new" />
-              <Stack.Screen name="snippets/index" />
-              <Stack.Screen name="ports/index" />
-              <Stack.Screen name="session/[hostId]/[name]/index" />
             </Stack>
             <GlobalLaunchSheet />
           </ThemeProvider>

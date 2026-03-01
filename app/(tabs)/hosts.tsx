@@ -12,6 +12,7 @@ import { applyUpdate, checkForUpdate, UpdateStatus } from '@/lib/api';
 import { systemColors } from '@/lib/colors';
 import { DiscoveredAgent, scanForAgents } from '@/lib/discovery';
 import { useStore } from '@/lib/store';
+import { useWindowActionsIfAvailable } from '@/lib/useWindowActions';
 import { useHostsLive } from '@/lib/live';
 import { theme } from '@/lib/theme';
 import { ThemeColors, useTheme } from '@/lib/useTheme';
@@ -21,6 +22,7 @@ type CardStatus = 'online' | 'offline' | 'checking';
 
 export default function HostsTabScreen() {
   const router = useRouter();
+  const windowActions = useWindowActionsIfAvailable();
   const { colors } = useTheme();
   const { hosts, updateHostLastSeen, ready, upsertHost } = useStore();
   const [manualRefresh, setManualRefresh] = useState(false);
@@ -71,9 +73,13 @@ export default function HostsTabScreen() {
 
   const handleTerminal = useCallback(
     (hostId: string) => {
-      router.push(`/hosts/${hostId}`);
+      if (windowActions) {
+        windowActions.openWindow('host-detail', { hostId });
+      } else {
+        router.push(`/hosts/${hostId}`);
+      }
     },
-    [router]
+    [router, windowActions]
   );
 
   const isScanning = scanState.status === 'scanning';
@@ -313,7 +319,7 @@ export default function HostsTabScreen() {
                   isFirst={index === 0}
                   isLast={index === hosts.length - 1}
                   onUpdate={() => handleUpdate(host.id)}
-                  onPress={() => router.push(`/hosts/${host.id}`)}
+                  onPress={() => windowActions ? windowActions.openWindow('host-detail', { hostId: host.id }) : router.push(`/hosts/${host.id}`)}
                   onTerminal={() => handleTerminal(host.id)}
                 />
               ))}

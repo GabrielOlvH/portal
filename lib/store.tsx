@@ -15,6 +15,7 @@ const StoreContext = createContext<{
   updateTheme: (theme: ThemeSetting) => void;
   updateTerminalSettings: (updates: Partial<TerminalSettings>) => void;
   updateGitHubSettings: (updates: Partial<GitHubPreferences>) => void;
+  updateDebugSettings: (updates: Partial<AppPreferences['debug']>) => void;
   updateSessionOrder: (hostId: string, sessionNames: string[]) => void;
 } | null>(null);
 
@@ -148,6 +149,20 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     []
   );
 
+  const updateDebugSettings = useCallback(
+    (updates: Partial<AppPreferences['debug']>) => {
+      setPreferences((prev) => {
+        const next: AppPreferences = {
+          ...prev,
+          debug: { ...prev.debug, ...updates },
+        };
+        savePreferences(next);
+        return next;
+      });
+    },
+    []
+  );
+
   const updateSessionOrder = useCallback((hostId: string, sessionNames: string[]) => {
     setPreferences((prev) => {
       const existingIndex = prev.sessionOrders.findIndex((o) => o.hostId === hostId);
@@ -177,6 +192,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       updateTheme,
       updateTerminalSettings,
       updateGitHubSettings,
+      updateDebugSettings,
       updateSessionOrder,
     }),
     [
@@ -191,6 +207,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       updateTheme,
       updateTerminalSettings,
       updateGitHubSettings,
+      updateDebugSettings,
       updateSessionOrder,
     ]
   );
