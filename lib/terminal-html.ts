@@ -433,8 +433,8 @@ export function buildTerminalHtml(
         metricsTimer = null;
       }
 
-      const ACK_FLUSH_INTERVAL_MS = 16;
-      const ACK_FLUSH_BYTES = 32 * 1024;
+      const ACK_FLUSH_INTERVAL_MS = 40;
+      const ACK_FLUSH_BYTES = 64 * 1024;
 
       function flushAck() {
         if (!config.enableAck || socket?.readyState !== 1) return;
