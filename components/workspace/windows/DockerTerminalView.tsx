@@ -52,15 +52,15 @@ export function DockerTerminalView({
   const sourceCache = useRef<SourceCacheEntry | null>(null);
   const source = useMemo(() => {
     if (!wsUrl) return undefined;
-    const cacheKey = `${wsUrl}|${terminalTheme.background}|${terminalTheme.foreground}|${terminalTheme.cursor}|${fontConfig.fontFamily}|${fontConfig.fontSize}|${TERMINAL_HTML_VERSION}|docker`;
+    const cacheKey = `${wsUrl}|${terminalTheme.background}|${terminalTheme.foreground}|${terminalTheme.cursor}|${fontConfig.fontFamily}|${fontConfig.fontSize}|${preferences.debug.terminalMetrics ? 1 : 0}|${TERMINAL_HTML_VERSION}|docker`;
     if (!sourceCache.current || sourceCache.current.key !== cacheKey) {
       sourceCache.current = {
         key: cacheKey,
-        source: { html: buildTerminalHtml('docker', wsUrl, terminalTheme, fontConfig) },
+        source: { html: buildTerminalHtml('docker', wsUrl, terminalTheme, fontConfig, { enableMetrics: preferences.debug.terminalMetrics }) },
       };
     }
     return sourceCache.current.source;
-  }, [wsUrl, terminalTheme.background, terminalTheme.foreground, terminalTheme.cursor, fontConfig]);
+  }, [wsUrl, terminalTheme.background, terminalTheme.foreground, terminalTheme.cursor, fontConfig, preferences.debug.terminalMetrics]);
 
   const webRef = useRef<WebView | null>(null);
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -135,6 +135,8 @@ export function DockerTerminalView({
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
               } else if (payload?.type === 'hapticLight') {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              } else if (payload?.type === 'metrics' && preferences.debug.terminalMetrics && payload?.metrics && typeof payload.metrics === 'object') {
+                console.debug(`[terminal-metrics][docker:${decodedId}]`, payload.metrics);
               }
             } catch {}
           }}

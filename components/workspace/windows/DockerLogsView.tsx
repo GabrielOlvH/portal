@@ -60,15 +60,15 @@ export function DockerLogsView({
   const sourceCache = useRef<SourceCacheEntry | null>(null);
   const source = useMemo(() => {
     if (!wsUrl) return undefined;
-    const cacheKey = `${wsUrl}|${logTheme.background}|${logTheme.foreground}|${fontConfig.fontFamily}|${TERMINAL_HTML_VERSION}|logs`;
+    const cacheKey = `${wsUrl}|${logTheme.background}|${logTheme.foreground}|${fontConfig.fontFamily}|${preferences.debug.terminalMetrics ? 1 : 0}|${TERMINAL_HTML_VERSION}|logs`;
     if (!sourceCache.current || sourceCache.current.key !== cacheKey) {
       sourceCache.current = {
         key: cacheKey,
-        source: { html: buildTerminalHtml('logs', wsUrl, logTheme, fontConfig) },
+        source: { html: buildTerminalHtml('logs', wsUrl, logTheme, fontConfig, { enableMetrics: preferences.debug.terminalMetrics }) },
       };
     }
     return sourceCache.current.source;
-  }, [wsUrl, logTheme.background, logTheme.foreground, fontConfig]);
+  }, [wsUrl, logTheme.background, logTheme.foreground, fontConfig, preferences.debug.terminalMetrics]);
 
   const webRef = useRef<WebView | null>(null);
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -186,6 +186,8 @@ export function DockerLogsView({
                 setConnectionStatus('disconnected');
               } else if (payload?.type === 'reconnecting') {
                 setConnectionStatus('reconnecting');
+              } else if (payload?.type === 'metrics' && preferences.debug.terminalMetrics && payload?.metrics && typeof payload.metrics === 'object') {
+                console.debug(`[terminal-metrics][docker-logs:${decodedId}]`, payload.metrics);
               }
             } catch {}
           }}

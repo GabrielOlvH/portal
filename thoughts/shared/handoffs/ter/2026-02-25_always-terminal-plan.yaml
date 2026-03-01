@@ -1,0 +1,62 @@
+root_span_id: 4b93aa5d-f44c-4c84-9a95-a6abf5188c3d
+turn_span_id: 67338857-3de9-4576-856e-68c0b634fecf
+session_id: 4b93aa5d-f44c-4c84-9a95-a6abf5188c3d
+---
+session: ter
+date: 2026-02-25
+status: complete
+outcome: SUCCEEDED
+---
+
+goal: Design NIRI-inspired "Always Terminal" session workspace for the Bridge app
+now: Implement the plan - start with Task 1 (rewrite app/(tabs)/index.tsx as global PagerView)
+test: pnpm typecheck && pnpm lint
+
+done_this_session:
+  - task: Explored existing codebase - sessions tab, terminal screen, PagerView, tab layout, types, theme
+    files: [app/(tabs)/index.tsx, app/session/[hostId]/[name]/terminal.tsx, app/(tabs)/_layout.tsx, lib/live.tsx, lib/store.tsx, lib/types.ts, lib/useTheme.tsx, lib/useDeviceType.ts, components/SessionCard.tsx, components/Screen.tsx]
+  - task: Wrote and iterated on implementation plan - went through 3 design concepts before landing on "Always Terminal"
+    files: [thoughts/shared/plans/PLAN-niri-session-workspace.md]
+
+blockers: []
+
+questions:
+  - iOS tab bar hiding - NativeTabs minimizeBehavior won't fire on horizontal PagerView. Options evaluated - decided to hide on Android now, revisit iOS post-MVP.
+
+decisions:
+  - rejected-horizontal-carousel: User felt carousel on sessions tab didn't make sense for mobile UX
+  - rejected-vertical-list-with-rich-cards: Too incremental, not creative enough
+  - chosen-always-terminal: App opens directly to terminal PagerView. Sessions are browser tabs. Last page is launchpad.
+  - two-finger-vertical-for-workspaces: 2-finger swipe up/down switches host workspace. Avoids conflict with WebView single-finger terminal scroll.
+  - global-pager-not-per-host: PagerView spans all sessions across all hosts (sorted by lastAttached), not scoped to one host like current terminal.tsx
+  - launchpad-as-last-page: Every workspace's last swipe = launchpad page with usage rings + new session + hosts/projects/settings nav
+  - overview-grid-with-rings: [⊞] button opens full-screen overlay with usage rings strip + session grid grouped by host
+
+findings:
+  - terminal-already-has-pagerview: app/session/[hostId]/[name]/terminal.tsx already uses PagerView from react-native-pager-view for per-host session swiping. Can reuse same pattern.
+  - preview-field-exists: Session type already has preview?: string[] field, just needs preview:true added to useHostsLive options
+  - useDeviceType-exists: lib/useDeviceType.ts already exists with TABLET_BREAKPOINT=600. Use isTablet for responsive layout.
+  - ios-uses-native-tabs: iOS uses NativeTabs (expo-router/unstable-native-tabs) with minimizeBehavior="onScrollDown". Tab bar won't auto-hide on horizontal PagerView scroll.
+  - ipad-sidebar-risk: iPadOS 18+ NativeTabs may render as sidebar, making useWindowDimensions().width return full screen width. Mitigation: use onLayout on PagerView container.
+  - rn-gesture-handler-available: react-native-gesture-handler already in project (PagerView depends on it). Can use Gesture.Pan().minPointers(2) for 2-finger workspace switching.
+
+worked:
+  - Iterating on designs with the user through ASCII art mockups before committing to plan
+  - User responded well to direct questions like "which of these 3 options?" rather than open-ended
+
+failed:
+  - First carousel concept (horizontal sessions list) - user rejected as not making sense for mobile
+  - Generic "be creative" interpretation led to wrong direction initially
+
+next:
+  - Implement Task 1 - rewrite app/(tabs)/index.tsx as global PagerView with useHostsLive for all hosts
+  - Implement Task 2 - SessionTerminalPage component (thin header + TerminalWebView + helper keys)
+  - Implement Task 3 - LaunchpadPage (usage rings + new session + nav links)
+  - Implement Task 4 - SessionPickerSheet (▾ tap → bottom sheet list of all sessions)
+  - Implement Task 5 - SessionOverviewOverlay ([⊞] button → full-screen grid with usage rings)
+  - Implement Task 6 - Two-finger workspace switching (Gesture.Pan minPointers:2)
+  - Implement Task 7/8 - Tab bar hiding + deep link compat
+
+files:
+  created: [thoughts/shared/plans/PLAN-niri-session-workspace.md]
+  modified: []

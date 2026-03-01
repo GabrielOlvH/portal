@@ -63,6 +63,7 @@ export type AppPreferences = {
   sessionOrders: SessionOrder[];
   debug: {
     gestureToasts: boolean;
+    terminalMetrics: boolean;
   };
 };
 

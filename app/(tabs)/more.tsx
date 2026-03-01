@@ -672,6 +672,15 @@ export default function MoreTabScreen() {
               styles={styles}
               colors={colors}
             />
+            <View style={styles.separator} />
+            <ToggleItem
+              title="Terminal metrics"
+              subtitle="Log terminal transport stats (rx/tx, ack, resize, queue) every second"
+              value={preferences.debug.terminalMetrics}
+              onValueChange={(value) => updateDebugSettings({ terminalMetrics: value })}
+              styles={styles}
+              colors={colors}
+            />
           </View>
         </View>
       </ScrollView>

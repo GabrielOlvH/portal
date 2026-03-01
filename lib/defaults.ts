@@ -37,6 +37,7 @@ export function defaultPreferences(): AppPreferences {
     sessionOrders: [],
     debug: {
       gestureToasts: false,
+      terminalMetrics: false,
     },
   };
 }

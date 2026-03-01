@@ -71,6 +71,7 @@ function enableLowLatencySocket(ws: WebSocket) {
 
 const FLOW_HIGH_WATERMARK = 128 * 1024;
 const FLOW_LOW_WATERMARK = 64 * 1024;
+const TMUX_REFRESH_THROTTLE_MS = 120;
 const PROBE_START = '\u0001TERPROBE:';
 const PROBE_END = '\u0002';
 
@@ -78,11 +79,49 @@ function attachPtyBridge(ws: WebSocket, term: ReturnType<typeof pty.spawn>, clos
   let termClosed = false;
   let cleanedUp = false;
   let inFlightBytes = 0;
-  let queuedBytes = 0;
   let queue: string[] = [];
+  let queueHead = 0;
   let isPaused = false;
+  let lastResizeCols = 0;
+  let lastResizeRows = 0;
+  let nextTmuxRefreshAt = 0;
+  let tmuxRefreshTimer: ReturnType<typeof setTimeout> | null = null;
 
   const termControls = term as unknown as { pause?: () => void; resume?: () => void };
+
+  const runTmuxRefresh = () => {
+    if (!tmuxSession) return;
+    runTmux(['refresh-client', '-t', tmuxSession]).catch(() => {});
+  };
+
+  const scheduleTmuxRefresh = () => {
+    if (!tmuxSession) return;
+    const now = Date.now();
+    if (now >= nextTmuxRefreshAt) {
+      nextTmuxRefreshAt = now + TMUX_REFRESH_THROTTLE_MS;
+      runTmuxRefresh();
+      return;
+    }
+    if (tmuxRefreshTimer) return;
+    tmuxRefreshTimer = setTimeout(() => {
+      tmuxRefreshTimer = null;
+      nextTmuxRefreshAt = Date.now() + TMUX_REFRESH_THROTTLE_MS;
+      runTmuxRefresh();
+    }, Math.max(0, nextTmuxRefreshAt - now));
+  };
+
+  const hasQueuedData = () => queueHead < queue.length;
+  const dequeueChunk = () => {
+    if (!hasQueuedData()) return null;
+    const chunk = queue[queueHead];
+    queueHead += 1;
+    // Compact occasionally to avoid O(n) Array.shift churn under backlog.
+    if (queueHead > 256 && queueHead * 2 >= queue.length) {
+      queue = queue.slice(queueHead);
+      queueHead = 0;
+    }
+    return chunk;
+  };
 
   const maybePause = () => {
     if (isPaused) return;
@@ -102,14 +141,13 @@ function attachPtyBridge(ws: WebSocket, term: ReturnType<typeof pty.spawn>, clos
 
   const flushQueue = () => {
     if (ws.readyState !== WebSocket.OPEN) return;
-    while (queue.length > 0 && inFlightBytes <= FLOW_LOW_WATERMARK) {
-      const chunk = queue.shift();
+    while (hasQueuedData() && inFlightBytes <= FLOW_LOW_WATERMARK) {
+      const chunk = dequeueChunk();
       if (!chunk) continue;
-      queuedBytes -= chunk.length;
       ws.send(chunk);
       inFlightBytes += chunk.length;
     }
-    if (queue.length === 0) {
+    if (!hasQueuedData()) {
       maybeResume();
     }
   };
@@ -118,7 +156,6 @@ function attachPtyBridge(ws: WebSocket, term: ReturnType<typeof pty.spawn>, clos
     if (ws.readyState !== WebSocket.OPEN) return;
     if (inFlightBytes >= FLOW_HIGH_WATERMARK) {
       queue.push(data);
-      queuedBytes += data.length;
       maybePause();
       return;
     }
@@ -136,11 +173,13 @@ function attachPtyBridge(ws: WebSocket, term: ReturnType<typeof pty.spawn>, clos
     }
     if (payload?.type === 'resize') {
       if (termClosed) return;
-      term.resize(payload.cols, payload.rows);
-      // Explicitly refresh tmux client to ensure it picks up the new size
-      if (tmuxSession) {
-        runTmux(['refresh-client', '-t', tmuxSession]).catch(() => {});
-      }
+      const cols = Math.max(1, Math.trunc(payload.cols));
+      const rows = Math.max(1, Math.trunc(payload.rows));
+      if (cols === lastResizeCols && rows === lastResizeRows) return;
+      lastResizeCols = cols;
+      lastResizeRows = rows;
+      term.resize(cols, rows);
+      scheduleTmuxRefresh();
       return;
     }
     if (payload?.type === 'probe') {
@@ -166,8 +205,12 @@ function attachPtyBridge(ws: WebSocket, term: ReturnType<typeof pty.spawn>, clos
     cleanedUp = true;
     termClosed = true;
     queue = [];
-    queuedBytes = 0;
+    queueHead = 0;
     inFlightBytes = 0;
+    if (tmuxRefreshTimer) {
+      clearTimeout(tmuxRefreshTimer);
+      tmuxRefreshTimer = null;
+    }
     try {
       term.kill();
     } catch {}
@@ -438,4 +481,3 @@ export function attachWebSocketServers(server: Server) {
 
   return { termWss, dockerWss, logsWss, eventsWss };
 }
-

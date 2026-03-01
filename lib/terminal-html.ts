@@ -1,6 +1,7 @@
 export type TerminalHtmlProfile = 'session' | 'docker' | 'logs';
 export type TerminalTheme = { background: string; foreground: string; cursor?: string; selection?: string };
 export type TerminalFontConfig = { fontFamily: string; fontSize: number };
+export type TerminalHtmlOptions = { enableMetrics?: boolean };
 
 const FONT_FAMILIES: Record<string, { css: string; google?: string }> = {
   'JetBrains Mono': {
@@ -56,15 +57,23 @@ type TerminalHtmlConfig = {
   hideTextarea: boolean;
   exposeReconnect: boolean;
   allowCopyAll: boolean;
+  enableMetrics: boolean;
 };
 
 // Bump to force WebView HTML refresh when the markup/CSS changes.
-export const TERMINAL_HTML_VERSION = 'xterm-shared-v3';
+export const TERMINAL_HTML_VERSION = 'xterm-shared-v4';
 
-function buildConfig(profile: TerminalHtmlProfile, wsUrl: string, theme: TerminalTheme, font: TerminalFontConfig): TerminalHtmlConfig {
+function buildConfig(
+  profile: TerminalHtmlProfile,
+  wsUrl: string,
+  theme: TerminalTheme,
+  font: TerminalFontConfig,
+  options?: TerminalHtmlOptions
+): TerminalHtmlConfig {
   const cursor = theme.cursor ?? theme.foreground;
   const selectionBackground = theme.selection;
   const fontConfig = FONT_FAMILIES[font.fontFamily] ?? FONT_FAMILIES['JetBrains Mono'];
+  const enableMetrics = Boolean(options?.enableMetrics);
   if (profile === 'logs') {
     return {
       wsUrl,
@@ -92,6 +101,7 @@ function buildConfig(profile: TerminalHtmlProfile, wsUrl: string, theme: Termina
       hideTextarea: true,
       exposeReconnect: true,
       allowCopyAll: true,
+      enableMetrics,
     };
   }
 
@@ -119,6 +129,7 @@ function buildConfig(profile: TerminalHtmlProfile, wsUrl: string, theme: Termina
       hideTextarea: false,
       exposeReconnect: false,
       allowCopyAll: false,
+      enableMetrics,
     };
   }
 
@@ -146,6 +157,7 @@ function buildConfig(profile: TerminalHtmlProfile, wsUrl: string, theme: Termina
     hideTextarea: false,
     exposeReconnect: false,
     allowCopyAll: false,
+    enableMetrics,
   };
 }
 
@@ -155,8 +167,14 @@ function getGoogleFontsLink(fontFamily: string): string {
   return `<link href="https://fonts.googleapis.com/css2?family=${fontConfig.google}&display=swap" rel="stylesheet" />`;
 }
 
-export function buildTerminalHtml(profile: TerminalHtmlProfile, wsUrl: string, theme: TerminalTheme, font: TerminalFontConfig): string {
-  const config = buildConfig(profile, wsUrl, theme, font);
+export function buildTerminalHtml(
+  profile: TerminalHtmlProfile,
+  wsUrl: string,
+  theme: TerminalTheme,
+  font: TerminalFontConfig,
+  options?: TerminalHtmlOptions
+): string {
+  const config = buildConfig(profile, wsUrl, theme, font, options);
   const googleFontsLink = getGoogleFontsLink(font.fontFamily);
   const configJson = JSON.stringify(config);
   const overlayMarkup = config.enableOverlay ? '<div id="overlay"></div><div id="selection-handle-start" class="selection-handle"></div><div id="selection-handle-end" class="selection-handle"></div>' : '';
@@ -278,6 +296,8 @@ export function buildTerminalHtml(profile: TerminalHtmlProfile, wsUrl: string, t
       let hasFitted = false;
       let lastCols = 0;
       let lastRows = 0;
+      let ackPendingBytes = 0;
+      let ackTimer = null;
       let outputBuffer = '';
       let outputScheduled = false;
       let inputBuffer = '';
@@ -290,6 +310,25 @@ export function buildTerminalHtml(profile: TerminalHtmlProfile, wsUrl: string, t
       let dimensionRequestTimer = null;
       let dimensionRetryTimer = null;
       let pendingProposed = null;
+      const textEncoder = typeof TextEncoder !== 'undefined' ? new TextEncoder() : null;
+      const METRICS_INTERVAL_MS = 1000;
+      const metricsStartedAt = Date.now();
+      let metricsLastAt = metricsStartedAt;
+      let metricsTimer = null;
+      const metricsWindow = {
+        rxBytes: 0,
+        txBytes: 0,
+        ackBytes: 0,
+        ackMessages: 0,
+        resizeMessages: 0,
+      };
+      const metricsTotals = {
+        rxBytes: 0,
+        txBytes: 0,
+        ackBytes: 0,
+        ackMessages: 0,
+        resizeMessages: 0,
+      };
 
       function scheduleMicrotask(fn) {
         if (typeof queueMicrotask === 'function') {
@@ -305,14 +344,133 @@ export function buildTerminalHtml(profile: TerminalHtmlProfile, wsUrl: string, t
         }
       }
 
+      function byteLength(text) {
+        if (!text) return 0;
+        if (textEncoder) return textEncoder.encode(text).length;
+        return text.length;
+      }
+
+      function recordRxBytes(bytes) {
+        if (!config.enableMetrics || bytes <= 0) return;
+        metricsWindow.rxBytes += bytes;
+        metricsTotals.rxBytes += bytes;
+      }
+
+      function recordTxBytes(bytes) {
+        if (!config.enableMetrics || bytes <= 0) return;
+        metricsWindow.txBytes += bytes;
+        metricsTotals.txBytes += bytes;
+      }
+
+      function recordAck(bytes) {
+        if (!config.enableMetrics || bytes <= 0) return;
+        metricsWindow.ackBytes += bytes;
+        metricsWindow.ackMessages += 1;
+        metricsTotals.ackBytes += bytes;
+        metricsTotals.ackMessages += 1;
+      }
+
+      function recordResize() {
+        if (!config.enableMetrics) return;
+        metricsWindow.resizeMessages += 1;
+        metricsTotals.resizeMessages += 1;
+      }
+
+      function socketSend(payload) {
+        if (socket?.readyState !== 1) return false;
+        socket.send(payload);
+        recordTxBytes(byteLength(payload));
+        return true;
+      }
+
+      function emitMetrics() {
+        if (!config.enableMetrics) return;
+        const now = Date.now();
+        const elapsedSec = Math.max(0.001, (now - metricsLastAt) / 1000);
+        metricsLastAt = now;
+        const bufferedAmount = socket?.readyState === 1 ? socket.bufferedAmount : 0;
+        sendToRN({
+          type: 'metrics',
+          metrics: {
+            connected: socket?.readyState === 1,
+            cols: term.cols,
+            rows: term.rows,
+            reconnectAttempts,
+            uptimeMs: now - metricsStartedAt,
+            wsBufferedAmount: bufferedAmount,
+            outputQueuedBytes: outputBuffer.length,
+            inputQueuedBytes: inputBuffer.length,
+            ackPendingBytes,
+            rxBytesPerSec: Math.round(metricsWindow.rxBytes / elapsedSec),
+            txBytesPerSec: Math.round(metricsWindow.txBytes / elapsedSec),
+            ackBytesPerSec: Math.round(metricsWindow.ackBytes / elapsedSec),
+            ackMessagesPerSec: Number((metricsWindow.ackMessages / elapsedSec).toFixed(2)),
+            resizePerSec: Number((metricsWindow.resizeMessages / elapsedSec).toFixed(2)),
+            totals: {
+              rxBytes: metricsTotals.rxBytes,
+              txBytes: metricsTotals.txBytes,
+              ackBytes: metricsTotals.ackBytes,
+              ackMessages: metricsTotals.ackMessages,
+              resizeMessages: metricsTotals.resizeMessages,
+            },
+          },
+        });
+        metricsWindow.rxBytes = 0;
+        metricsWindow.txBytes = 0;
+        metricsWindow.ackBytes = 0;
+        metricsWindow.ackMessages = 0;
+        metricsWindow.resizeMessages = 0;
+      }
+
+      function startMetricsLoop() {
+        if (!config.enableMetrics || metricsTimer) return;
+        metricsTimer = setInterval(emitMetrics, METRICS_INTERVAL_MS);
+      }
+
+      function stopMetricsLoop() {
+        if (!metricsTimer) return;
+        clearInterval(metricsTimer);
+        metricsTimer = null;
+      }
+
+      const ACK_FLUSH_INTERVAL_MS = 16;
+      const ACK_FLUSH_BYTES = 32 * 1024;
+
+      function flushAck() {
+        if (!config.enableAck || socket?.readyState !== 1) return;
+        if (ackPendingBytes <= 0) return;
+        const bytes = ackPendingBytes;
+        ackPendingBytes = 0;
+        const payload = JSON.stringify({ type: 'ack', bytes });
+        if (socketSend(payload)) {
+          recordAck(bytes);
+        }
+      }
+
+      function queueAck(bytes) {
+        if (!config.enableAck || bytes <= 0) return;
+        ackPendingBytes += bytes;
+        if (ackPendingBytes >= ACK_FLUSH_BYTES) {
+          if (ackTimer) {
+            clearTimeout(ackTimer);
+            ackTimer = null;
+          }
+          flushAck();
+          return;
+        }
+        if (ackTimer) return;
+        ackTimer = setTimeout(() => {
+          ackTimer = null;
+          flushAck();
+        }, ACK_FLUSH_INTERVAL_MS);
+      }
+
       function flushOutput() {
         if (!outputBuffer) return;
         const chunk = outputBuffer;
         outputBuffer = '';
         term.write(chunk, () => {
-          if (config.enableAck && socket?.readyState === 1) {
-            socket.send(JSON.stringify({ type: 'ack', bytes: chunk.length }));
-          }
+          queueAck(chunk.length);
           if (autoScroll) {
             term.scrollToBottom();
           }
@@ -333,15 +491,13 @@ export function buildTerminalHtml(profile: TerminalHtmlProfile, wsUrl: string, t
         if (!inputBuffer || !config.enableInput) return;
         const chunk = inputBuffer;
         inputBuffer = '';
-        if (socket?.readyState === 1) {
-          socket.send(JSON.stringify({ type: 'input', data: chunk }));
-        }
+        socketSend(JSON.stringify({ type: 'input', data: chunk }));
       }
 
       function queueInput(data) {
         if (!data || !config.enableInput) return;
         if (socket?.readyState === 1 && data.length <= 1 && !inputScheduled && !inputBuffer) {
-          socket.send(JSON.stringify({ type: 'input', data }));
+          socketSend(JSON.stringify({ type: 'input', data }));
           return;
         }
         inputBuffer += data;
@@ -385,7 +541,9 @@ export function buildTerminalHtml(profile: TerminalHtmlProfile, wsUrl: string, t
         if (cols === lastCols && rows === lastRows) return;
         lastCols = cols;
         lastRows = rows;
-        socket.send(JSON.stringify({ type: 'resize', cols, rows }));
+        if (socketSend(JSON.stringify({ type: 'resize', cols, rows }))) {
+          recordResize();
+        }
       }
 
       function updateLayoutReady() {
@@ -538,7 +696,13 @@ export function buildTerminalHtml(profile: TerminalHtmlProfile, wsUrl: string, t
           socket.binaryType = 'arraybuffer';
         }
         socket.onopen = () => {
+          if (ackTimer) {
+            clearTimeout(ackTimer);
+            ackTimer = null;
+          }
+          ackPendingBytes = 0;
           reconnectAttempts = 0;
+          startMetricsLoop();
           emitStatusConnected();
           flushInput();
           if (hasFitted) {
@@ -549,14 +713,24 @@ export function buildTerminalHtml(profile: TerminalHtmlProfile, wsUrl: string, t
         };
         socket.onmessage = (event) => {
           let data;
+          let rxBytes = 0;
           if (config.mode === 'logs' && event.data instanceof ArrayBuffer) {
+            rxBytes = event.data.byteLength;
             data = new TextDecoder().decode(event.data);
           } else {
             data = typeof event.data === 'string' ? event.data : String(event.data);
+            rxBytes = byteLength(data);
           }
+          recordRxBytes(rxBytes);
           if (data) queueOutput(data);
         };
         socket.onclose = (event) => {
+          stopMetricsLoop();
+          if (ackTimer) {
+            clearTimeout(ackTimer);
+            ackTimer = null;
+          }
+          ackPendingBytes = 0;
           const reason = event.reason || 'closed';
           emitStatusDisconnected(reason);
           if (config.emitSessionEnded && shouldStopReconnect(reason)) {
@@ -709,7 +883,7 @@ export function buildTerminalHtml(profile: TerminalHtmlProfile, wsUrl: string, t
           const row = clamp(Math.floor(relY / cell.height) + 1, 1, term.rows);
           const btn = deltaY < 0 ? 64 : 65;
           const esc = String.fromCharCode(27);
-          socket.send(JSON.stringify({ type: 'input', data: esc + '[<' + btn + ';' + col + ';' + row + 'M' }));
+          socketSend(JSON.stringify({ type: 'input', data: esc + '[<' + btn + ';' + col + ';' + row + 'M' }));
         }
 
         const overlay = document.getElementById('overlay');

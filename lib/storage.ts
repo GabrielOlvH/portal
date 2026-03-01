@@ -65,6 +65,7 @@ function normalizePreferences(raw: Partial<AppPreferences> | null): AppPreferenc
     sessionOrders: Array.isArray(sessionOrders) ? sessionOrders : [],
     debug: {
       gestureToasts: typeof debug.gestureToasts === 'boolean' ? debug.gestureToasts : defaults.debug.gestureToasts,
+      terminalMetrics: typeof debug.terminalMetrics === 'boolean' ? debug.terminalMetrics : defaults.debug.terminalMetrics,
     },
   };
 }

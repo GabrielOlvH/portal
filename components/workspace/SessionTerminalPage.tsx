@@ -147,20 +147,21 @@ export function SessionTerminalPage({
 
   const themeKey = `${terminalTheme.background}|${terminalTheme.foreground}`;
   const fontKey = `${fontConfig.fontFamily}|${fontConfig.fontSize}`;
+  const metricsKey = preferences.debug.terminalMetrics ? 'metrics1' : 'metrics0';
 
   const terminalSource = useMemo(() => {
     const wsUrl = buildSessionWsUrl(session.host, session.name);
     if (!wsUrl) return undefined;
-    const cacheKey = `${wsUrl}|${themeKey}|${fontKey}|${TERMINAL_HTML_VERSION}|session`;
+    const cacheKey = `${wsUrl}|${themeKey}|${fontKey}|${metricsKey}|${TERMINAL_HTML_VERSION}|session`;
     if (!sourceCache.current || sourceCache.current.key !== cacheKey) {
       sourceCache.current = {
         key: cacheKey,
-        source: { html: buildTerminalHtml('session', wsUrl, terminalTheme, fontConfig) },
+        source: { html: buildTerminalHtml('session', wsUrl, terminalTheme, fontConfig, { enableMetrics: preferences.debug.terminalMetrics }) },
       };
     }
     return sourceCache.current.source;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session.host, session.name, themeKey, fontKey]);
+  }, [session.host, session.name, themeKey, fontKey, metricsKey, preferences.debug.terminalMetrics]);
 
   useEffect(() => {
     if (isActive) wasEverActive.current = true;
@@ -456,6 +457,7 @@ export function SessionTerminalPage({
                   text?: unknown;
                   state?: string;
                   focused?: boolean;
+                  metrics?: unknown;
                 };
                 if (!payload || typeof payload !== 'object') return;
                 switch (payload.type) {
@@ -480,6 +482,10 @@ export function SessionTerminalPage({
                   case 'focus':
                     // Focus messages are informational; accessory visibility is
                     // driven by keyboard height so it remains reliable.
+                    return;
+                  case 'metrics':
+                    if (!preferences.debug.terminalMetrics || !isActive || !payload.metrics || typeof payload.metrics !== 'object') return;
+                    console.debug(`[terminal-metrics][${session.host.name}/${session.name}]`, payload.metrics);
                     return;
                   default:
                     return;
