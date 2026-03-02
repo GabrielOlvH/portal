@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
-import { View, StyleSheet, Platform, type StyleProp, type ViewStyle, type LayoutChangeEvent } from 'react-native';
+import { AppState, View, StyleSheet, Platform, type AppStateStatus, type StyleProp, type ViewStyle, type LayoutChangeEvent } from 'react-native';
 import { WebView, type WebViewMessageEvent } from 'react-native-webview';
 
 type DimensionRequest = {
@@ -32,6 +32,8 @@ export function TerminalWebView({
   const webRef = useRef<WebView | null>(null);
   const layoutRef = useRef<{ width: number; height: number } | null>(null);
   const loadedRef = useRef(false);
+  const appStateRef = useRef<AppStateStatus>(AppState.currentState);
+  const fitTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   const flattenedStyle = useMemo(() => StyleSheet.flatten(style) ?? {}, [style]);
   const containerStyle = useMemo(
@@ -93,6 +95,30 @@ export function TerminalWebView({
     );
   }, [autoFit]);
 
+  const clearFitTimers = useCallback(() => {
+    if (fitTimersRef.current.length === 0) return;
+    fitTimersRef.current.forEach((timer) => clearTimeout(timer));
+    fitTimersRef.current = [];
+  }, []);
+
+  const triggerFitBurst = useCallback((delays: number[]) => {
+    if (!autoFit || !loadedRef.current || !webRef.current) return;
+    clearFitTimers();
+    fitTimersRef.current = delays.map((delay) =>
+      setTimeout(() => {
+        triggerDimensionRequest();
+      }, delay)
+    );
+  }, [autoFit, clearFitTimers, triggerDimensionRequest]);
+
+  const notifyAppState = useCallback((state: AppStateStatus) => {
+    if (!loadedRef.current || !webRef.current) return;
+    const value = JSON.stringify(state);
+    webRef.current.injectJavaScript(
+      `window.__onAppState && window.__onAppState(${value}); true;`
+    );
+  }, []);
+
   const handleRef = useCallback((ref: WebView | null) => {
     webRef.current = ref;
     setRef?.(ref);
@@ -101,8 +127,9 @@ export function TerminalWebView({
   const handleLoadEnd = useCallback(() => {
     loadedRef.current = true;
     onLoadEnd?.();
-    triggerDimensionRequest();
-  }, [onLoadEnd, triggerDimensionRequest]);
+    notifyAppState(appStateRef.current);
+    triggerFitBurst([0, 80, 220]);
+  }, [notifyAppState, onLoadEnd, triggerFitBurst]);
 
   const handleLayout = useCallback((event: LayoutChangeEvent) => {
     const prevLayout = layoutRef.current;
@@ -115,13 +142,30 @@ export function TerminalWebView({
       Math.abs(prevLayout.width - newLayout.width) > 2 ||
       Math.abs(prevLayout.height - newLayout.height) > 2;
     if (significantChange) {
-      triggerDimensionRequest();
+      triggerFitBurst([0, 80]);
     }
-  }, [onLayout, triggerDimensionRequest]);
+  }, [onLayout, triggerFitBurst]);
 
   useEffect(() => {
     loadedRef.current = false;
-  }, [source]);
+    clearFitTimers();
+    return () => {
+      clearFitTimers();
+    };
+  }, [clearFitTimers, source]);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextState) => {
+      appStateRef.current = nextState;
+      notifyAppState(nextState);
+      if (nextState === 'active') {
+        triggerFitBurst([0, 80, 220, 450]);
+      }
+    });
+    return () => {
+      subscription.remove();
+    };
+  }, [notifyAppState, triggerFitBurst]);
 
   return (
     <View style={containerStyle} onLayout={handleLayout}>

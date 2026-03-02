@@ -8,6 +8,7 @@ import {
   Alert,
 } from 'react-native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { List, LayoutGrid, CheckSquare, XSquare, Plus, ZapOff } from 'lucide-react-native';
 
 import { AppText } from '@/components/AppText';
 import { FadeIn } from '@/components/FadeIn';
@@ -16,12 +17,13 @@ import { PortGroup } from '@/components/PortGroup';
 import { TunnelRow } from '@/components/TunnelRow';
 import { SearchBar } from '@/components/SearchBar';
 import { CreateTunnelModal } from '@/components/CreateTunnelModal';
+import { GlassCard } from '@/components/ui/GlassCard';
 import { useWindowActions } from '@/lib/useWindowActions';
 import { useStore } from '@/lib/store';
 import { getPorts, killPorts, getTunnels, closeTunnel } from '@/lib/api';
 import { PortInfo, Tunnel } from '@/lib/types';
 import { theme } from '@/lib/theme';
-import { systemColors } from '@/lib/colors';
+import { systemColors, withAlpha } from '@/lib/colors';
 import { ThemeColors, useTheme } from '@/lib/useTheme';
 
 type ViewMode = 'list' | 'grouped';
@@ -229,20 +231,24 @@ export function PortsWindow() {
         <AppText variant="title">Ports</AppText>
         <View style={styles.headerActions}>
           <Pressable
-            style={[styles.viewToggle, viewMode === 'grouped' && styles.viewToggleActive]}
+            style={[styles.actionBtn, viewMode === 'grouped' && styles.actionBtnActive]}
             onPress={() => setViewMode(viewMode === 'list' ? 'grouped' : 'list')}
           >
-            <AppText variant="label" style={viewMode === 'grouped' ? styles.viewToggleTextActive : undefined}>
-              {viewMode === 'list' ? '≡' : '⊞'}
-            </AppText>
+            {viewMode === 'list' ? (
+              <List size={20} color={colors.text} />
+            ) : (
+              <LayoutGrid size={20} color={colors.accentText} />
+            )}
           </Pressable>
           <Pressable
-            style={[styles.modeButton, selectionMode && styles.modeButtonActive]}
+            style={[styles.actionBtn, selectionMode && styles.actionBtnActive]}
             onPress={toggleSelectionMode}
           >
-            <AppText variant="label" style={selectionMode ? styles.modeButtonTextActive : undefined}>
-              {selectionMode ? 'Done' : 'Select'}
-            </AppText>
+            {selectionMode ? (
+              <XSquare size={20} color={colors.accentText} />
+            ) : (
+              <CheckSquare size={20} color={colors.text} />
+            )}
           </Pressable>
         </View>
       </View>
@@ -287,11 +293,14 @@ export function PortsWindow() {
       />
 
       {selectionMode && selectedPids.size > 0 && (
-        <Pressable style={styles.killSelectedButton} onPress={handleKillSelected}>
-          <AppText variant="subtitle" style={styles.killSelectedText}>
-            Kill {selectedPids.size} Selected
-          </AppText>
-        </Pressable>
+        <FadeIn delay={0}>
+          <Pressable style={styles.killSelectedButton} onPress={handleKillSelected}>
+            <ZapOff size={20} color={colors.accentText} />
+            <AppText variant="subtitle" style={styles.killSelectedText}>
+              Kill {selectedPids.size} Selected
+            </AppText>
+          </Pressable>
+        </FadeIn>
       )}
 
       <ScrollView
@@ -308,7 +317,7 @@ export function PortsWindow() {
         {!currentHost ? (
           <FadeIn style={styles.empty}>
             <View style={styles.emptyIcon}>
-              <AppText variant="title" style={styles.emptyIconText}>~</AppText>
+              <ZapOff size={32} color={colors.textMuted} />
             </View>
             <AppText variant="subtitle">No hosts configured</AppText>
             <AppText variant="body" tone="muted" style={styles.emptyBody}>
@@ -321,7 +330,9 @@ export function PortsWindow() {
               <View style={styles.section}>
                 <View style={styles.sectionHeader}>
                   <AppText variant="subtitle" tone="muted">Port Forwards</AppText>
-                  <AppText variant="label" tone="muted">{tunnels.length}</AppText>
+                  <View style={styles.badge}>
+                    <AppText variant="caps" tone="base">{tunnels.length}</AppText>
+                  </View>
                 </View>
                 {tunnels.map((tunnel, index) => (
                   <FadeIn key={tunnel.id} delay={index * 30}>
@@ -338,13 +349,14 @@ export function PortsWindow() {
                 setTunnelModalOpen(true);
               }}
             >
-              <AppText variant="label" style={styles.createTunnelText}>+ Create Port Forward</AppText>
+              <Plus size={20} color={colors.textSecondary} />
+              <AppText variant="label" style={styles.createTunnelText}>Create Port Forward</AppText>
             </Pressable>
 
             {filteredPorts.length === 0 ? (
               <FadeIn style={styles.empty}>
                 <View style={styles.emptyIcon}>
-                  <AppText variant="title" style={styles.emptyIconText}>:</AppText>
+                  <ZapOff size={32} color={colors.textMuted} />
                 </View>
                 <AppText variant="subtitle">
                   {searchQuery ? 'No matching ports' : 'No active ports'}
@@ -359,7 +371,9 @@ export function PortsWindow() {
               <View style={styles.section}>
                 <View style={styles.sectionHeader}>
                   <AppText variant="subtitle" tone="muted">Ports by Process</AppText>
-                  <AppText variant="label" tone="muted">{filteredPorts.length}</AppText>
+                  <View style={styles.badge}>
+                    <AppText variant="caps" tone="base">{filteredPorts.length}</AppText>
+                  </View>
                 </View>
                 {groupedPorts.map(([processName, processPorts]) => (
                   <PortGroup key={processName} processName={processName} ports={processPorts}>
@@ -381,7 +395,9 @@ export function PortsWindow() {
               <View style={styles.section}>
                 <View style={styles.sectionHeader}>
                   <AppText variant="subtitle" tone="muted">Active Ports</AppText>
-                  <AppText variant="label" tone="muted">{filteredPorts.length}</AppText>
+                  <View style={styles.badge}>
+                    <AppText variant="caps" tone="base">{filteredPorts.length}</AppText>
+                  </View>
                 </View>
                 {filteredPorts.map((port, index) => renderPortRow(port, index))}
               </View>
@@ -404,7 +420,6 @@ export function PortsWindow() {
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
     padding: theme.spacing.md,
   },
   header: {
@@ -412,127 +427,130 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 16,
+    marginTop: 8,
   },
   headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
-  viewToggle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.cardPressed,
+  actionBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: withAlpha(colors.text, 0.05),
     alignItems: 'center',
     justifyContent: 'center',
   },
-  viewToggleActive: {
+  actionBtnActive: {
     backgroundColor: colors.accent,
-  },
-  viewToggleTextActive: {
-    color: colors.accentText,
-  },
-  modeButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 20,
-    backgroundColor: colors.cardPressed,
-  },
-  modeButtonActive: {
-    backgroundColor: colors.accent,
-  },
-  modeButtonTextActive: {
-    color: colors.accentText,
   },
   hostSelectorContainer: {
     flexGrow: 0,
     flexShrink: 0,
-    marginBottom: theme.spacing.sm,
+    marginBottom: 16,
   },
   hostSelector: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingBottom: 4,
   },
   hostChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    alignSelf: 'flex-start',
-    gap: 6,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: theme.radii.sm,
-    backgroundColor: colors.cardPressed,
-    marginRight: 8,
+    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 100,
+    backgroundColor: withAlpha(colors.text, 0.05),
+    marginRight: 12,
   },
   hostChipActive: {
     backgroundColor: colors.accent,
   },
   hostChipTextActive: {
     color: colors.accentText,
+    fontWeight: '600',
   },
   hostDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
   },
   killSelectedButton: {
+    flexDirection: 'row',
     backgroundColor: colors.red,
     paddingVertical: 14,
-    borderRadius: theme.radii.md,
+    borderRadius: 16,
     alignItems: 'center',
-    marginBottom: theme.spacing.sm,
+    justifyContent: 'center',
+    gap: 8,
+    marginBottom: 16,
+    shadowColor: colors.red,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
   },
   killSelectedText: {
     color: colors.accentText,
+    fontWeight: '600',
   },
   scrollContent: {
-    paddingBottom: theme.spacing.xxl,
+    paddingBottom: 60,
   },
   section: {
-    marginBottom: theme.spacing.lg,
+    marginBottom: 24,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: theme.spacing.sm,
+    marginBottom: 12,
     paddingHorizontal: 4,
   },
+  badge: {
+    backgroundColor: withAlpha(colors.text, 0.05),
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
   groupedPortRow: {
-    paddingHorizontal: theme.spacing.sm,
-    paddingBottom: theme.spacing.xs,
+    marginBottom: 8,
   },
   createTunnelButton: {
-    borderWidth: 1,
-    borderColor: colors.separator,
-    borderStyle: 'dashed',
-    borderRadius: theme.radii.md,
-    paddingVertical: 14,
+    flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: theme.spacing.lg,
+    gap: 8,
+    borderWidth: 2,
+    borderColor: withAlpha(colors.text, 0.1),
+    borderStyle: 'dashed',
+    borderRadius: 16,
+    paddingVertical: 16,
+    marginBottom: 24,
   },
   createTunnelText: {
     color: colors.textSecondary,
+    fontWeight: '600',
   },
   empty: {
-    padding: theme.spacing.lg,
+    padding: 32,
     alignItems: 'center',
+    backgroundColor: withAlpha(colors.text, 0.02),
+    borderRadius: 20,
+    marginTop: 20,
   },
   emptyIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: colors.cardPressed,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: withAlpha(colors.text, 0.05),
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: theme.spacing.sm,
-  },
-  emptyIconText: {
-    color: colors.textSecondary,
+    marginBottom: 16,
   },
   emptyBody: {
     textAlign: 'center',
-    marginTop: theme.spacing.xs,
-    marginBottom: theme.spacing.md,
+    marginTop: 8,
   },
 });

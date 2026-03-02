@@ -2,14 +2,16 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, View, StyleSheet, ScrollView, Pressable, RefreshControl } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useIsFocused } from '@react-navigation/native';
+import { Search, Plus, Radio, Server, ShieldAlert } from 'lucide-react-native';
 
 import { Screen } from '@/components/Screen';
 import { AppText } from '@/components/AppText';
 import { FadeIn } from '@/components/FadeIn';
 import { HostCard } from '@/components/HostCard';
 import { SkeletonList } from '@/components/Skeleton';
+import { GlassCard } from '@/components/ui/GlassCard';
 import { applyUpdate, checkForUpdate, UpdateStatus } from '@/lib/api';
-import { systemColors } from '@/lib/colors';
+import { systemColors, withAlpha } from '@/lib/colors';
 import { DiscoveredAgent, scanForAgents } from '@/lib/discovery';
 import { useStore } from '@/lib/store';
 import { useWindowActionsIfAvailable } from '@/lib/useWindowActions';
@@ -179,25 +181,26 @@ export default function HostsTabScreen() {
   return (
     <Screen>
       <View style={styles.header}>
-        <AppText variant="caps" tone="muted">
-          {ready ? `${onlineCount}/${hosts.length} online` : 'Loading...'}
-        </AppText>
+        <AppText variant="title" style={styles.title}>Hosts</AppText>
         <View style={styles.headerActions}>
           <Pressable
-            style={[styles.scanButton, isScanning && styles.scanButtonDisabled]}
+            style={[styles.actionBtn, isScanning && styles.actionBtnDisabled]}
             onPress={handleScan}
             disabled={isScanning}
           >
-            <AppText variant="caps" style={styles.scanButtonText}>
-              {isScanning ? 'Scanning...' : 'Scan'}
-            </AppText>
+            <Radio size={20} color={colors.text} />
           </Pressable>
-          <Pressable style={styles.addButton} onPress={() => router.push('/hosts/new')}>
-            <AppText variant="subtitle" style={styles.addButtonText}>
-              +
-            </AppText>
+          <Pressable style={[styles.actionBtn, { backgroundColor: colors.accent }]} onPress={() => router.push('/hosts/new')}>
+            <Plus size={20} color={colors.accentText} />
           </Pressable>
         </View>
+      </View>
+
+      <View style={styles.statusRow}>
+        <AppText variant="caps" tone="muted" style={styles.statusText}>
+          {ready ? `${onlineCount} of ${hosts.length} online` : 'Loading...'}
+        </AppText>
+        <View style={styles.statusLine} />
       </View>
 
       <ScrollView
@@ -216,62 +219,74 @@ export default function HostsTabScreen() {
         }
       >
         {scanState.status !== 'idle' && (
-          <View style={styles.scanCard}>
-            <View style={styles.scanHeader}>
-              <AppText variant="subtitle">Local scan</AppText>
-              <Pressable
-                onPress={handleScan}
-                style={[styles.scanButtonSmall, isScanning && styles.scanButtonDisabled]}
-                disabled={isScanning}
-              >
-                <AppText variant="caps" style={styles.scanButtonText}>
-                  {isScanning ? 'Scanning...' : 'Rescan'}
-                </AppText>
-              </Pressable>
-            </View>
-            {isScanning && (
-              <AppText variant="body" tone="muted">
-                Scanning local network for agents on port 4020...
-              </AppText>
-            )}
-            {scanState.message ? (
-              <AppText variant="body" tone="warning">
-                {scanState.message}
-              </AppText>
-            ) : null}
-            {scanState.status === 'done' && scanState.results.length === 0 ? (
-              <AppText variant="body" tone="muted">
-                No agents found on port 4020.
-              </AppText>
-            ) : null}
-            {scanState.results.map((agent) => {
-              const isAdding = Boolean(addingAgents[agent.baseUrl]);
-              return (
-                <View key={agent.baseUrl} style={styles.scanRow}>
-                  <View style={styles.scanInfo}>
-                    <AppText variant="label">{agent.label}</AppText>
-                    <AppText variant="mono" tone="muted">
-                      {agent.baseUrl}
-                    </AppText>
-                    {agent.status === 'auth-required' && (
-                      <AppText variant="caps" tone="warning" style={styles.scanStatus}>
-                        Token required
-                      </AppText>
-                    )}
-                  </View>
-                  <Pressable
-                    style={[styles.scanAddButton, isAdding && styles.scanAddButtonDisabled]}
-                    onPress={() => handleAddAgent(agent)}
-                    disabled={isAdding}
-                  >
-                    <AppText variant="caps" style={styles.scanAddText}>
-                      {isAdding ? 'Adding...' : 'Add'}
-                    </AppText>
-                  </Pressable>
+          <FadeIn>
+            <GlassCard style={styles.scanCard} intensity={20}>
+              <View style={styles.scanHeader}>
+                <View style={styles.scanTitleRow}>
+                  <Search size={18} color={colors.accent} />
+                  <AppText variant="subtitle" style={{ fontWeight: '600' }}>Network Scan</AppText>
                 </View>
-              );
-            })}
-          </View>
+                <Pressable
+                  onPress={handleScan}
+                  style={[styles.rescanButton, isScanning && styles.rescanButtonDisabled]}
+                  disabled={isScanning}
+                >
+                  <AppText variant="caps" style={styles.rescanText}>
+                    {isScanning ? 'Scanning...' : 'Rescan'}
+                  </AppText>
+                </Pressable>
+              </View>
+              
+              {isScanning && (
+                <AppText variant="body" tone="muted" style={styles.scanDesc}>
+                  Looking for agents on local network port 4020...
+                </AppText>
+              )}
+              
+              {scanState.message ? (
+                <View style={styles.scanError}>
+                  <ShieldAlert size={16} color={colors.red} />
+                  <AppText variant="body" style={{ color: colors.red }}>{scanState.message}</AppText>
+                </View>
+              ) : null}
+              
+              {scanState.status === 'done' && scanState.results.length === 0 ? (
+                <AppText variant="body" tone="muted" style={styles.scanDesc}>
+                  No agents found. Ensure your host is running and accessible.
+                </AppText>
+              ) : null}
+              
+              {scanState.results.length > 0 && (
+                <View style={styles.scanResultsList}>
+                  {scanState.results.map((agent, idx) => {
+                    const isAdding = Boolean(addingAgents[agent.baseUrl]);
+                    return (
+                      <View key={agent.baseUrl} style={[styles.scanRow, idx > 0 && styles.scanRowBorder]}>
+                        <View style={styles.scanInfo}>
+                          <AppText variant="body" style={{ fontWeight: '500' }}>{agent.label}</AppText>
+                          <AppText variant="mono" tone="muted" style={{ fontSize: 11 }}>{agent.baseUrl}</AppText>
+                          {agent.status === 'auth-required' && (
+                            <View style={styles.authPill}>
+                              <AppText variant="caps" style={{ color: colors.orange, fontSize: 10 }}>Token Required</AppText>
+                            </View>
+                          )}
+                        </View>
+                        <Pressable
+                          style={[styles.scanAddButton, isAdding && styles.scanAddButtonDisabled]}
+                          onPress={() => handleAddAgent(agent)}
+                          disabled={isAdding}
+                        >
+                          <AppText variant="label" style={styles.scanAddText}>
+                            {isAdding ? 'Adding' : 'Add Host'}
+                          </AppText>
+                        </Pressable>
+                      </View>
+                    );
+                  })}
+                </View>
+              )}
+            </GlassCard>
+          </FadeIn>
         )}
 
         {isBooting ? (
@@ -281,17 +296,16 @@ export default function HostsTabScreen() {
         ) : hosts.length === 0 ? (
           <FadeIn style={styles.empty}>
             <View style={styles.emptyIcon}>
-              <AppText variant="title" style={styles.emptyIconText}>
-                ~
-              </AppText>
+              <Server size={32} color={colors.textMuted} />
             </View>
-            <AppText variant="subtitle">No hosts configured</AppText>
+            <AppText variant="title">No hosts connected</AppText>
             <AppText variant="body" tone="muted" style={styles.emptyBody}>
-              Add a host running the tmux agent to manage sessions remotely.
+              Add a host running the Portal agent to manage sessions remotely.
             </AppText>
             <Pressable style={styles.cta} onPress={() => router.push('/hosts/new')}>
+              <Plus size={18} color={colors.accentText} />
               <AppText variant="subtitle" style={styles.ctaText}>
-                Add Host
+                Add First Host
               </AppText>
             </Pressable>
           </FadeIn>
@@ -336,114 +350,172 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: theme.spacing.md,
+    marginBottom: 8,
+    marginTop: 8,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: '700',
   },
   headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 12,
   },
-  scanButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
-    backgroundColor: colors.cardPressed,
-  },
-  scanButtonSmall: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-    backgroundColor: colors.cardPressed,
-  },
-  scanButtonDisabled: {
-    opacity: 0.6,
-  },
-  scanButtonText: {
-    color: colors.text,
-  },
-  addButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: colors.accent,
+  actionBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: withAlpha(colors.text, 0.05),
     alignItems: 'center',
     justifyContent: 'center',
   },
-  addButtonText: {
-    color: colors.accentText,
-    fontSize: 20,
-    marginTop: -2,
+  actionBtnDisabled: {
+    opacity: 0.5,
+  },
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 20,
+  },
+  statusText: {
+    fontWeight: '600',
+    letterSpacing: 1,
+  },
+  statusLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: withAlpha(colors.text, 0.1),
   },
   scrollContent: {
-    paddingBottom: theme.spacing.xxl,
-    gap: theme.spacing.sm,
+    paddingBottom: 60,
   },
   hostsContainer: {
-    overflow: 'hidden',
+    gap: 4,
   },
   scanCard: {
-    padding: theme.spacing.md,
-    gap: theme.spacing.xs,
+    padding: 16,
+    marginBottom: 20,
   },
   scanHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 8,
+  },
+  scanTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  rescanButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: withAlpha(colors.text, 0.05),
+  },
+  rescanButtonDisabled: {
+    opacity: 0.5,
+  },
+  rescanText: {
+    color: colors.text,
+    fontWeight: '600',
+  },
+  scanDesc: {
+    marginBottom: 8,
+  },
+  scanError: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: withAlpha(colors.red, 0.1),
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 8,
+  },
+  scanResultsList: {
+    marginTop: 12,
+    backgroundColor: withAlpha(colors.text, 0.02),
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: withAlpha(colors.text, 0.05),
   },
   scanRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    gap: theme.spacing.sm,
-    marginTop: theme.spacing.xs,
+    padding: 12,
+  },
+  scanRowBorder: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: withAlpha(colors.text, 0.05),
   },
   scanInfo: {
     flex: 1,
-    gap: 2,
+    gap: 4,
   },
-  scanStatus: {
-    marginTop: 2,
+  authPill: {
+    alignSelf: 'flex-start',
+    backgroundColor: withAlpha(colors.orange, 0.1),
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+    marginTop: 4,
   },
   scanAddButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 10,
     backgroundColor: colors.accent,
   },
   scanAddButtonDisabled: {
-    backgroundColor: colors.cardPressed,
+    backgroundColor: withAlpha(colors.text, 0.05),
   },
   scanAddText: {
     color: colors.accentText,
+    fontWeight: '600',
   },
   empty: {
-    padding: theme.spacing.lg,
+    padding: 32,
     alignItems: 'center',
+    backgroundColor: withAlpha(colors.text, 0.02),
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: withAlpha(colors.text, 0.05),
+    marginTop: 20,
   },
   emptyIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: colors.cardPressed,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: withAlpha(colors.text, 0.05),
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: theme.spacing.sm,
-  },
-  emptyIconText: {
-    color: colors.textSecondary,
+    marginBottom: 16,
   },
   emptyBody: {
     textAlign: 'center',
-    marginTop: theme.spacing.xs,
-    marginBottom: theme.spacing.md,
+    marginTop: 8,
+    marginBottom: 24,
+    lineHeight: 20,
+    maxWidth: 240,
   },
   cta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
     backgroundColor: colors.accent,
-    borderRadius: theme.radii.md,
-    paddingVertical: 12,
+    borderRadius: 100,
+    paddingVertical: 14,
     paddingHorizontal: 24,
+    shadowColor: colors.accent,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
   },
   ctaText: {
     color: colors.accentText,
+    fontWeight: '600',
   },
 });

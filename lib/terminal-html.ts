@@ -46,6 +46,7 @@ type TerminalHtmlConfig = {
   reconnectMaxDelayMs?: number;
   reconnectMaxAttempts?: number;
   reconnectOnCleanClose: boolean;
+  reconnectOnForeground: boolean;
   notifyStatus: TerminalStatusMode;
   stopReconnectReasons?: string[];
   emitSessionEnded: boolean;
@@ -61,7 +62,7 @@ type TerminalHtmlConfig = {
 };
 
 // Bump to force WebView HTML refresh when the markup/CSS changes.
-export const TERMINAL_HTML_VERSION = 'xterm-shared-v4';
+export const TERMINAL_HTML_VERSION = 'xterm-shared-v5';
 
 function buildConfig(
   profile: TerminalHtmlProfile,
@@ -91,6 +92,7 @@ function buildConfig(
       reconnectMaxDelayMs: 10000,
       reconnectMaxAttempts: 5,
       reconnectOnCleanClose: false,
+      reconnectOnForeground: true,
       notifyStatus: 'logs',
       emitSessionEnded: false,
       emitFocusEvents: false,
@@ -119,6 +121,7 @@ function buildConfig(
       reconnectStrategy: 'fixed',
       reconnectDelayMs: 1000,
       reconnectOnCleanClose: false,
+      reconnectOnForeground: false,
       notifyStatus: 'none',
       emitSessionEnded: false,
       emitFocusEvents: true,
@@ -146,6 +149,7 @@ function buildConfig(
     reconnectStrategy: 'fixed',
     reconnectDelayMs: 1000,
     reconnectOnCleanClose: true,
+    reconnectOnForeground: true,
     notifyStatus: 'terminal',
     stopReconnectReasons: ['session ended', 'session not found'],
     emitSessionEnded: true,
@@ -298,11 +302,15 @@ export function buildTerminalHtml(
       let lastRows = 0;
       let ackPendingBytes = 0;
       let ackTimer = null;
-      let outputBuffer = '';
+      let outputQueue = [];
+      let outputQueueHead = 0;
+      let outputQueuedBytes = 0;
       let outputScheduled = false;
+      let outputDraining = false;
       let inputBuffer = '';
       let inputScheduled = false;
       let autoScroll = Boolean(config.autoScroll);
+      let scrollToBottomScheduled = false;
       let fontsReady = false;
       let layoutReady = false;
       let fontReadyTimer = null;
@@ -311,6 +319,9 @@ export function buildTerminalHtml(
       let dimensionRetryTimer = null;
       let pendingProposed = null;
       const textEncoder = typeof TextEncoder !== 'undefined' ? new TextEncoder() : null;
+      const textDecoder = typeof TextDecoder !== 'undefined' ? new TextDecoder() : null;
+      let hiddenAt = 0;
+      let foregroundRecoverTimer = null;
       const METRICS_INTERVAL_MS = 1000;
       const metricsStartedAt = Date.now();
       let metricsLastAt = metricsStartedAt;
@@ -398,7 +409,7 @@ export function buildTerminalHtml(
             reconnectAttempts,
             uptimeMs: now - metricsStartedAt,
             wsBufferedAmount: bufferedAmount,
-            outputQueuedBytes: outputBuffer.length,
+            outputQueuedBytes,
             inputQueuedBytes: inputBuffer.length,
             ackPendingBytes,
             rxBytesPerSec: Math.round(metricsWindow.rxBytes / elapsedSec),
@@ -433,8 +444,46 @@ export function buildTerminalHtml(
         metricsTimer = null;
       }
 
-      const ACK_FLUSH_INTERVAL_MS = 40;
-      const ACK_FLUSH_BYTES = 64 * 1024;
+      const ACK_FLUSH_INTERVAL_MS = 20;
+      const ACK_FLUSH_BYTES = 32 * 1024;
+      const OUTPUT_CHUNK_SIZE = config.mode === 'logs' ? 24 * 1024 : 12 * 1024;
+
+      function compactOutputQueue() {
+        if (outputQueueHead <= 256 || outputQueueHead * 2 < outputQueue.length) return;
+        outputQueue = outputQueue.slice(outputQueueHead);
+        outputQueueHead = 0;
+      }
+
+      function dequeueOutputChunk(maxChars) {
+        if (outputQueueHead >= outputQueue.length || maxChars <= 0) return '';
+        let remaining = maxChars;
+        let taken = 0;
+        const parts = [];
+        while (remaining > 0 && outputQueueHead < outputQueue.length) {
+          const part = outputQueue[outputQueueHead];
+          if (!part) {
+            outputQueueHead += 1;
+            continue;
+          }
+          if (part.length <= remaining) {
+            parts.push(part);
+            taken += part.length;
+            remaining -= part.length;
+            outputQueueHead += 1;
+            continue;
+          }
+          parts.push(part.slice(0, remaining));
+          outputQueue[outputQueueHead] = part.slice(remaining);
+          taken += remaining;
+          remaining = 0;
+        }
+        if (taken > 0) {
+          outputQueuedBytes = Math.max(0, outputQueuedBytes - taken);
+        }
+        compactOutputQueue();
+        if (parts.length === 0) return '';
+        return parts.length === 1 ? parts[0] : parts.join('');
+      }
 
       function flushAck() {
         if (!config.enableAck || socket?.readyState !== 1) return;
@@ -465,26 +514,58 @@ export function buildTerminalHtml(
         }, ACK_FLUSH_INTERVAL_MS);
       }
 
+      function scheduleOutputDrain() {
+        if (outputScheduled || outputDraining) return;
+        outputScheduled = true;
+        const trigger = () => {
+          outputScheduled = false;
+          flushOutput();
+        };
+        if (outputQueuedBytes > OUTPUT_CHUNK_SIZE * 4) {
+          setTimeout(trigger, 0);
+          return;
+        }
+        if (typeof requestAnimationFrame === 'function') {
+          requestAnimationFrame(trigger);
+          return;
+        }
+        setTimeout(trigger, 0);
+      }
+
       function flushOutput() {
-        if (!outputBuffer) return;
-        const chunk = outputBuffer;
-        outputBuffer = '';
+        if (outputDraining || outputQueuedBytes <= 0) return;
+        outputDraining = true;
+        const chunk = dequeueOutputChunk(OUTPUT_CHUNK_SIZE);
+        if (!chunk) {
+          outputDraining = false;
+          return;
+        }
         term.write(chunk, () => {
-          queueAck(chunk.length);
-          if (autoScroll) {
-            term.scrollToBottom();
+          outputDraining = false;
+          queueAck(byteLength(chunk));
+          if (autoScroll && !scrollToBottomScheduled) {
+            scrollToBottomScheduled = true;
+            const runScroll = () => {
+              scrollToBottomScheduled = false;
+              if (autoScroll) term.scrollToBottom();
+            };
+            if (typeof requestAnimationFrame === 'function') {
+              requestAnimationFrame(runScroll);
+            } else {
+              setTimeout(runScroll, 0);
+            }
+          }
+          if (outputQueuedBytes > 0) {
+            scheduleOutputDrain();
           }
         });
       }
 
       function queueOutput(data) {
-        outputBuffer += data;
-        if (outputScheduled) return;
-        outputScheduled = true;
-        scheduleMicrotask(() => {
-          outputScheduled = false;
-          flushOutput();
-        });
+        if (!data) return;
+        outputQueue.push(data);
+        outputQueuedBytes += data.length;
+        scheduleOutputDrain();
       }
 
       function flushInput() {
@@ -684,18 +765,42 @@ export function buildTerminalHtml(
         }
       }
 
+      function forceReconnect() {
+        if (reconnectTimer) {
+          clearTimeout(reconnectTimer);
+          reconnectTimer = null;
+        }
+        reconnectAttempts = 0;
+        const current = socket;
+        socket = null;
+        if (current && (current.readyState === WebSocket.OPEN || current.readyState === WebSocket.CONNECTING)) {
+          try {
+            current.close(4001, 'foreground refresh');
+          } catch {}
+          setTimeout(connect, 30);
+          return;
+        }
+        connect();
+      }
+
       function shouldStopReconnect(reason) {
         if (!config.stopReconnectReasons || !reason) return false;
         return config.stopReconnectReasons.indexOf(reason) >= 0;
       }
 
       function connect() {
-        if (socket && socket.readyState === WebSocket.OPEN) return;
-        socket = new WebSocket(config.wsUrl);
+        if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) return;
+        const ws = new WebSocket(config.wsUrl);
+        socket = ws;
         if (config.mode === 'logs') {
-          socket.binaryType = 'arraybuffer';
+          ws.binaryType = 'arraybuffer';
         }
-        socket.onopen = () => {
+        ws.onopen = () => {
+          if (socket !== ws) return;
+          if (reconnectTimer) {
+            clearTimeout(reconnectTimer);
+            reconnectTimer = null;
+          }
           if (ackTimer) {
             clearTimeout(ackTimer);
             ackTimer = null;
@@ -711,12 +816,13 @@ export function buildTerminalHtml(
             setTimeout(requestDimensions, 50);
           }
         };
-        socket.onmessage = (event) => {
+        ws.onmessage = (event) => {
+          if (socket !== ws) return;
           let data;
           let rxBytes = 0;
           if (config.mode === 'logs' && event.data instanceof ArrayBuffer) {
             rxBytes = event.data.byteLength;
-            data = new TextDecoder().decode(event.data);
+            data = textDecoder ? textDecoder.decode(event.data) : String(event.data);
           } else {
             data = typeof event.data === 'string' ? event.data : String(event.data);
             rxBytes = byteLength(data);
@@ -724,7 +830,9 @@ export function buildTerminalHtml(
           recordRxBytes(rxBytes);
           if (data) queueOutput(data);
         };
-        socket.onclose = (event) => {
+        ws.onclose = (event) => {
+          if (socket !== ws) return;
+          socket = null;
           stopMetricsLoop();
           if (ackTimer) {
             clearTimeout(ackTimer);
@@ -742,7 +850,8 @@ export function buildTerminalHtml(
             scheduleReconnect();
           }
         };
-        socket.onerror = () => {
+        ws.onerror = () => {
+          if (socket !== ws) return;
           emitStatusError();
         };
       }
@@ -826,13 +935,38 @@ export function buildTerminalHtml(
           term.clear();
         };
       }
-      if (config.exposeReconnect) {
-        window.__reconnect = () => {
-          if (reconnectTimer) clearTimeout(reconnectTimer);
-          reconnectAttempts = 0;
-          connect();
-        };
+      window.__reconnect = () => {
+        forceReconnect();
+      };
+
+      function onForegroundRestore() {
+        hasFitted = false;
+        lastCols = 0;
+        lastRows = 0;
+        [30, 100, 220, 420].forEach((delay) => {
+          setTimeout(requestDimensions, delay);
+        });
+        if (!config.reconnectOnForeground) return;
+        if (!hiddenAt) return;
+        const hiddenForMs = Date.now() - hiddenAt;
+        hiddenAt = 0;
+        if (hiddenForMs < 1000) return;
+        if (foregroundRecoverTimer) clearTimeout(foregroundRecoverTimer);
+        foregroundRecoverTimer = setTimeout(() => {
+          foregroundRecoverTimer = null;
+          forceReconnect();
+        }, 120);
       }
+
+      window.__onAppState = (state) => {
+        if (state === 'active') {
+          onForegroundRestore();
+          return;
+        }
+        if (state === 'background' || state === 'inactive') {
+          hiddenAt = Date.now();
+        }
+      };
 
       if (config.enableOverlay) {
         function clamp(value, min, max) {
@@ -1209,15 +1343,18 @@ export function buildTerminalHtml(
         const handleEnd = document.getElementById('selection-handle-end');
         let draggingHandle = null;
         let selectionAnchor = null; // Track which end is anchored during drag
+        let hasSelectionHandlesActive = false;
 
         function updateSelectionHandles() {
           const sel = term.getSelectionPosition();
 
           if (!handleStart || !handleEnd || !sel) {
+            hasSelectionHandlesActive = false;
             if (handleStart) handleStart.classList.remove('active');
             if (handleEnd) handleEnd.classList.remove('active');
             return;
           }
+          hasSelectionHandlesActive = true;
 
           const terminalEl = document.getElementById('terminal');
           if (!terminalEl) return;
@@ -1331,7 +1468,10 @@ export function buildTerminalHtml(
         setupHandleDrag(handleEnd, false);
 
         // Update handles when selection or scroll changes
-        term.onScroll(() => updateSelectionHandles());
+        term.onScroll(() => {
+          if (!hasSelectionHandlesActive) return;
+          updateSelectionHandles();
+        });
         term.onSelectionChange(() => updateSelectionHandles());
       }
 
@@ -1354,16 +1494,11 @@ export function buildTerminalHtml(
       
       // Handle app minimize/restore - force dimension re-sync
       document.addEventListener('visibilitychange', () => {
-        if (!document.hidden) {
-          // Reset dimension tracking to force full re-sync
-          hasFitted = false;
-          lastCols = 0;
-          lastRows = 0;
-          // Multiple attempts with increasing delays for layout stabilization
-          [50, 150, 300].forEach(delay => {
-            setTimeout(requestDimensions, delay);
-          });
+        if (document.hidden) {
+          hiddenAt = Date.now();
+          return;
         }
+        onForegroundRestore();
       });
       
       connect();

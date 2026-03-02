@@ -13,6 +13,7 @@ import type { ProviderUsage, TerminalFontFamily, ThemeSetting } from '@/lib/type
 import { Screen } from '@/components/Screen';
 import { AppText } from '@/components/AppText';
 import { theme } from '@/lib/theme';
+import { GlassCard } from '@/components/ui/GlassCard';
 import { ThemeColors, useTheme } from '@/lib/useTheme';
 
 interface MenuItemProps {
@@ -287,7 +288,7 @@ export default function MoreTabScreen() {
           <AppText variant="caps" tone="muted" style={styles.sectionLabel}>
             Tools
           </AppText>
-          <View style={styles.sectionContent}>
+          <GlassCard style={styles.sectionContent}>
             <MenuItem
               title="Snippets"
               subtitle="Global commands to reuse anywhere"
@@ -311,7 +312,7 @@ export default function MoreTabScreen() {
               styles={styles}
               chevronColor={colors.textSecondary}
             />
-          </View>
+          </GlassCard>
         </View>
 
         {/* Copilot Section */}
@@ -319,7 +320,7 @@ export default function MoreTabScreen() {
           <AppText variant="caps" tone="muted" style={styles.sectionLabel}>
             Copilot
           </AppText>
-          <View style={styles.sectionContent}>
+          <GlassCard style={styles.sectionContent}>
             <View style={styles.copilotItem}>
               <View style={styles.menuItemContent}>
                 <AppText variant="subtitle">GitHub Copilot</AppText>
@@ -348,7 +349,7 @@ export default function MoreTabScreen() {
                 </AppText>
               </Pressable>
             </View>
-          </View>
+          </GlassCard>
         </View>
 
         {/* Usage Cards Section */}
@@ -356,7 +357,7 @@ export default function MoreTabScreen() {
           <AppText variant="caps" tone="muted" style={styles.sectionLabel}>
             Usage Cards
           </AppText>
-          <View style={styles.sectionContent}>
+          <GlassCard style={styles.sectionContent}>
             <View style={styles.sectionHeader}>
               <AppText variant="label" tone="muted">
                 Choose which provider cards appear on the Sessions tab.
@@ -429,7 +430,7 @@ export default function MoreTabScreen() {
               colors={colors}
               status={{ error: 'Set CURSOR_COOKIE env var' }}
             />
-          </View>
+          </GlassCard>
         </View>
 
         {/* Notifications Section */}
@@ -437,7 +438,7 @@ export default function MoreTabScreen() {
           <AppText variant="caps" tone="muted" style={styles.sectionLabel}>
             Notifications
           </AppText>
-          <View style={styles.sectionContent}>
+          <GlassCard style={styles.sectionContent}>
             <View style={styles.sectionHeader}>
               <AppText variant="label" tone="muted">
                 Manage push alerts and live task updates.
@@ -571,7 +572,7 @@ export default function MoreTabScreen() {
                 </AppText>
               )}
             </Pressable>
-          </View>
+          </GlassCard>
         </View>
 
         {/* Appearance Section */}
@@ -579,7 +580,7 @@ export default function MoreTabScreen() {
           <AppText variant="caps" tone="muted" style={styles.sectionLabel}>
             Appearance
           </AppText>
-          <View style={styles.sectionContent}>
+          <GlassCard style={styles.sectionContent}>
             <View style={styles.sectionHeader}>
               <AppText variant="label" tone="muted">
                 Choose your preferred theme
@@ -612,7 +613,7 @@ export default function MoreTabScreen() {
                 colors={colors}
               />
             </View>
-          </View>
+          </GlassCard>
         </View>
 
         {/* Terminal Section */}
@@ -620,7 +621,7 @@ export default function MoreTabScreen() {
           <AppText variant="caps" tone="muted" style={styles.sectionLabel}>
             Terminal
           </AppText>
-          <View style={styles.sectionContent}>
+          <GlassCard style={styles.sectionContent}>
             <View style={styles.sectionHeader}>
               <AppText variant="label" tone="muted">
                 Customize terminal appearance
@@ -655,7 +656,7 @@ export default function MoreTabScreen() {
                 colors={colors}
               />
             </View>
-          </View>
+          </GlassCard>
         </View>
 
         {/* Debug Section */}
@@ -663,7 +664,7 @@ export default function MoreTabScreen() {
           <AppText variant="caps" tone="muted" style={styles.sectionLabel}>
             Debug
           </AppText>
-          <View style={styles.sectionContent}>
+          <GlassCard style={styles.sectionContent}>
             <ToggleItem
               title="Gesture toasts"
               subtitle="Show overlay labels when gestures are recognized"
@@ -681,7 +682,7 @@ export default function MoreTabScreen() {
               styles={styles}
               colors={colors}
             />
-          </View>
+          </GlassCard>
         </View>
       </ScrollView>
     </Screen>

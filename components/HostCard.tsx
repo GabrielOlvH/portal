@@ -2,13 +2,14 @@ import React, { memo, useMemo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Download, Terminal, ChevronRight } from 'lucide-react-native';
 import { AppText } from '@/components/AppText';
-import { PulsingDot } from '@/components/PulsingDot';
+import { GlassCard } from '@/components/ui/GlassCard';
 import { theme } from '@/lib/theme';
 import { useTheme } from '@/lib/useTheme';
 import type { UpdateStatus } from '@/lib/api';
 import type { Host } from '@/lib/types';
 import type { ThemeColors } from '@/lib/useTheme';
 import { withAlpha } from '@/lib/colors';
+import { LinearGradient } from 'expo-linear-gradient';
 
 type HostStatus = 'online' | 'offline' | 'checking';
 
@@ -83,148 +84,181 @@ export const HostCard = memo(function HostCard({
   // Build metrics string
   const metricsText = useMemo(() => {
     const parts: string[] = [];
-    if (metrics?.cpu !== undefined) parts.push(`${metrics.cpu.toFixed(0)}%`);
-    if (metrics?.ram !== undefined) parts.push(`${metrics.ram.toFixed(0)}%`);
-    if (uptime) parts.push(formatUptime(uptime));
-    if (load?.[0] !== undefined) parts.push(load[0].toFixed(2));
-    return parts.join(' · ');
-  }, [metrics, uptime, load]);
+    if (metrics?.cpu !== undefined) parts.push(`C: ${metrics.cpu.toFixed(0)}%`);
+    if (metrics?.ram !== undefined) parts.push(`R: ${metrics.ram.toFixed(0)}%`);
+    if (uptime) parts.push(`Up: ${formatUptime(uptime)}`);
+    return parts.join(' • ');
+  }, [metrics, uptime]);
 
   return (
-    <View style={[
-      styles.row,
-      !isLast && styles.rowBorder,
-      { borderBottomColor: colors.separator },
-    ]}>
-      <Pressable
-        onPress={onPress}
-        style={({ pressed }) => [
-          styles.content,
-          pressed && styles.contentPressed,
-        ]}
-      >
-        {/* Left: Color dot + Name + Host */}
-        <View style={[styles.colorDot, { backgroundColor: hostColor }]} />
-        <View style={styles.info}>
-          <View style={styles.nameRow}>
-            <AppText variant="body" numberOfLines={1} style={styles.name}>
-              {host.name}
-            </AppText>
-            <PulsingDot
-              color={statusColor}
-              active={status === 'online' || status === 'checking'}
-              size={6}
-            />
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.container,
+        pressed && styles.containerPressed,
+      ]}
+    >
+      <GlassCard style={styles.card} intensity={20}>
+        <View style={styles.header}>
+          <View style={styles.titleArea}>
+            <View style={[styles.statusDot, { backgroundColor: statusColor, shadowColor: statusColor }]} />
+            <AppText variant="subtitle" style={styles.name} numberOfLines={1}>{host.name}</AppText>
           </View>
-          <AppText variant="mono" tone="muted" style={styles.hostname} numberOfLines={1}>
-            {getHostname(host.baseUrl)}
-            {metricsText ? ` · ${metricsText}` : ''}
-          </AppText>
-          {errorMessage && (
-            <AppText variant="mono" tone="warning" style={styles.error} numberOfLines={1}>
-              {errorMessage}
-            </AppText>
-          )}
-        </View>
-
-        {/* Right: Actions */}
-        <View style={styles.actions}>
-          {showUpdate && onUpdate && (
+          <View style={styles.actions}>
+            {showUpdate && onUpdate && (
+              <Pressable
+                onPress={(e) => {
+                  e.stopPropagation();
+                  onUpdate?.();
+                }}
+                disabled={!isOnline || isUpdating}
+                style={({ pressed }) => [
+                  styles.actionButton,
+                  styles.updateButton,
+                  pressed && styles.actionButtonPressed,
+                ]}
+                hitSlop={8}
+              >
+                <Download size={14} color={colors.blue} />
+              </Pressable>
+            )}
             <Pressable
               onPress={(e) => {
                 e.stopPropagation();
-                onUpdate?.();
+                onTerminal();
               }}
-              disabled={!isOnline || isUpdating}
+              disabled={!isOnline}
               style={({ pressed }) => [
-                styles.actionPill,
-                { backgroundColor: withAlpha(colors.blue, 0.12) },
-                pressed && styles.actionPillPressed,
+                styles.actionButton,
+                styles.terminalButton,
+                pressed && styles.actionButtonPressed,
+                !isOnline && styles.actionButtonDisabled,
               ]}
-              hitSlop={4}
+              hitSlop={8}
             >
-              <Download size={12} color={colors.blue} />
+              <Terminal size={14} color={isOnline ? colors.green : colors.textMuted} />
             </Pressable>
-          )}
-          <Pressable
-            onPress={(e) => {
-              e.stopPropagation();
-              onTerminal();
-            }}
-            disabled={!isOnline}
-            style={({ pressed }) => [
-              styles.actionPill,
-              { backgroundColor: withAlpha(colors.green, 0.12) },
-              pressed && styles.actionPillPressed,
-              !isOnline && styles.actionPillDisabled,
-            ]}
-            hitSlop={4}
-          >
-            <Terminal size={12} color={isOnline ? colors.green : colors.textMuted} />
-          </Pressable>
-          <ChevronRight size={16} color={colors.textMuted} />
+          </View>
         </View>
-      </Pressable>
-    </View>
+
+        <View style={styles.body}>
+          <View style={styles.infoCol}>
+            <AppText variant="mono" tone="muted" style={styles.hostname} numberOfLines={1}>
+              {getHostname(host.baseUrl)}
+            </AppText>
+            {errorMessage ? (
+              <AppText variant="label" style={styles.error} numberOfLines={1}>
+                {errorMessage}
+              </AppText>
+            ) : (
+              <AppText variant="label" tone="muted" style={styles.metrics} numberOfLines={1}>
+                {metricsText || 'Waiting for telemetry...'}
+              </AppText>
+            )}
+          </View>
+          
+          <ChevronRight size={20} color={withAlpha(colors.text, 0.2)} />
+        </View>
+        
+        {/* Decorative background accent using the host color */}
+        <LinearGradient
+          colors={[withAlpha(hostColor, 0.08), 'transparent']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+          pointerEvents="none"
+        />
+      </GlassCard>
+    </Pressable>
   );
 });
 
 function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
-    row: {},
-    rowBorder: {
-      borderBottomWidth: StyleSheet.hairlineWidth,
+    container: {
+      marginBottom: 12,
     },
-    content: {
+    containerPressed: {
+      transform: [{ scale: 0.98 }],
+    },
+    card: {
+      padding: 16,
+      gap: 12,
+      position: 'relative',
+      overflow: 'hidden',
+    },
+    header: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'flex-start',
+    },
+    titleArea: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: 10,
-      paddingHorizontal: 12,
       gap: 10,
-    },
-    contentPressed: {
-      backgroundColor: colors.cardPressed,
-    },
-    colorDot: {
-      width: 4,
-      height: 24,
-      borderRadius: 2,
-    },
-    info: {
       flex: 1,
-      gap: 2,
     },
-    nameRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
+    statusDot: {
+      width: 10,
+      height: 10,
+      borderRadius: 5,
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0.5,
+      shadowRadius: 4,
     },
     name: {
-      fontWeight: '500',
+      fontSize: 18,
+      fontWeight: '600',
+    },
+    body: {
+      flexDirection: 'row',
+      alignItems: 'flex-end',
+      justifyContent: 'space-between',
+    },
+    infoCol: {
+      flex: 1,
+      gap: 4,
     },
     hostname: {
+      fontSize: 12,
+    },
+    metrics: {
       fontSize: 11,
+      fontWeight: '500',
     },
     error: {
-      fontSize: 10,
+      fontSize: 11,
+      color: colors.red,
+      fontWeight: '500',
     },
     actions: {
       flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
+      gap: 8,
     },
-    actionPill: {
-      width: 28,
-      height: 28,
-      borderRadius: 6,
+    actionButton: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
       alignItems: 'center',
       justifyContent: 'center',
     },
-    actionPillPressed: {
+    updateButton: {
+      backgroundColor: withAlpha(colors.blue, 0.1),
+      borderWidth: 1,
+      borderColor: withAlpha(colors.blue, 0.2),
+    },
+    terminalButton: {
+      backgroundColor: withAlpha(colors.green, 0.1),
+      borderWidth: 1,
+      borderColor: withAlpha(colors.green, 0.2),
+    },
+    actionButtonPressed: {
       opacity: 0.7,
     },
-    actionPillDisabled: {
+    actionButtonDisabled: {
       opacity: 0.4,
+      backgroundColor: withAlpha(colors.text, 0.05),
+      borderColor: 'transparent',
     },
   });
 }

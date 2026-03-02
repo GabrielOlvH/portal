@@ -23,7 +23,7 @@ import { LaunchpadPage } from './LaunchpadPage';
 import { WorkspaceIndicator } from './WorkspaceIndicator';
 import { useTheme } from '@/lib/useTheme';
 import { useStore } from '@/lib/store';
-import type { Workspace, SessionWithHost } from '@/lib/workspace-types';
+import type { Workspace, SessionWithHost, Window } from '@/lib/workspace-types';
 
 type ProviderName = 'claude' | 'codex' | 'copilot' | 'cursor' | 'kimi';
 
@@ -46,10 +46,22 @@ export type WorkspaceGridProps = {
   onWindowChanged: (wsIdx: number, winIdx: number) => void;
   onCloseWindow: (wsIdx: number, windowId: string) => void;
   onKillWindow: (wsIdx: number, windowId: string) => void;
+  onMoveWindow: (sourceWsIdx: number, windowId: string, targetWsIdx: number, targetIndex: number) => void;
   onOpenWindow: (wsIdx: number, route: string, params?: Record<string, string>) => void;
   onNewSession: () => void;
   providerUsage: { provider: ProviderName; percentLeft: number }[];
   totalWorkspaces: number;
+};
+
+type DragState = {
+  sourceWsIdx: number;
+  sourceWinIdx: number;
+  windowId: string;
+  label: string;
+  x: number;
+  y: number;
+  targetWsIdx: number;
+  targetIndex: number;
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -57,6 +69,22 @@ export type WorkspaceGridProps = {
 function clamp(val: number, min: number, max: number): number {
   'worklet';
   return Math.min(Math.max(val, min), max);
+}
+
+function getWindowLabel(win: Window): string {
+  if (win.route === 'terminal') {
+    return win.params?.sessionName ?? 'Terminal';
+  }
+  if (win.route === 'browser') {
+    const url = win.params?.url;
+    if (!url) return 'Browser';
+    try {
+      return new URL(url).host;
+    } catch {
+      return url;
+    }
+  }
+  return win.route.charAt(0).toUpperCase() + win.route.slice(1);
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -70,6 +98,7 @@ export function WorkspaceGrid({
   onWindowChanged,
   onCloseWindow,
   onKillWindow,
+  onMoveWindow,
   onOpenWindow,
   onNewSession,
   providerUsage,
@@ -179,6 +208,103 @@ export function WorkspaceGrid({
     const current = rowOverviewOffsets.value;
     rowOverviewOffsets.value = Array.from({ length: numRows }, (_, i) => current[i] ?? 0);
   }, [numRows, rowOverviewOffsets]);
+
+  const [dragState, setDragState] = useState<DragState | null>(null);
+  const dragStateRef = useRef<DragState | null>(null);
+  useEffect(() => {
+    dragStateRef.current = dragState;
+  }, [dragState]);
+
+  const getOverviewWorldTransforms = useCallback(() => {
+    const worldViewportW = screenWidth / oScale;
+    const worldViewportH = overviewAvailableHeight / oScale;
+    const tx = (worldViewportW - gridW) / 2;
+    const ty = OVERVIEW_TOP_INSET / oScale + (worldViewportH - gridH) / 2 + overviewGlobalYOffset.value;
+    return { tx, ty };
+  }, [screenWidth, oScale, overviewAvailableHeight, gridW, gridH, overviewGlobalYOffset]);
+
+  const screenToOverviewCell = useCallback((x: number, y: number): { wsIdx: number; index: number } | null => {
+    if (!isOverview) return null;
+    const { tx, ty } = getOverviewWorldTransforms();
+    const worldY = y / oScale - ty;
+    const row = Math.min(Math.max(Math.floor(worldY / (screenHeight + V_GAP)), 0), numRows - 1);
+
+    const worldX = x / oScale - tx;
+    const rowOffset = rowOverviewOffsets.value[row] ?? 0;
+    const relativeX = worldX - rowOffset;
+    const rawIndex = Math.round(relativeX / (screenWidth + H_GAP));
+    const maxIndex = row < workspaces.length ? workspaces[row].windows.length : 0;
+    const index = Math.min(Math.max(rawIndex, 0), maxIndex);
+
+    return { wsIdx: row, index };
+  }, [isOverview, getOverviewWorldTransforms, oScale, screenHeight, numRows, rowOverviewOffsets, screenWidth, workspaces]);
+
+  const getOverviewCellCenter = useCallback((wsIdx: number, winIdx: number): { x: number; y: number } => {
+    const { tx, ty } = getOverviewWorldTransforms();
+    const rowOffset = rowOverviewOffsets.value[wsIdx] ?? 0;
+    const worldX = winIdx * (screenWidth + H_GAP) + rowOffset + screenWidth / 2;
+    const worldY = wsIdx * (screenHeight + V_GAP) + screenHeight / 2;
+    return {
+      x: oScale * (worldX + tx),
+      y: oScale * (worldY + ty),
+    };
+  }, [getOverviewWorldTransforms, rowOverviewOffsets, screenWidth, screenHeight, oScale]);
+
+  const startWindowDrag = useCallback((wsIdx: number, winIdx: number, win: Window, touchX?: number, touchY?: number) => {
+    if (!isOverview || wsIdx >= workspaces.length || winIdx >= workspaces[wsIdx].windows.length) return;
+    const center = getOverviewCellCenter(wsIdx, winIdx);
+    const next: DragState = {
+      sourceWsIdx: wsIdx,
+      sourceWinIdx: winIdx,
+      windowId: win.id,
+      label: getWindowLabel(win),
+      x: typeof touchX === 'number' ? touchX : center.x,
+      y: typeof touchY === 'number' ? touchY : center.y,
+      targetWsIdx: wsIdx,
+      targetIndex: winIdx,
+    };
+    dragStateRef.current = next;
+    setDragState(next);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    showGestureToast('Drag window');
+  }, [isOverview, workspaces, getOverviewCellCenter, showGestureToast]);
+
+  const updateWindowDrag = useCallback((x: number, y: number) => {
+    setDragState((prev) => {
+      if (!prev) return prev;
+      const target = screenToOverviewCell(x, y);
+      if (!target) return { ...prev, x, y };
+      return {
+        ...prev,
+        x,
+        y,
+        targetWsIdx: target.wsIdx,
+        targetIndex: target.index,
+      };
+    });
+  }, [screenToOverviewCell]);
+
+  const finishWindowDrag = useCallback((cancelled: boolean) => {
+    const current = dragStateRef.current;
+    if (!current) return;
+    dragStateRef.current = null;
+    setDragState(null);
+
+    if (cancelled) return;
+    const noOpSameWorkspace =
+      current.targetWsIdx === current.sourceWsIdx &&
+      (current.targetIndex === current.sourceWinIdx || current.targetIndex === current.sourceWinIdx + 1);
+    if (noOpSameWorkspace) return;
+    onMoveWindow(current.sourceWsIdx, current.windowId, current.targetWsIdx, current.targetIndex);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    showGestureToast('Window moved');
+  }, [onMoveWindow, showGestureToast]);
+
+  useEffect(() => {
+    if (isOverview) return;
+    dragStateRef.current = null;
+    setDragState(null);
+  }, [isOverview]);
 
   // ─── Animated grid container style ────────────────────────────────
 
@@ -327,7 +453,7 @@ export function WorkspaceGrid({
 
   // Two-finger flings — switch workspaces (fling-only, no pan to avoid scroll conflicts)
   const twoFingerFlingUp = Gesture.Fling()
-    .enabled(!isOverview)
+    .enabled(!isOverview && !dragState)
     .numberOfPointers(2)
     .direction(Directions.UP)
     .simultaneousWithExternalGesture(nativeContentGesture)
@@ -339,7 +465,7 @@ export function WorkspaceGrid({
     });
 
   const twoFingerFlingDown = Gesture.Fling()
-    .enabled(!isOverview)
+    .enabled(!isOverview && !dragState)
     .numberOfPointers(2)
     .direction(Directions.DOWN)
     .simultaneousWithExternalGesture(nativeContentGesture)
@@ -351,7 +477,7 @@ export function WorkspaceGrid({
     });
 
   const overviewPan = Gesture.Pan()
-    .enabled(isOverview)
+    .enabled(isOverview && !dragState)
     .minPointers(1)
     .maxPointers(1)
     .onBegin((e) => {
@@ -400,7 +526,7 @@ export function WorkspaceGrid({
 
   // Fling left → go to next window (discrete — doesn't block WebView touches)
   const flingLeft = Gesture.Fling()
-    .enabled(!isOverview)
+    .enabled(!isOverview && !dragState)
     .direction(Directions.LEFT)
     .simultaneousWithExternalGesture(nativeContentGesture)
     .onEnd(() => {
@@ -415,7 +541,7 @@ export function WorkspaceGrid({
 
   // Fling right → go to previous window
   const flingRight = Gesture.Fling()
-    .enabled(!isOverview)
+    .enabled(!isOverview && !dragState)
     .direction(Directions.RIGHT)
     .simultaneousWithExternalGesture(nativeContentGesture)
     .onEnd(() => {
@@ -443,6 +569,7 @@ export function WorkspaceGrid({
   // ─── Overview: tap cell to zoom in ────────────────────────────────
 
   const handleOverviewTap = useCallback((wsIdx: number, winIdx: number) => {
+    if (dragStateRef.current) return;
     Keyboard.dismiss();
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     focusedRow.value = withSpring(wsIdx, SPRING);
@@ -478,6 +605,8 @@ export function WorkspaceGrid({
       const isFocusedCell = activeWorkspaceIndex === wsIdx &&
         (activeWindowIndices.get(wsIdx) ?? 0) === winIdx;
       const isWorkspaceSavedActive = (activeWindowIndices.get(wsIdx) ?? 0) === winIdx;
+      const isDraggingSource = dragState?.windowId === win.id;
+      const isDropTarget = dragState?.targetWsIdx === wsIdx && dragState?.targetIndex === winIdx;
 
       cells.push(
         <CellWrapper
@@ -493,7 +622,10 @@ export function WorkspaceGrid({
           overviewProgress={overviewDerived}
           rowOverviewOffsets={rowOverviewOffsets}
         >
-          <View style={StyleSheet.absoluteFill} pointerEvents={isOverview || isPinching ? 'none' : 'auto'}>
+          <View
+            style={[StyleSheet.absoluteFill, isDraggingSource && { opacity: 0.25 }]}
+            pointerEvents={isOverview || isPinching ? 'none' : 'auto'}
+          >
             <WindowContent
               window={win}
               sessionMap={sessionMap}
@@ -509,20 +641,46 @@ export function WorkspaceGrid({
               style={[StyleSheet.absoluteFill, cellOverlayStyle]}
               pointerEvents="box-none"
             >
+              <GestureDetector
+                gesture={Gesture.Exclusive(
+                  Gesture.Tap()
+                    .enabled(isOverview)
+                    .onEnd((_e, success) => {
+                      if (!success) return;
+                      runOnJS(handleOverviewTap)(wsIdx, winIdx);
+                    }),
+                  Gesture.Pan()
+                    .enabled(isOverview)
+                    .minDistance(1)
+                    .activateAfterLongPress(220)
+                    .onStart((e) => {
+                      runOnJS(startWindowDrag)(wsIdx, winIdx, win, e.absoluteX, e.absoluteY);
+                    })
+                    .onUpdate((e) => {
+                      runOnJS(updateWindowDrag)(e.absoluteX, e.absoluteY);
+                    })
+                    .onEnd(() => {
+                      runOnJS(finishWindowDrag)(false);
+                    })
+                    .onFinalize((_e, success) => {
+                      if (!success) {
+                        runOnJS(finishWindowDrag)(true);
+                      }
+                    })
+                )}
+              >
+                <View style={StyleSheet.absoluteFill} />
+              </GestureDetector>
               <View
                 style={[
                   StyleSheet.absoluteFill,
                   {
                     borderRadius: 14,
-                    borderWidth: isFocusedCell ? 3 : isWorkspaceSavedActive ? 2 : 1,
-                    borderColor: isFocusedCell || isWorkspaceSavedActive ? colors.accent : colors.border,
+                    borderWidth: isDropTarget ? 3 : isFocusedCell ? 3 : isWorkspaceSavedActive ? 2 : 1,
+                    borderColor: isDropTarget ? colors.green : (isFocusedCell || isWorkspaceSavedActive ? colors.accent : colors.border),
                   },
                 ]}
                 pointerEvents="none"
-              />
-              <Pressable
-                style={StyleSheet.absoluteFill}
-                onPress={() => handleOverviewTap(wsIdx, winIdx)}
               />
               <Pressable
                 onPress={() => {
@@ -554,6 +712,7 @@ export function WorkspaceGrid({
     // Launchpad at end of row
     const launchpadLeft = ws.windows.length * (screenWidth + H_GAP);
     const launchpadTop = wsIdx * (screenHeight + V_GAP);
+    const isLaunchpadDropTarget = dragState?.targetWsIdx === wsIdx && dragState?.targetIndex === ws.windows.length;
     cells.push(
       <CellWrapper
         key={`launchpad-${ws.id}`}
@@ -576,12 +735,26 @@ export function WorkspaceGrid({
           quickSessions={quickSessions}
           providerUsage={providerUsage}
         />
+        {isOverview && isLaunchpadDropTarget && (
+          <View
+            pointerEvents="none"
+            style={[
+              StyleSheet.absoluteFill,
+              {
+                borderRadius: 14,
+                borderWidth: 3,
+                borderColor: colors.green,
+              },
+            ]}
+          />
+        )}
       </CellWrapper>,
     );
   });
 
   // Empty workspace row
   const emptyRowTop = workspaces.length * (screenHeight + V_GAP);
+  const isEmptyRowDropTarget = dragState?.targetWsIdx === workspaces.length;
   cells.push(
     <CellWrapper
       key="ws-empty"
@@ -604,8 +777,34 @@ export function WorkspaceGrid({
         quickSessions={quickSessions}
         providerUsage={providerUsage}
       />
+      {isOverview && isEmptyRowDropTarget && (
+        <View
+          pointerEvents="none"
+          style={[
+            StyleSheet.absoluteFill,
+            {
+              borderRadius: 14,
+              borderWidth: 3,
+              borderColor: colors.green,
+            },
+          ]}
+        />
+      )}
     </CellWrapper>,
   );
+
+  const dragDropIndicator = useMemo(() => {
+    if (!isOverview || !dragState) return null;
+    const { tx, ty } = getOverviewWorldTransforms();
+    const rowOffset = rowOverviewOffsets.value[dragState.targetWsIdx] ?? 0;
+    const worldX = dragState.targetIndex * (screenWidth + H_GAP) + rowOffset;
+    const worldY = dragState.targetWsIdx * (screenHeight + V_GAP);
+    return {
+      x: oScale * (worldX + tx),
+      y: oScale * (worldY + ty),
+      h: oScale * screenHeight,
+    };
+  }, [isOverview, dragState, getOverviewWorldTransforms, rowOverviewOffsets, screenWidth, screenHeight, oScale]);
 
   return (
     <View style={StyleSheet.absoluteFill} onLayout={handleLayout}>
@@ -626,6 +825,47 @@ export function WorkspaceGrid({
           </Animated.View>
         </Animated.View>
       </GestureDetector>
+
+      {isOverview && dragState && (
+        <View style={StyleSheet.absoluteFill} pointerEvents="none">
+          {dragDropIndicator && (
+            <View
+              style={{
+                position: 'absolute',
+                left: dragDropIndicator.x - 2,
+                top: dragDropIndicator.y + 8,
+                width: 4,
+                height: Math.max(16, dragDropIndicator.h - 16),
+                borderRadius: 3,
+                backgroundColor: colors.green,
+                opacity: 0.95,
+              }}
+            />
+          )}
+          <View
+            style={{
+              position: 'absolute',
+              left: dragState.x - 98,
+              top: dragState.y - 38,
+              width: 196,
+              paddingHorizontal: 12,
+              paddingVertical: 8,
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: colors.green,
+              backgroundColor: colors.card,
+              shadowColor: '#000',
+              shadowOpacity: 0.25,
+              shadowRadius: 14,
+              shadowOffset: { width: 0, height: 6 },
+              elevation: 12,
+            }}
+          >
+            <AppText variant="caps" tone="muted" style={{ fontSize: 10 }}>Moving Window</AppText>
+            <AppText numberOfLines={1} style={{ marginTop: 2 }}>{dragState.label}</AppText>
+          </View>
+        </View>
+      )}
 
       {/* Screen-space overview UI */}
       {isOverview && (

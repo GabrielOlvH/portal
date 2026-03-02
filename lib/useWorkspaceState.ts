@@ -21,6 +21,7 @@ function terminalKey(w: Window): string | null {
 export type WorkspaceActions = {
   addWindow: (wsIndex: number, route: string, params?: Record<string, string>) => void;
   removeWindow: (wsIndex: number, windowId: string) => void;
+  moveWindow: (sourceWsIndex: number, windowId: string, targetWsIndex: number, targetIndex: number) => void;
   navigateToWindow: (wsIndex: number, windowId: string) => void;
   setActiveWorkspace: (index: number) => void;
   setActiveWindowInWorkspace: (wsIndex: number, pageIndex: number) => void;
@@ -209,6 +210,72 @@ export function useWorkspaceState(allSessions: SessionWithHost[]): UseWorkspaceS
     });
   }, []);
 
+  const moveWindow = useCallback((sourceWsIndex: number, windowId: string, targetWsIndex: number, targetIndex: number) => {
+    setWorkspaces((prev) => {
+      if (sourceWsIndex < 0 || sourceWsIndex >= prev.length) return prev;
+      const sourceWs = prev[sourceWsIndex];
+      const sourceWinIndex = sourceWs.windows.findIndex((w) => w.id === windowId);
+      if (sourceWinIndex < 0) return prev;
+      const movingWindow = sourceWs.windows[sourceWinIndex];
+
+      // Reorder within the same workspace.
+      if (targetWsIndex === sourceWsIndex) {
+        const maxInsertIndex = sourceWs.windows.length;
+        let insertAt = Math.min(Math.max(targetIndex, 0), maxInsertIndex);
+        if (insertAt > sourceWinIndex) insertAt -= 1;
+        if (insertAt === sourceWinIndex) return prev;
+
+        const nextWindows = sourceWs.windows.slice();
+        nextWindows.splice(sourceWinIndex, 1);
+        nextWindows.splice(insertAt, 0, movingWindow);
+
+        setActiveWorkspaceIndex(sourceWsIndex);
+        setActiveWindowIndices((m) => new Map(m).set(sourceWsIndex, insertAt));
+
+        return prev.map((ws, idx) => (
+          idx === sourceWsIndex
+            ? { ...ws, windows: nextWindows }
+            : ws
+        ));
+      }
+
+      // Move across workspaces (or into the implicit empty workspace row).
+      const next = prev.map((ws) => ({ ...ws, windows: [...ws.windows] }));
+      next[sourceWsIndex].windows.splice(sourceWinIndex, 1);
+
+      const sourceWorkspaceRemoved = next[sourceWsIndex].windows.length === 0;
+      if (sourceWorkspaceRemoved) {
+        next.splice(sourceWsIndex, 1);
+      }
+
+      let adjustedTargetWs = targetWsIndex;
+      if (sourceWorkspaceRemoved && sourceWsIndex < adjustedTargetWs) {
+        adjustedTargetWs -= 1;
+      }
+      adjustedTargetWs = Math.max(0, Math.min(adjustedTargetWs, next.length));
+
+      let finalWsIndex = adjustedTargetWs;
+      let finalWinIndex = 0;
+
+      if (adjustedTargetWs >= next.length) {
+        next.push({ id: genId(), windows: [movingWindow] });
+        finalWsIndex = next.length - 1;
+        finalWinIndex = 0;
+      } else {
+        const targetWs = next[adjustedTargetWs];
+        const insertAt = Math.max(0, Math.min(targetIndex, targetWs.windows.length));
+        targetWs.windows.splice(insertAt, 0, movingWindow);
+        finalWsIndex = adjustedTargetWs;
+        finalWinIndex = insertAt;
+      }
+
+      setActiveWorkspaceIndex(finalWsIndex);
+      setActiveWindowIndices((m) => new Map(m).set(finalWsIndex, finalWinIndex));
+
+      return next;
+    });
+  }, []);
+
   const navigateToWindow = useCallback((wsIndex: number, windowId: string) => {
     setActiveWorkspaceIndex(wsIndex);
     setWorkspaces(prev => {
@@ -238,6 +305,7 @@ export function useWorkspaceState(allSessions: SessionWithHost[]): UseWorkspaceS
     actions: {
       addWindow,
       removeWindow,
+      moveWindow,
       navigateToWindow,
       setActiveWorkspace: setActiveWorkspaceIndex,
       setActiveWindowInWorkspace,

@@ -1,9 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { View, StyleSheet, Pressable, ScrollView, Alert } from 'react-native';
-import { ChevronLeft } from 'lucide-react-native';
+import { ChevronLeft, TerminalSquare, FileText, Play, Square, Pause, Power, RotateCw, Trash2, Box, Cpu, MemoryStick, Clock } from 'lucide-react-native';
 
 import { AppText } from '@/components/AppText';
-import { SectionHeader } from '@/components/SectionHeader';
 import { useHostLive } from '@/lib/live';
 import { dockerContainerAction } from '@/lib/api';
 import { theme } from '@/lib/theme';
@@ -11,7 +10,9 @@ import { ThemeColors, useTheme } from '@/lib/useTheme';
 import { formatBytes } from '@/lib/formatters';
 import { isContainerRunning } from '@/lib/docker-utils';
 import { withAlpha } from '@/lib/colors';
+import { GlassCard } from '@/components/ui/GlassCard';
 import type { Host } from '@/lib/types';
+import { PulsingDot } from '@/components/PulsingDot';
 
 export function DockerDetailView({
   host,
@@ -46,13 +47,13 @@ export function DockerDetailView({
       <View style={styles.container}>
         <View style={styles.header}>
           <Pressable onPress={onBack} style={styles.backButton} hitSlop={8}>
-            <ChevronLeft size={20} color={colors.text} />
+            <ChevronLeft size={24} color={colors.text} />
           </Pressable>
           <AppText variant="title">Docker</AppText>
         </View>
-        <View style={styles.noticeCard}>
-          <AppText variant="body" tone="clay">{docker?.error || 'Docker unavailable'}</AppText>
-        </View>
+        <GlassCard style={styles.noticeCard}>
+          <AppText variant="body" style={{ color: colors.red }}>{docker?.error || 'Docker unavailable'}</AppText>
+        </GlassCard>
       </View>
     );
   }
@@ -62,129 +63,174 @@ export function DockerDetailView({
       <View style={styles.container}>
         <View style={styles.header}>
           <Pressable onPress={onBack} style={styles.backButton} hitSlop={8}>
-            <ChevronLeft size={20} color={colors.text} />
+            <ChevronLeft size={24} color={colors.text} />
           </Pressable>
           <AppText variant="title">Container</AppText>
         </View>
-        <View style={styles.noticeCard}>
+        <GlassCard style={styles.noticeCard}>
           <AppText variant="body" tone="muted">Container not found</AppText>
-        </View>
+        </GlassCard>
       </View>
     );
   }
 
   const running = isContainerRunning(container);
-  const actionButton = (action: 'start' | 'stop' | 'restart' | 'pause' | 'unpause' | 'kill', label: string, tone?: 'accent' | 'clay') => (
-    <Pressable
-      key={action}
-      style={[styles.actionButton, tone === 'clay' && styles.actionButtonDanger]}
-      onPress={() => {
-        Alert.alert(label, `${label} ${container.name}?`, [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: label,
-            style: tone === 'clay' ? 'destructive' : 'default',
-            onPress: async () => {
-              setBusyAction(action);
-              try {
-                await dockerContainerAction(host, container.id, action);
-                refresh();
-              } catch (err) {
-                Alert.alert('Action failed', err instanceof Error ? err.message : 'Unable to run docker command.');
-              } finally {
-                setBusyAction(null);
-              }
-            },
-          },
-        ]);
-      }}
-      disabled={busyAction !== null}
-    >
-      <AppText variant="caps" style={tone === 'clay' ? styles.actionTextDanger : styles.actionText}>
-        {busyAction === action ? 'Working...' : label}
-      </AppText>
-    </Pressable>
-  );
+  
+  const handleAction = (action: 'start' | 'stop' | 'restart' | 'pause' | 'unpause' | 'kill', label: string, isDestructive?: boolean) => {
+    Alert.alert(label, `${label} ${container.name}?`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: label,
+        style: isDestructive ? 'destructive' : 'default',
+        onPress: async () => {
+          setBusyAction(action);
+          try {
+            await dockerContainerAction(host, container.id, action);
+            refresh();
+          } catch (err) {
+            Alert.alert('Action failed', err instanceof Error ? err.message : 'Unable to run docker command.');
+          } finally {
+            setBusyAction(null);
+          }
+        },
+      },
+    ]);
+  };
+
+  const ActionButton = ({ action, label, icon: Icon, tone = 'base' }: { action: any, label: string, icon: any, tone?: 'base'|'accent'|'red' }) => {
+    const isBusy = busyAction === action;
+    const colorMap = {
+      base: colors.text,
+      accent: colors.accent,
+      red: colors.red,
+    };
+    const activeColor = colorMap[tone];
+
+    return (
+      <Pressable
+        style={[
+          styles.actionButton,
+          tone === 'red' && { backgroundColor: withAlpha(colors.red, 0.1) }
+        ]}
+        onPress={() => handleAction(action, label, tone === 'red')}
+        disabled={busyAction !== null}
+      >
+        <Icon size={20} color={isBusy ? colors.textMuted : activeColor} />
+        <AppText variant="label" style={{ color: isBusy ? colors.textMuted : activeColor }}>
+          {isBusy ? '...' : label}
+        </AppText>
+      </Pressable>
+    );
+  };
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <Pressable onPress={onBack} style={styles.backButton} hitSlop={8}>
-          <ChevronLeft size={20} color={colors.text} />
+          <ChevronLeft size={24} color={colors.text} />
         </Pressable>
         <View style={styles.headerCenter}>
-          <AppText variant="title" numberOfLines={1}>{container.name}</AppText>
-          <AppText variant="caps" tone="muted">{container.image}</AppText>
+          <View style={styles.titleRow}>
+            <Box size={20} color={colors.text} />
+            <AppText variant="title" numberOfLines={1} style={{ flex: 1 }}>{container.name}</AppText>
+          </View>
+          <AppText variant="label" tone="muted" numberOfLines={1}>{container.image}</AppText>
         </View>
-        <Pressable
-          onPress={() => onOpenLogs(encodeURIComponent(container.id))}
-          style={styles.attachButton}
-        >
-          <AppText variant="caps" tone="muted">Logs</AppText>
-        </Pressable>
-        <Pressable
-          onPress={() => onOpenTerminal(encodeURIComponent(container.id))}
-          style={styles.attachButton}
-        >
-          <AppText variant="caps" tone="accent">Terminal</AppText>
-        </Pressable>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        <View style={styles.statusCard}>
-          <View style={styles.statusRow}>
-            <View style={styles.statusItem}>
-              <AppText variant="caps" tone="muted">Status</AppText>
-              <AppText variant="label" style={running ? styles.statusRunning : styles.statusStopped}>
+        
+        <View style={styles.quickActions}>
+          <Pressable
+            onPress={() => onOpenLogs(encodeURIComponent(container.id))}
+            style={styles.quickActionBtn}
+          >
+            <FileText size={20} color={colors.text} />
+            <AppText variant="label">View Logs</AppText>
+          </Pressable>
+          <Pressable
+            onPress={() => onOpenTerminal(encodeURIComponent(container.id))}
+            style={[styles.quickActionBtn, { backgroundColor: withAlpha(colors.accent, 0.1) }]}
+          >
+            <TerminalSquare size={20} color={colors.accent} />
+            <AppText variant="label" tone="accent">Open Terminal</AppText>
+          </Pressable>
+        </View>
+
+        <GlassCard style={styles.statusCard}>
+          <View style={styles.statusHeader}>
+            <View style={styles.statusPill}>
+              <PulsingDot
+                color={running ? colors.green : colors.red}
+                active={running}
+                size={12}
+              />
+              <AppText variant="label" style={{ color: running ? colors.green : colors.red, fontWeight: '600', textTransform: 'capitalize' }}>
                 {container.state || container.status || 'unknown'}
               </AppText>
             </View>
-            <View style={styles.statusItem}>
+            {container.runningFor && (
+              <View style={styles.timeInfo}>
+                <Clock size={14} color={colors.textMuted} />
+                <AppText variant="label" tone="muted">{container.runningFor}</AppText>
+              </View>
+            )}
+          </View>
+
+          <View style={styles.metricsGrid}>
+            <View style={styles.metricItem}>
+              <Cpu size={16} color={colors.textMuted} style={{ marginBottom: 4 }} />
+              <AppText variant="title">{container.cpuPercent !== undefined ? `${container.cpuPercent.toFixed(1)}%` : '-'}</AppText>
               <AppText variant="caps" tone="muted">CPU</AppText>
-              <AppText variant="label">
-                {container.cpuPercent !== undefined ? `${container.cpuPercent.toFixed(1)}%` : '-'}
-              </AppText>
             </View>
-            <View style={styles.statusItem}>
+            <View style={styles.metricDivider} />
+            <View style={styles.metricItem}>
+              <MemoryStick size={16} color={colors.textMuted} style={{ marginBottom: 4 }} />
+              <AppText variant="title">{container.memoryUsage || formatBytes(container.memoryUsedBytes)}</AppText>
               <AppText variant="caps" tone="muted">Memory</AppText>
-              <AppText variant="label">
-                {container.memoryUsage || formatBytes(container.memoryUsedBytes)}
-              </AppText>
             </View>
           </View>
-        </View>
+        </GlassCard>
 
-        <SectionHeader title="Controls" />
-        <View style={styles.actionsRow}>
-          {running ? actionButton('stop', 'Stop') : actionButton('start', 'Start')}
-          {actionButton('restart', 'Restart')}
-          {running ? actionButton('pause', 'Pause') : actionButton('unpause', 'Unpause')}
-          {actionButton('kill', 'Kill', 'clay')}
-        </View>
-
-        <SectionHeader title="Details" />
-        <View style={styles.detailCard}>
-          <View style={styles.detailRow}>
-            <AppText variant="caps" tone="muted">ID</AppText>
-            <AppText variant="label" numberOfLines={1}>{container.id}</AppText>
+        <AppText variant="subtitle" style={styles.sectionTitle}>Controls</AppText>
+        <GlassCard style={styles.controlsCard}>
+          <View style={styles.actionsGrid}>
+            {running ? (
+              <ActionButton action="stop" label="Stop" icon={Square} tone="red" />
+            ) : (
+              <ActionButton action="start" label="Start" icon={Play} tone="accent" />
+            )}
+            <ActionButton action="restart" label="Restart" icon={RotateCw} />
+            {running ? (
+              <ActionButton action="pause" label="Pause" icon={Pause} />
+            ) : (
+              <ActionButton action="unpause" label="Resume" icon={Play} />
+            )}
+            <ActionButton action="kill" label="Kill" icon={Power} tone="red" />
           </View>
+        </GlassCard>
+
+        <AppText variant="subtitle" style={styles.sectionTitle}>Details</AppText>
+        <GlassCard style={styles.detailCard}>
           <View style={styles.detailRow}>
-            <AppText variant="caps" tone="muted">Image</AppText>
-            <AppText variant="label" numberOfLines={1}>{container.image}</AppText>
+            <AppText variant="caps" tone="muted" style={styles.detailLabel}>Container ID</AppText>
+            <AppText variant="mono" style={styles.detailValue} numberOfLines={1} selectable>{container.id}</AppText>
+          </View>
+          <View style={styles.detailDivider} />
+          <View style={styles.detailRow}>
+            <AppText variant="caps" tone="muted" style={styles.detailLabel}>Image</AppText>
+            <AppText variant="mono" style={styles.detailValue} numberOfLines={1} selectable>{container.image}</AppText>
           </View>
           {container.ports ? (
-            <View style={styles.detailRow}>
-              <AppText variant="caps" tone="muted">Ports</AppText>
-              <AppText variant="label" numberOfLines={2}>{container.ports}</AppText>
-            </View>
+            <>
+              <View style={styles.detailDivider} />
+              <View style={styles.detailRow}>
+                <AppText variant="caps" tone="muted" style={styles.detailLabel}>Ports</AppText>
+                <AppText variant="mono" style={styles.detailValue} selectable>{container.ports.split(',').join('\n')}</AppText>
+              </View>
+            </>
           ) : null}
-          {container.runningFor ? (
-            <View style={styles.detailRow}>
-              <AppText variant="caps" tone="muted">Running</AppText>
-              <AppText variant="label">{container.runningFor}</AppText>
-            </View>
-          ) : null}
-        </View>
+        </GlassCard>
       </ScrollView>
     </View>
   );
@@ -193,79 +239,136 @@ export function DockerDetailView({
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
     padding: theme.spacing.md,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: theme.spacing.sm,
+    gap: 16,
+    marginBottom: 20,
+    marginTop: 8,
   },
   backButton: {
-    padding: 4,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: withAlpha(colors.text, 0.05),
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerCenter: {
     flex: 1,
+    gap: 4,
   },
-  attachButton: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  quickActions: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 20,
+  },
+  quickActionBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    backgroundColor: withAlpha(colors.text, 0.05),
+    borderRadius: 12,
   },
   scrollContent: {
-    paddingBottom: theme.spacing.xl,
-    gap: theme.spacing.sm,
+    paddingBottom: 40,
   },
   statusCard: {
-    padding: theme.spacing.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.separator,
+    padding: 16,
+    gap: 20,
+    marginBottom: 24,
   },
-  statusRow: {
+  statusHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
   },
-  statusItem: {
+  statusPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: withAlpha(colors.text, 0.05),
+    borderRadius: 100,
+  },
+  timeInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  metricsGrid: {
+    flexDirection: 'row',
+    backgroundColor: withAlpha(colors.text, 0.02),
+    borderRadius: 12,
+    padding: 16,
+  },
+  metricItem: {
     flex: 1,
+    alignItems: 'center',
     gap: 4,
   },
-  statusRunning: {
-    color: colors.green,
+  metricDivider: {
+    width: 1,
+    backgroundColor: withAlpha(colors.text, 0.1),
+    marginHorizontal: 16,
   },
-  statusStopped: {
-    color: colors.red,
+  sectionTitle: {
+    marginBottom: 12,
+    fontSize: 18,
+    fontWeight: '600',
   },
-  actionsRow: {
-    padding: theme.spacing.sm,
-    gap: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.separator,
+  controlsCard: {
+    padding: 12,
+    marginBottom: 24,
+  },
+  actionsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
   },
   actionButton: {
-    paddingVertical: 10,
-    borderRadius: theme.radii.md,
+    width: '48%',
+    flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.cardPressed,
-  },
-  actionButtonDanger: {
-    backgroundColor: withAlpha(colors.red, 0.12),
-  },
-  actionText: {
-    color: colors.accent,
-  },
-  actionTextDanger: {
-    color: colors.red,
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 16,
+    backgroundColor: withAlpha(colors.text, 0.05),
+    borderRadius: 12,
+    flexGrow: 1,
   },
   detailCard: {
-    padding: theme.spacing.md,
-    gap: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.separator,
+    padding: 16,
+    gap: 12,
   },
   detailRow: {
-    gap: 4,
+    gap: 6,
+  },
+  detailLabel: {
+    fontSize: 12,
+  },
+  detailValue: {
+    fontSize: 14,
+    color: colors.text,
+  },
+  detailDivider: {
+    height: 1,
+    backgroundColor: withAlpha(colors.text, 0.05),
   },
   noticeCard: {
-    padding: theme.spacing.md,
+    padding: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

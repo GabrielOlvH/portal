@@ -1,9 +1,12 @@
 import React, { memo, useMemo } from 'react';
 import { View, StyleSheet, Pressable } from 'react-native';
 import { AppText } from '@/components/AppText';
+import { GlassCard } from '@/components/ui/GlassCard';
 import { theme } from '@/lib/theme';
 import { ThemeColors, useTheme } from '@/lib/useTheme';
 import { PortInfo } from '@/lib/types';
+import { LinearGradient } from 'expo-linear-gradient';
+import { withAlpha } from '@/lib/colors';
 
 type PortRowProps = {
   port: PortInfo;
@@ -20,11 +23,19 @@ export const PortRow = memo(function PortRow({
   onToggleSelect,
   onKill,
 }: PortRowProps) {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   return (
-    <View style={styles.card}>
+    <GlassCard style={[styles.card, selected && styles.cardSelected]}>
+      {selected && (
+        <LinearGradient
+          colors={[withAlpha(colors.accent, 0.15), 'transparent']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={StyleSheet.absoluteFill}
+        />
+      )}
       <Pressable
         style={styles.content}
         onPress={selectionMode ? onToggleSelect : undefined}
@@ -74,15 +85,16 @@ export const PortRow = memo(function PortRow({
           </Pressable>
         )}
       </Pressable>
-    </View>
+    </GlassCard>
   );
 });
 
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
   card: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.separator,
-    overflow: 'hidden',
+    marginBottom: theme.spacing.sm,
+  },
+  cardSelected: {
+    borderColor: colors.accent,
   },
   content: {
     flexDirection: 'row',
@@ -109,17 +121,17 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontWeight: '600',
   },
   portBadge: {
-    backgroundColor: colors.cardPressed,
+    backgroundColor: withAlpha(colors.accent, 0.1),
     paddingVertical: 4,
     paddingHorizontal: 10,
-    borderRadius: theme.radii.sm,
+    borderRadius: theme.radii.md,
     minWidth: 70,
     alignItems: 'center',
   },
   portText: {
     fontSize: 14,
     color: colors.accent,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   protocolBadge: {
     backgroundColor: colors.cardPressed,
@@ -128,7 +140,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderRadius: 4,
   },
   protocolUdp: {
-    backgroundColor: colors.orange + '30',
+    backgroundColor: withAlpha(colors.orange, 0.2),
   },
   protocolText: {
     fontSize: 10,
@@ -154,12 +166,13 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: 11,
   },
   killButton: {
-    backgroundColor: colors.red,
+    backgroundColor: withAlpha(colors.red, 0.15),
     paddingVertical: 8,
     paddingHorizontal: 14,
-    borderRadius: theme.radii.sm,
+    borderRadius: theme.radii.md,
   },
   killText: {
-    color: colors.accentText,
+    color: colors.red,
+    fontWeight: '600',
   },
 });

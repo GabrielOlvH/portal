@@ -8,12 +8,11 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
-import { Play, Square, ChevronDown, ChevronRight, ChevronLeft } from 'lucide-react-native';
+import { Play, Square, ChevronDown, ChevronRight, Cpu, MemoryStick, Clock, Activity, Server, Settings, RefreshCw, Box, Power, ArrowUpCircle, Trash2 } from 'lucide-react-native';
 
 import { AppText } from '@/components/AppText';
 import { Pill } from '@/components/Pill';
 import { PulsingDot } from '@/components/PulsingDot';
-import { SectionHeader } from '@/components/SectionHeader';
 import { DockerDetailView } from './DockerDetailView';
 import { DockerLogsView } from './DockerLogsView';
 import { DockerTerminalView } from './DockerTerminalView';
@@ -38,6 +37,8 @@ import { TIMING } from '@/lib/constants';
 import { DockerContainer, HostInfo } from '@/lib/types';
 import { formatBytes } from '@/lib/formatters';
 import { isContainerRunning } from '@/lib/docker-utils';
+import { GlassCard } from '@/components/ui/GlassCard';
+import { LinearGradient } from 'expo-linear-gradient';
 
 function formatUptime(seconds?: number) {
   if (!seconds || seconds <= 0) return '-';
@@ -81,7 +82,7 @@ export function HostDetailWindow() {
 
   if (!host) {
     return (
-      <View style={{ flex: 1, backgroundColor: colors.background, padding: theme.spacing.md }}>
+      <View style={{ flex: 1, padding: theme.spacing.md }}>
         <AppText variant="title">Host not found</AppText>
         <Pressable onPress={closeWindow} style={{ marginTop: theme.spacing.md }}>
           <AppText variant="subtitle" tone="accent">Close</AppText>
@@ -149,7 +150,7 @@ function HostOverview({
   refresh: () => void;
   onOpenContainer: (containerId: string) => void;
 }) {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const { closeWindow } = useWindowActions();
   const { updateHostLastSeen, removeHost } = useStore();
   const [syncing, setSyncing] = useState(false);
@@ -355,10 +356,6 @@ function HostOverview({
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <AppText variant="title">{host.name}</AppText>
-      </View>
-
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
@@ -374,183 +371,229 @@ function HostOverview({
           />
         }
       >
-        <View style={styles.statusRow}>
-          <Pill
-            label={status === 'online' ? 'Online' : status === 'offline' ? 'Offline' : 'Unknown'}
-            tone={status === 'online' ? 'success' : status === 'offline' ? 'warning' : 'neutral'}
-          />
-          <AppText variant="label" tone="muted">{hostDisplay}</AppText>
+        <View style={styles.header}>
+          <View style={styles.headerLeft}>
+            <View style={styles.iconContainer}>
+              <Server size={28} color={colors.text} />
+              <PulsingDot
+                color={status === 'online' ? colors.green : status === 'offline' ? colors.red : colors.textMuted}
+                active={status === 'online'}
+                size={12}
+                style={styles.headerPulsingDot}
+              />
+            </View>
+            <View style={styles.headerTitles}>
+              <AppText variant="title" style={styles.hostTitle}>{host.name}</AppText>
+              <AppText variant="label" tone="muted">{hostDisplay}</AppText>
+            </View>
+          </View>
         </View>
 
         {error ? (
-          <View style={styles.errorBox}>
-            <AppText variant="body" tone="clay">{error}</AppText>
-          </View>
+          <GlassCard style={styles.errorBox}>
+            <AppText variant="body" style={{ color: colors.red }}>{error}</AppText>
+          </GlassCard>
         ) : null}
 
-        <SectionHeader title="System" />
-        <View style={styles.infoCard}>
-          {hostInfo ? (
-            <>
-              <View style={styles.metricRow}>
-                <AppText variant="caps" tone="muted" style={styles.metricLabel}>CPU</AppText>
+        {hostInfo ? (
+          <View style={styles.metricsGrid}>
+            <GlassCard style={styles.metricCard}>
+              <View style={styles.metricCardHeader}>
+                <Cpu size={18} color={colors.blue} />
+                <AppText variant="caps" tone="muted">CPU Usage</AppText>
+              </View>
+              <View style={styles.metricCardBody}>
+                <AppText variant="title">{hostInfo.cpu.usage !== undefined ? `${hostInfo.cpu.usage}%` : '-'}</AppText>
                 <View style={styles.metricBar}>
-                  <View
+                  <LinearGradient
+                    colors={[colors.blue, withAlpha(colors.blue, 0.4)]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
                     style={[
                       styles.metricFill,
-                      { width: `${Math.min(100, hostInfo.cpu.usage ?? 0)}%`, backgroundColor: colors.blue },
+                      { width: `${Math.min(100, hostInfo.cpu.usage ?? 0)}%` },
                     ]}
                   />
                 </View>
-                <AppText variant="mono" style={styles.metricValue}>
-                  {hostInfo.cpu.usage !== undefined ? `${hostInfo.cpu.usage}%` : '-'}
-                </AppText>
               </View>
-              <View style={styles.metricRow}>
-                <AppText variant="caps" tone="muted" style={styles.metricLabel}>RAM</AppText>
+            </GlassCard>
+            <GlassCard style={styles.metricCard}>
+              <View style={styles.metricCardHeader}>
+                <MemoryStick size={18} color={colors.green} />
+                <AppText variant="caps" tone="muted">RAM Usage</AppText>
+              </View>
+              <View style={styles.metricCardBody}>
+                <AppText variant="title">{hostInfo.memory.usedPercent}%</AppText>
                 <View style={styles.metricBar}>
-                  <View
+                  <LinearGradient
+                    colors={[colors.green, withAlpha(colors.green, 0.4)]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
                     style={[
                       styles.metricFill,
-                      { width: `${Math.min(100, hostInfo.memory.usedPercent)}%`, backgroundColor: colors.green },
+                      { width: `${Math.min(100, hostInfo.memory.usedPercent)}%` },
                     ]}
                   />
                 </View>
-                <AppText variant="mono" style={styles.metricValue}>
-                  {hostInfo.memory.usedPercent}%
-                </AppText>
               </View>
-              <View style={styles.statsRow}>
-                <View style={styles.statItem}>
-                  <AppText variant="caps" tone="muted">UP</AppText>
-                  <AppText variant="mono">{formatUptime(hostInfo.uptime)}</AppText>
-                </View>
-                <View style={styles.statItem}>
-                  <AppText variant="caps" tone="muted">LOAD</AppText>
-                  <AppText variant="mono">{hostInfo.load[0]?.toFixed(2) ?? '-'}</AppText>
-                </View>
-                <View style={styles.statItem}>
-                  <AppText variant="caps" tone="muted">MEM</AppText>
-                  <AppText variant="mono">{formatBytes(hostInfo.memory.used)}</AppText>
-                </View>
-              </View>
-              <AppText variant="label" tone="muted" style={styles.platformText}>
-                {hostInfo.platform} {hostInfo.arch}
-              </AppText>
-            </>
-          ) : (
+            </GlassCard>
+          </View>
+        ) : (
+          <GlassCard style={styles.loadingCard}>
+            <ActivityIndicator size="small" color={colors.textMuted} />
             <AppText variant="body" tone="muted">Waiting for telemetry...</AppText>
-          )}
-        </View>
+          </GlassCard>
+        )}
 
-        <SectionHeader title="Service" />
-        <View style={styles.serviceCard}>
+        {hostInfo && (
+          <GlassCard style={styles.statsCard}>
+            <View style={styles.statGrid}>
+              <View style={styles.statBlock}>
+                <View style={styles.statBlockHeader}>
+                  <Clock size={14} color={colors.textMuted} />
+                  <AppText variant="caps" tone="muted">Uptime</AppText>
+                </View>
+                <AppText variant="body" style={styles.statValue}>{formatUptime(hostInfo.uptime)}</AppText>
+              </View>
+              <View style={styles.statDivider} />
+              <View style={styles.statBlock}>
+                <View style={styles.statBlockHeader}>
+                  <Activity size={14} color={colors.textMuted} />
+                  <AppText variant="caps" tone="muted">Load</AppText>
+                </View>
+                <AppText variant="body" style={styles.statValue}>{hostInfo.load[0]?.toFixed(2) ?? '-'}</AppText>
+              </View>
+              <View style={styles.statDivider} />
+              <View style={styles.statBlock}>
+                <View style={styles.statBlockHeader}>
+                  <Box size={14} color={colors.textMuted} />
+                  <AppText variant="caps" tone="muted">Platform</AppText>
+                </View>
+                <AppText variant="body" style={styles.statValue} numberOfLines={1}>{hostInfo.platform}</AppText>
+              </View>
+            </View>
+          </GlassCard>
+        )}
+
+        <AppText variant="subtitle" style={styles.sectionTitle}>Agent Service</AppText>
+        <GlassCard style={styles.serviceCard}>
           {serviceError ? (
             <AppText variant="body" tone="muted">{serviceError}</AppText>
           ) : serviceStatus ? (
             <>
               <View style={styles.serviceHeader}>
                 <View style={styles.serviceStatusRow}>
+                  <Settings size={18} color={colors.accent} />
+                  <AppText variant="body">v{serviceStatus.version}</AppText>
                   <Pill
                     label={serviceStatus.status === 'running' ? 'Running' : serviceStatus.status === 'stopped' ? 'Stopped' : 'Unknown'}
                     tone={serviceStatus.status === 'running' ? 'success' : serviceStatus.status === 'stopped' ? 'warning' : 'neutral'}
                   />
-                  <AppText variant="label" tone="muted">
-                    {formatUptime(serviceStatus.uptimeSeconds)}
-                  </AppText>
                 </View>
-                <AppText variant="label" tone="muted">v{serviceStatus.version}</AppText>
               </View>
-              <View style={styles.serviceInfo}>
-                <View style={styles.serviceInfoRow}>
-                  <AppText variant="caps" tone="muted">Platform</AppText>
-                  <AppText variant="label">{serviceStatus.platform} ({serviceStatus.initSystem})</AppText>
-                </View>
-                <View style={styles.serviceInfoRow}>
+              
+              <View style={styles.serviceInfoGrid}>
+                <View style={styles.serviceInfoCol}>
                   <AppText variant="caps" tone="muted">PID</AppText>
                   <AppText variant="label">{serviceStatus.pid}</AppText>
                 </View>
-                <View style={styles.serviceInfoRow}>
+                <View style={styles.serviceInfoCol}>
                   <AppText variant="caps" tone="muted">Auto-restart</AppText>
                   <AppText variant="label">{serviceStatus.autoRestart ? 'Yes' : 'No'}</AppText>
                 </View>
+                <View style={styles.serviceInfoCol}>
+                  <AppText variant="caps" tone="muted">Uptime</AppText>
+                  <AppText variant="label">{formatUptime(serviceStatus.uptimeSeconds)}</AppText>
+                </View>
               </View>
+
               <View style={styles.serviceActions}>
                 {systemStatus?.health?.update?.available && !updateInProgress && (
-                  <Pressable onPress={handleUpdate} style={[styles.serviceButton, styles.updateButton]}>
-                    <AppText variant="caps" tone="accent">
+                  <Pressable onPress={handleUpdate} style={styles.updateButton}>
+                    <LinearGradient
+                      colors={[withAlpha(colors.accent, 0.2), withAlpha(colors.accent, 0.05)]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={StyleSheet.absoluteFill}
+                    />
+                    <ArrowUpCircle size={16} color={colors.accent} />
+                    <AppText variant="label" tone="accent" style={{ fontWeight: '600' }}>
                       Update ({systemStatus.health.update.currentVersion} → {systemStatus.health.update.latestVersion})
                     </AppText>
                   </Pressable>
                 )}
+                
                 {updateInProgress && updateProgress && (
                   <View style={styles.updateProgressContainer}>
                     <AppText variant="caps" tone="muted">{updateProgress.message}</AppText>
                     {updateProgress.progress !== undefined && (
                       <View style={styles.progressBar}>
-                        <View
-                          style={[styles.progressFill, { width: `${updateProgress.progress}%`, backgroundColor: colors.accent }]}
+                        <LinearGradient
+                          colors={[colors.accent, withAlpha(colors.accent, 0.5)]}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 0 }}
+                          style={[
+                            styles.progressFill,
+                            { width: `${updateProgress.progress}%` },
+                          ]}
                         />
                       </View>
                     )}
                   </View>
                 )}
-                {systemStatus?.health?.lastUpdateAttempt?.status === 'rollback' && (
-                  <View style={styles.rollbackWarning}>
-                    <AppText variant="caps" tone="clay">Last update failed and was rolled back</AppText>
-                  </View>
-                )}
+
                 <Pressable
                   onPress={handleRestartService}
                   disabled={restarting}
-                  style={[styles.serviceButton, restarting && styles.serviceButtonDisabled]}
+                  style={[styles.restartButton, restarting && styles.serviceButtonDisabled]}
                 >
-                  <AppText variant="caps" tone={restarting ? 'muted' : 'accent'}>
-                    {restarting ? 'Restarting...' : 'Restart'}
+                  <Power size={16} color={colors.text} />
+                  <AppText variant="label" tone={restarting ? 'muted' : 'base'}>
+                    {restarting ? 'Restarting...' : 'Restart Agent'}
                   </AppText>
                 </Pressable>
               </View>
             </>
           ) : (
-            <AppText variant="body" tone="muted">Loading service status...</AppText>
+            <ActivityIndicator size="small" color={colors.textMuted} />
           )}
-        </View>
+        </GlassCard>
 
         {hasDocker && (
           <>
-            <SectionHeader title={`Docker (${containers.length})`} />
-            <View style={styles.dockerCard}>
+            <AppText variant="subtitle" style={styles.sectionTitle}>Docker Containers</AppText>
+            <GlassCard style={styles.dockerCard} intensity={15}>
               <Pressable
                 style={styles.dockerHeader}
                 onPress={() => setDockerExpanded(!dockerExpanded)}
               >
-                {dockerExpanded ? (
-                  <ChevronDown size={18} color={colors.textMuted} />
-                ) : (
-                  <ChevronRight size={18} color={colors.textMuted} />
-                )}
-                <View style={styles.dockerHeaderInfo}>
-                  <AppText variant="body">
-                    {containers.length} container{containers.length !== 1 ? 's' : ''}
+                <View style={styles.dockerHeaderLeft}>
+                  <Box size={20} color={colors.accent} />
+                  <AppText variant="body" style={{ fontWeight: '600' }}>
+                    {containers.length} Container{containers.length !== 1 ? 's' : ''}
                   </AppText>
-                  <View style={styles.dockerStats}>
-                    {runningContainers.length > 0 && (
-                      <View style={styles.dockerStat}>
-                        <View style={[styles.statDot, { backgroundColor: colors.green }]} />
-                        <AppText variant="caps" style={{ color: colors.green }}>
-                          {runningContainers.length}
-                        </AppText>
-                      </View>
-                    )}
-                    {stoppedContainers.length > 0 && (
-                      <View style={styles.dockerStat}>
-                        <View style={[styles.statDot, { backgroundColor: colors.textMuted }]} />
-                        <AppText variant="caps" tone="muted">{stoppedContainers.length}</AppText>
-                      </View>
-                    )}
-                  </View>
+                </View>
+                <View style={styles.dockerHeaderRight}>
+                  {runningContainers.length > 0 && (
+                    <View style={styles.dockerStat}>
+                      <View style={[styles.statDot, { backgroundColor: colors.green }]} />
+                      <AppText variant="label" style={{ color: colors.green }}>{runningContainers.length}</AppText>
+                    </View>
+                  )}
+                  {stoppedContainers.length > 0 && (
+                    <View style={styles.dockerStat}>
+                      <View style={[styles.statDot, { backgroundColor: colors.textMuted }]} />
+                      <AppText variant="label" tone="muted">{stoppedContainers.length}</AppText>
+                    </View>
+                  )}
+                  {dockerExpanded ? (
+                    <ChevronDown size={20} color={colors.textMuted} style={{ marginLeft: 8 }} />
+                  ) : (
+                    <ChevronRight size={20} color={colors.textMuted} style={{ marginLeft: 8 }} />
+                  )}
                 </View>
               </Pressable>
+              
               {dockerExpanded && (
                 <View style={styles.dockerContainers}>
                   {containers.map((container, idx) => {
@@ -560,16 +603,16 @@ function HostOverview({
                     return (
                       <Pressable
                         key={container.id}
-                        style={[styles.containerRow, !isLast && styles.containerRowBorder]}
+                        style={[styles.containerRow, !isLast && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }]}
                         onPress={() => onOpenContainer(container.id)}
                       >
                         <PulsingDot
                           color={isRunning ? colors.accent : colors.textMuted}
                           active={isRunning}
-                          size={8}
+                          size={10}
                         />
                         <View style={styles.containerInfo}>
-                          <AppText variant="body" numberOfLines={1}>{container.name}</AppText>
+                          <AppText variant="body" numberOfLines={1} style={{ fontWeight: '500' }}>{container.name}</AppText>
                           <AppText variant="caps" tone="muted" numberOfLines={1}>{container.image}</AppText>
                         </View>
                         <View style={styles.containerActions}>
@@ -584,7 +627,7 @@ function HostOverview({
                               }}
                               hitSlop={8}
                             >
-                              <Square size={14} color={colors.red} />
+                              <Square size={16} color={colors.red} fill={withAlpha(colors.red, 0.2)} />
                             </Pressable>
                           ) : (
                             <Pressable
@@ -595,7 +638,7 @@ function HostOverview({
                               }}
                               hitSlop={8}
                             >
-                              <Play size={14} color={colors.accent} />
+                              <Play size={16} color={colors.accent} fill={withAlpha(colors.accent, 0.2)} />
                             </Pressable>
                           )}
                         </View>
@@ -604,7 +647,7 @@ function HostOverview({
                   })}
                 </View>
               )}
-            </View>
+            </GlassCard>
           </>
         )}
 
@@ -624,7 +667,8 @@ function HostOverview({
           }
           style={styles.remove}
         >
-          <AppText variant="caps" tone="clay">Remove host</AppText>
+          <Trash2 size={16} color={colors.red} style={{ opacity: 0.8 }} />
+          <AppText variant="label" style={{ color: colors.red, opacity: 0.8 }}>Remove Host</AppText>
         </Pressable>
       </ScrollView>
     </View>
@@ -634,47 +678,73 @@ function HostOverview({
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
     padding: theme.spacing.md,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
   },
   scrollContent: {
     paddingBottom: 40,
     gap: 16,
   },
-  statusRow: {
+  header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: theme.spacing.sm,
+    marginBottom: 8,
+    marginTop: 8,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  iconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: withAlpha(colors.text, 0.05),
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  headerPulsingDot: {
+    position: 'absolute',
+    bottom: 2,
+    right: 2,
+    borderWidth: 2,
+    borderColor: colors.background,
+  },
+  headerTitles: {
+    gap: 2,
+  },
+  hostTitle: {
+    fontSize: 24,
+    fontWeight: '700',
   },
   errorBox: {
-    backgroundColor: withAlpha(colors.red, 0.12),
-    borderRadius: theme.radii.md,
-    padding: theme.spacing.sm,
-    marginBottom: theme.spacing.sm,
+    padding: theme.spacing.md,
+    backgroundColor: withAlpha(colors.red, 0.1),
+    borderWidth: 1,
+    borderColor: withAlpha(colors.red, 0.2),
   },
-  infoCard: {
-    padding: 12,
-    gap: 8,
+  metricsGrid: {
+    flexDirection: 'row',
+    gap: 12,
   },
-  metricRow: {
+  metricCard: {
+    flex: 1,
+    padding: 16,
+    gap: 12,
+  },
+  metricCardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
-  metricLabel: {
-    width: 36,
+  metricCardBody: {
+    gap: 8,
   },
   metricBar: {
-    flex: 1,
-    height: 6,
-    backgroundColor: colors.barBg,
+    height: 8,
+    backgroundColor: withAlpha(colors.text, 0.05),
     borderRadius: 4,
     overflow: 'hidden',
   },
@@ -682,85 +752,109 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     height: '100%',
     borderRadius: 4,
   },
-  metricValue: {
-    width: 40,
-    textAlign: 'right',
+  loadingCard: {
+    padding: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
   },
-  statsRow: {
+  statsCard: {
+    padding: 16,
+  },
+  statGrid: {
     flexDirection: 'row',
-    gap: theme.spacing.md,
-    paddingTop: theme.spacing.xs,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.separator,
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
-  statItem: {
-    gap: 2,
+  statBlock: {
+    flex: 1,
+    gap: 4,
+    alignItems: 'center',
   },
-  platformText: {
-    marginTop: 4,
+  statBlockHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  statValue: {
+    fontWeight: '600',
+  },
+  statDivider: {
+    width: 1,
+    height: 32,
+    backgroundColor: withAlpha(colors.text, 0.1),
+  },
+  sectionTitle: {
+    marginTop: 8,
+    marginBottom: -4,
+    fontSize: 18,
+    fontWeight: '600',
   },
   serviceCard: {
-    padding: 14,
+    padding: 16,
+    gap: 16,
   },
   serviceHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: theme.spacing.sm,
   },
   serviceStatusRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-  },
-  serviceInfo: {
-    gap: 6,
-  },
-  serviceInfoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  serviceActions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    marginTop: theme.spacing.sm,
     gap: 12,
   },
-  serviceButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: theme.radii.sm,
-    backgroundColor: colors.cardPressed,
+  serviceInfoGrid: {
+    flexDirection: 'row',
+    backgroundColor: withAlpha(colors.text, 0.03),
+    borderRadius: 8,
+    padding: 12,
+  },
+  serviceInfoCol: {
+    flex: 1,
+    gap: 4,
+  },
+  serviceActions: {
+    gap: 8,
+  },
+  restartButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    backgroundColor: withAlpha(colors.text, 0.05),
+    borderRadius: 8,
   },
   serviceButtonDisabled: {
     opacity: 0.5,
   },
   updateButton: {
-    backgroundColor: withAlpha(colors.accent, 0.15),
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    borderRadius: 8,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: withAlpha(colors.accent, 0.2),
   },
   updateProgressContainer: {
-    flex: 1,
-    gap: 6,
+    gap: 8,
+    padding: 12,
+    backgroundColor: withAlpha(colors.accent, 0.05),
+    borderRadius: 8,
   },
   progressBar: {
-    height: 4,
-    backgroundColor: colors.barBg,
-    borderRadius: 2,
+    height: 6,
+    backgroundColor: withAlpha(colors.text, 0.05),
+    borderRadius: 3,
     overflow: 'hidden',
   },
   progressFill: {
     height: '100%',
-    borderRadius: 2,
-  },
-  rollbackWarning: {
-    backgroundColor: withAlpha(colors.red, 0.1),
-    padding: 8,
-    borderRadius: theme.radii.sm,
-  },
-  remove: {
-    marginTop: theme.spacing.lg,
-    alignSelf: 'center',
+    borderRadius: 3,
   },
   dockerCard: {
     overflow: 'hidden',
@@ -768,17 +862,16 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   dockerHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingVertical: 12,
-    paddingHorizontal: theme.spacing.md,
-  },
-  dockerHeaderInfo: {
-    flex: 1,
-    flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
   },
-  dockerStats: {
+  dockerHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  dockerHeaderRight: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
@@ -786,27 +879,28 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   dockerStat: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 6,
+    backgroundColor: withAlpha(colors.text, 0.05),
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
   statDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
   dockerContainers: {
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.separator,
+    borderTopColor: withAlpha(colors.text, 0.1),
+    backgroundColor: withAlpha(colors.text, 0.02),
   },
   containerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    paddingVertical: 12,
-    paddingHorizontal: theme.spacing.md,
-  },
-  containerRowBorder: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.separator,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
   },
   containerInfo: {
     flex: 1,
@@ -818,6 +912,19 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     gap: 12,
   },
   actionButton: {
-    padding: 4,
+    padding: 8,
+    backgroundColor: withAlpha(colors.text, 0.05),
+    borderRadius: 8,
+  },
+  remove: {
+    marginTop: 24,
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 100,
+    backgroundColor: withAlpha(colors.red, 0.1),
   },
 });

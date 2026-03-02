@@ -10,13 +10,15 @@ import {
 } from 'react-native';
 
 import { AppText } from '@/components/AppText';
+import { GlassCard } from '@/components/ui/GlassCard';
 import { useWindowActions } from '@/lib/useWindowActions';
 import { useStore } from '@/lib/store';
 import { useProjects } from '@/lib/projects-store';
 import { useGitHubConfig, useRefreshGitHubStatus } from '@/lib/queries/github';
 import { theme } from '@/lib/theme';
 import { ThemeColors, useTheme } from '@/lib/useTheme';
-import { Check, Github, Terminal, AlertCircle } from 'lucide-react-native';
+import { withAlpha } from '@/lib/colors';
+import { Check, Github, Terminal, AlertCircle, PlayCircle, FolderDot } from 'lucide-react-native';
 
 export function GitHubWindow() {
   const { colors } = useTheme();
@@ -76,52 +78,38 @@ export function GitHubWindow() {
 
   return (
     <View style={styles.container}>
+      <View style={styles.pageHeader}>
+        <AppText variant="title">GitHub CI</AppText>
+      </View>
+
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        <View style={styles.card}>
+        <GlassCard style={styles.card}>
           <View style={styles.header}>
             <View style={styles.iconContainer}>
-              <Github size={24} color={colors.accent} />
+              <Github size={28} color={colors.accent} />
             </View>
             <View style={styles.headerText}>
-              <AppText variant="subtitle">GitHub CI Status</AppText>
+              <AppText variant="subtitle" style={{ fontWeight: '600' }}>CI Monitoring</AppText>
               <AppText variant="label" tone="muted">
-                Monitor CI status for your projects
-              </AppText>
-            </View>
-          </View>
-
-          <View style={styles.separator} />
-
-          <View style={styles.toggleRow}>
-            <View style={styles.toggleText}>
-              <AppText variant="body">Enable CI Status</AppText>
-              <AppText variant="label" tone="muted">
-                Show CI status on the home screen
+                Track workflow statuses
               </AppText>
             </View>
             <Switch
               value={preferences.github.enabled}
               onValueChange={handleToggle}
-              trackColor={{ false: colors.separator, true: colors.accent }}
-              thumbColor={colors.card}
-              ios_backgroundColor={colors.separator}
+              trackColor={{ false: withAlpha(colors.text, 0.1), true: colors.accent }}
+              thumbColor="#FFFFFF"
+              ios_backgroundColor={withAlpha(colors.text, 0.1)}
+              style={styles.switch}
             />
           </View>
-        </View>
+        </GlassCard>
 
-        <View style={styles.card}>
-          <View style={styles.sectionHeader}>
-            <AppText variant="subtitle">Authentication</AppText>
-            <AppText variant="label" tone="muted">
-              GitHub CLI must be authenticated on your host
-            </AppText>
-          </View>
-
-          <View style={styles.separator} />
-
+        <AppText variant="subtitle" style={styles.sectionTitle}>Authentication</AppText>
+        <GlassCard style={styles.card}>
           <View style={styles.authRow}>
             <View style={styles.authIcon}>
               {configLoading ? (
@@ -133,17 +121,17 @@ export function GitHubWindow() {
               )}
             </View>
             <View style={styles.authText}>
-              <AppText variant="body">
+              <AppText variant="body" style={{ fontWeight: '600' }}>
                 {configLoading
                   ? 'Checking...'
                   : config?.authenticated
                   ? 'Authenticated'
-                  : 'Not authenticated'}
+                  : 'Not Authenticated'}
               </AppText>
               <AppText variant="label" tone="muted">
                 {config?.authenticated
                   ? 'GitHub CLI is ready'
-                  : 'Run "gh auth login" on your host'}
+                  : 'Requires setup on host'}
               </AppText>
             </View>
           </View>
@@ -151,90 +139,88 @@ export function GitHubWindow() {
           {!config?.authenticated && !configLoading && (
             <View style={styles.instructions}>
               <View style={styles.instructionStep}>
-                <Terminal size={16} color={colors.textMuted} />
+                <View style={styles.instructionDot} />
                 <AppText variant="label" style={styles.instructionText}>
                   SSH into your host
                 </AppText>
               </View>
               <View style={styles.instructionStep}>
-                <Terminal size={16} color={colors.textMuted} />
-                <AppText variant="label" style={styles.instructionText}>
-                  Run: gh auth login
-                </AppText>
+                <View style={styles.instructionDot} />
+                <View style={styles.codeSnippet}>
+                  <Terminal size={14} color={colors.textMuted} />
+                  <AppText variant="mono" style={{ fontSize: 13, color: colors.text }}>gh auth login</AppText>
+                </View>
               </View>
               <View style={styles.instructionStep}>
-                <Terminal size={16} color={colors.textMuted} />
+                <View style={styles.instructionDot} />
                 <AppText variant="label" style={styles.instructionText}>
-                  Follow the prompts to authenticate
+                  Follow the prompts to complete setup
                 </AppText>
               </View>
             </View>
           )}
-        </View>
+        </GlassCard>
 
-        <View style={styles.card}>
-          <View style={styles.sectionHeader}>
-            <AppText variant="subtitle">Test Connection</AppText>
-            <AppText variant="label" tone="muted">
-              Verify CI status is working
-            </AppText>
-          </View>
-
-          <View style={styles.separator} />
-
+        <AppText variant="subtitle" style={styles.sectionTitle}>Diagnostics</AppText>
+        <GlassCard style={styles.card}>
           <Pressable
             onPress={handleTest}
             disabled={testLoading || !targetHost || projects.length === 0}
-            style={({ pressed }) => [
+            style={[
               styles.testButton,
-              pressed && styles.testButtonPressed,
               (!targetHost || projects.length === 0) && styles.testButtonDisabled,
             ]}
           >
             {testLoading ? (
               <ActivityIndicator size="small" color={colors.accentText} />
             ) : (
-              <AppText variant="subtitle" style={styles.testButtonText}>
-                Test CI Status
-              </AppText>
+              <>
+                <PlayCircle size={20} color={(!targetHost || projects.length === 0) ? colors.textMuted : colors.accentText} />
+                <AppText variant="subtitle" style={[styles.testButtonText, (!targetHost || projects.length === 0) && { color: colors.textMuted }]}>
+                  Test CI Connection
+                </AppText>
+              </>
             )}
           </Pressable>
-
           {projects.length === 0 && (
-            <AppText variant="label" tone="muted" style={styles.hint}>
-              Add projects first to test CI status
-            </AppText>
+            <View style={styles.hintBox}>
+              <AppText variant="label" tone="muted" style={styles.hint}>
+                Add projects first to test CI status
+              </AppText>
+            </View>
           )}
-        </View>
+        </GlassCard>
 
-        <View style={styles.card}>
-          <View style={styles.sectionHeader}>
-            <AppText variant="subtitle">Projects</AppText>
-            <AppText variant="label" tone="muted">
-              {projects.length === 0
-                ? 'No projects configured'
-                : `${projects.length} project(s) will be monitored`}
-            </AppText>
+        <View style={styles.projectsHeader}>
+          <AppText variant="subtitle" style={styles.sectionTitleNoMargin}>Monitored Projects</AppText>
+          <View style={styles.badge}>
+            <AppText variant="caps" tone="base">{projects.length}</AppText>
           </View>
-
-          {projects.length > 0 && (
-            <>
-              <View style={styles.separator} />
-              <View style={styles.projectList}>
-                {projects.map((project) => (
-                  <View key={project.id} style={styles.projectItem}>
-                    <AppText variant="body" numberOfLines={1}>
+        </View>
+        <GlassCard style={styles.projectsCard}>
+          {projects.length === 0 ? (
+            <View style={styles.emptyProjects}>
+              <FolderDot size={32} color={colors.textMuted} />
+              <AppText variant="label" tone="muted" style={{ marginTop: 8 }}>No projects configured</AppText>
+            </View>
+          ) : (
+            <View style={styles.projectList}>
+              {projects.map((project, idx) => (
+                <View key={project.id} style={[styles.projectItem, idx < projects.length - 1 && styles.projectItemBorder]}>
+                  <FolderDot size={18} color={colors.accent} />
+                  <View style={styles.projectItemText}>
+                    <AppText variant="body" numberOfLines={1} style={{ fontWeight: '500' }}>
                       {project.name}
                     </AppText>
-                    <AppText variant="mono" tone="muted" numberOfLines={1}>
+                    <AppText variant="mono" tone="muted" numberOfLines={1} style={{ fontSize: 12 }}>
                       {project.path}
                     </AppText>
                   </View>
-                ))}
-              </View>
-            </>
+                </View>
+              ))}
+            </View>
           )}
-        </View>
+        </GlassCard>
       </ScrollView>
     </View>
   );
@@ -244,111 +230,156 @@ const createStyles = (colors: ThemeColors) =>
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background,
       padding: theme.spacing.md,
     },
+    pageHeader: {
+      marginBottom: 20,
+      marginTop: 8,
+    },
     scrollContent: {
-      paddingBottom: theme.spacing.xxl,
-      gap: theme.spacing.md,
+      paddingBottom: 60,
     },
     card: {
-      overflow: 'hidden',
+      padding: 16,
+      marginBottom: 24,
     },
     header: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: theme.spacing.md,
-      padding: theme.spacing.md,
+      gap: 16,
     },
     iconContainer: {
-      width: 48,
-      height: 48,
-      borderRadius: 24,
-      backgroundColor: colors.barBg,
+      width: 56,
+      height: 56,
+      borderRadius: 28,
+      backgroundColor: withAlpha(colors.accent, 0.1),
       alignItems: 'center',
       justifyContent: 'center',
     },
     headerText: {
       flex: 1,
-      gap: 2,
+      gap: 4,
     },
-    separator: {
-      height: 1,
-      backgroundColor: colors.separator,
-      marginHorizontal: theme.spacing.md,
+    switch: {
+      marginLeft: 8,
+      transform: [{ scale: 0.9 }],
     },
-    toggleRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      padding: theme.spacing.md,
+    sectionTitle: {
+      marginBottom: 12,
+      fontSize: 18,
+      fontWeight: '600',
     },
-    toggleText: {
-      flex: 1,
-      gap: 2,
-    },
-    sectionHeader: {
-      padding: theme.spacing.md,
-      gap: 2,
+    sectionTitleNoMargin: {
+      fontSize: 18,
+      fontWeight: '600',
     },
     authRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: theme.spacing.md,
-      padding: theme.spacing.md,
+      gap: 16,
     },
     authIcon: {
-      width: 32,
-      height: 32,
-      borderRadius: 16,
-      backgroundColor: colors.barBg,
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      backgroundColor: withAlpha(colors.text, 0.05),
       alignItems: 'center',
       justifyContent: 'center',
     },
     authText: {
       flex: 1,
-      gap: 2,
+      gap: 4,
     },
     instructions: {
-      padding: theme.spacing.md,
-      paddingTop: 0,
-      gap: theme.spacing.sm,
+      marginTop: 20,
+      paddingTop: 20,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: withAlpha(colors.text, 0.1),
+      gap: 12,
     },
     instructionStep: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: theme.spacing.sm,
+      gap: 12,
+    },
+    instructionDot: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+      backgroundColor: colors.accent,
     },
     instructionText: {
       color: colors.textSecondary,
     },
-    testButton: {
-      margin: theme.spacing.md,
-      padding: theme.spacing.md,
-      backgroundColor: colors.accent,
-      borderRadius: theme.radii.md,
+    codeSnippet: {
+      flexDirection: 'row',
       alignItems: 'center',
+      gap: 8,
+      backgroundColor: withAlpha(colors.text, 0.05),
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 6,
     },
-    testButtonPressed: {
-      opacity: 0.8,
+    testButton: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
+      gap: 10,
+      padding: 16,
+      backgroundColor: colors.accent,
+      borderRadius: 16,
     },
     testButtonDisabled: {
-      backgroundColor: colors.separator,
+      backgroundColor: withAlpha(colors.text, 0.05),
     },
     testButtonText: {
       color: colors.accentText,
       fontWeight: '600',
     },
+    hintBox: {
+      marginTop: 16,
+      alignItems: 'center',
+    },
     hint: {
       textAlign: 'center',
-      paddingHorizontal: theme.spacing.md,
-      paddingBottom: theme.spacing.md,
+    },
+    projectsHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 12,
+    },
+    badge: {
+      backgroundColor: withAlpha(colors.text, 0.05),
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 12,
+    },
+    projectsCard: {
+      padding: 0,
+      overflow: 'hidden',
+    },
+    emptyProjects: {
+      padding: 32,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     projectList: {
-      padding: theme.spacing.md,
-      gap: theme.spacing.sm,
+      paddingVertical: 8,
     },
     projectItem: {
-      gap: 2,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      paddingVertical: 16,
+      paddingHorizontal: 16,
+    },
+    projectItemBorder: {
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: withAlpha(colors.text, 0.1),
+    },
+    projectItemText: {
+      flex: 1,
+      gap: 4,
     },
   });

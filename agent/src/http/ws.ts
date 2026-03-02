@@ -69,8 +69,16 @@ function enableLowLatencySocket(ws: WebSocket) {
   socket?.setNoDelay?.(true);
 }
 
-const FLOW_HIGH_WATERMARK = 128 * 1024;
-const FLOW_LOW_WATERMARK = 64 * 1024;
+function getBufferedAmount(ws: WebSocket): number {
+  return (ws as unknown as { bufferedAmount?: number }).bufferedAmount ?? 0;
+}
+
+const FLOW_HIGH_WATERMARK = 768 * 1024;
+const FLOW_RESUME_WATERMARK = 256 * 1024;
+const SOCKET_BUFFER_HIGH_WATERMARK = 2 * 1024 * 1024;
+const SOCKET_BUFFER_RESUME_WATERMARK = 512 * 1024;
+const OUTPUT_COALESCE_DELAY_MS = 2;
+const OUTPUT_COALESCE_MAX_BYTES = 8 * 1024;
 const TMUX_REFRESH_THROTTLE_MS = 120;
 const PROBE_START = '\u0001TERPROBE:';
 const PROBE_END = '\u0002';
@@ -86,6 +94,9 @@ function attachPtyBridge(ws: WebSocket, term: ReturnType<typeof pty.spawn>, clos
   let lastResizeRows = 0;
   let nextTmuxRefreshAt = 0;
   let tmuxRefreshTimer: ReturnType<typeof setTimeout> | null = null;
+  let outputParts: string[] = [];
+  let outputPartsBytes = 0;
+  let outputFlushTimer: ReturnType<typeof setTimeout> | null = null;
 
   const termControls = term as unknown as { pause?: () => void; resume?: () => void };
 
@@ -141,26 +152,65 @@ function attachPtyBridge(ws: WebSocket, term: ReturnType<typeof pty.spawn>, clos
 
   const flushQueue = () => {
     if (ws.readyState !== WebSocket.OPEN) return;
-    while (hasQueuedData() && inFlightBytes <= FLOW_LOW_WATERMARK) {
+    while (
+      hasQueuedData() &&
+      inFlightBytes < FLOW_HIGH_WATERMARK &&
+      getBufferedAmount(ws) < SOCKET_BUFFER_HIGH_WATERMARK
+    ) {
       const chunk = dequeueChunk();
       if (!chunk) continue;
       ws.send(chunk);
-      inFlightBytes += chunk.length;
+      inFlightBytes += Buffer.byteLength(chunk);
     }
-    if (!hasQueuedData()) {
+    if (
+      isPaused &&
+      inFlightBytes <= FLOW_RESUME_WATERMARK &&
+      getBufferedAmount(ws) <= SOCKET_BUFFER_RESUME_WATERMARK
+    ) {
       maybeResume();
     }
   };
 
   const sendOrQueue = (data: string) => {
     if (ws.readyState !== WebSocket.OPEN) return;
-    if (inFlightBytes >= FLOW_HIGH_WATERMARK) {
+    if (inFlightBytes >= FLOW_HIGH_WATERMARK || getBufferedAmount(ws) >= SOCKET_BUFFER_HIGH_WATERMARK) {
       queue.push(data);
       maybePause();
       return;
     }
     ws.send(data);
-    inFlightBytes += data.length;
+    inFlightBytes += Buffer.byteLength(data);
+  };
+
+  const flushOutputParts = () => {
+    if (outputParts.length === 0) return;
+    const payload = outputParts.length === 1 ? outputParts[0] : outputParts.join('');
+    outputParts = [];
+    outputPartsBytes = 0;
+    sendOrQueue(payload);
+  };
+
+  const scheduleOutputFlush = () => {
+    if (outputFlushTimer) return;
+    outputFlushTimer = setTimeout(() => {
+      outputFlushTimer = null;
+      flushOutputParts();
+    }, OUTPUT_COALESCE_DELAY_MS);
+  };
+
+  const queueOutput = (data: string) => {
+    if (!data) return;
+    outputParts.push(data);
+    outputPartsBytes += Buffer.byteLength(data);
+    if (outputPartsBytes >= OUTPUT_COALESCE_MAX_BYTES) {
+      if (outputFlushTimer) {
+        clearTimeout(outputFlushTimer);
+        outputFlushTimer = null;
+      }
+      flushOutputParts();
+      return;
+    }
+    scheduleOutputFlush();
   };
 
   const handleMessage = (data: RawData) => {
@@ -204,6 +254,12 @@ function attachPtyBridge(ws: WebSocket, term: ReturnType<typeof pty.spawn>, clos
     if (cleanedUp) return;
     cleanedUp = true;
     termClosed = true;
+    if (outputFlushTimer) {
+      clearTimeout(outputFlushTimer);
+      outputFlushTimer = null;
+    }
+    outputParts = [];
+    outputPartsBytes = 0;
     queue = [];
     queueHead = 0;
     inFlightBytes = 0;
@@ -218,11 +274,12 @@ function attachPtyBridge(ws: WebSocket, term: ReturnType<typeof pty.spawn>, clos
   };
 
   term.onData((data) => {
-    sendOrQueue(data);
+    queueOutput(data);
   });
 
   term.onExit(() => {
     termClosed = true;
+    flushOutputParts();
     if (ws.readyState === WebSocket.OPEN) {
       ws.close(1000, closeMessage);
     }

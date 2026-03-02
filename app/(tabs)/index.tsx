@@ -104,6 +104,7 @@ export default function SessionsScreen() {
           onWindowChanged={(wsIdx, winIdx) => actions.setActiveWindowInWorkspace(wsIdx, winIdx)}
           onCloseWindow={(wsIdx, winId) => actions.removeWindow(wsIdx, winId)}
           onKillWindow={handleKillWindow}
+          onMoveWindow={(fromWsIdx, winId, toWsIdx, toIndex) => actions.moveWindow(fromWsIdx, winId, toWsIdx, toIndex)}
           onOpenWindow={(wsIdx, route, params) => actions.addWindow(wsIdx, route, params)}
           onNewSession={openLaunchSheet}
           providerUsage={providerUsage}

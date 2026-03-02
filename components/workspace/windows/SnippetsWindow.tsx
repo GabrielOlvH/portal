@@ -1,9 +1,11 @@
 import React, { useMemo, useState } from 'react';
 import { View, StyleSheet, ScrollView, Pressable, Alert } from 'react-native';
+import { Plus, Edit2, Trash2, Code, FileCode2 } from 'lucide-react-native';
 
 import { AppText } from '@/components/AppText';
 import { Field } from '@/components/Field';
 import { FadeIn } from '@/components/FadeIn';
+import { GlassCard } from '@/components/ui/GlassCard';
 import { useSnippets } from '@/lib/snippets-store';
 import { theme } from '@/lib/theme';
 import { ThemeColors, useTheme } from '@/lib/useTheme';
@@ -80,7 +82,7 @@ export function SnippetsWindow() {
         <AppText variant="title">Snippets</AppText>
         {!showForm && (
           <Pressable style={styles.addButton} onPress={() => setShowForm(true)}>
-            <AppText variant="subtitle" style={styles.addButtonText}>+</AppText>
+            <Plus size={20} color={colors.accentText} />
           </Pressable>
         )}
       </View>
@@ -91,10 +93,13 @@ export function SnippetsWindow() {
       >
         {showForm && (
           <FadeIn>
-            <View style={styles.formCard}>
-              <AppText variant="subtitle" style={styles.formTitle}>
-                {editingId ? 'Edit Snippet' : 'New Snippet'}
-              </AppText>
+            <GlassCard style={styles.formCard}>
+              <View style={styles.formHeader}>
+                <Code size={20} color={colors.accent} />
+                <AppText variant="subtitle" style={styles.formTitle}>
+                  {editingId ? 'Edit Snippet' : 'New Snippet'}
+                </AppText>
+              </View>
 
               <Field
                 label="Label"
@@ -128,38 +133,44 @@ export function SnippetsWindow() {
                   </AppText>
                 </Pressable>
               </View>
-            </View>
+            </GlassCard>
           </FadeIn>
         )}
 
         {snippets.length === 0 && !showForm ? (
           <FadeIn style={styles.empty}>
-            <AppText variant="subtitle">No snippets</AppText>
+            <View style={styles.emptyIcon}>
+              <FileCode2 size={32} color={colors.textMuted} />
+            </View>
+            <AppText variant="subtitle">No snippets yet</AppText>
             <AppText variant="body" tone="muted" style={styles.emptyBody}>
-              Add snippets to reuse common commands anywhere.
+              Save your most used terminal commands here for quick access.
             </AppText>
             <Pressable style={styles.cta} onPress={() => setShowForm(true)}>
-              <AppText variant="subtitle" style={styles.ctaText}>Add Snippet</AppText>
+              <Plus size={16} color={colors.accentText} />
+              <AppText variant="label" style={styles.ctaText}>Create Snippet</AppText>
             </Pressable>
           </FadeIn>
         ) : (
           <View style={styles.snippetsList}>
             {snippets.map((snippet, idx) => (
               <FadeIn key={snippet.id} delay={idx * 50}>
-                <View style={styles.snippetCard}>
+                <GlassCard style={styles.snippetCard} intensity={15}>
                   <View style={styles.snippetInfo}>
-                    <AppText variant="subtitle">{snippet.label}</AppText>
-                    <AppText variant="mono" tone="muted">{snippet.command}</AppText>
+                    <AppText variant="subtitle" style={{ fontWeight: '600' }}>{snippet.label}</AppText>
+                    <View style={styles.codeBlock}>
+                      <AppText variant="mono" tone="muted" numberOfLines={2}>{snippet.command}</AppText>
+                    </View>
                   </View>
                   <View style={styles.snippetActions}>
-                    <Pressable style={styles.editButton} onPress={() => handleEdit(snippet.id)}>
-                      <AppText variant="caps" style={styles.editButtonText}>Edit</AppText>
+                    <Pressable style={styles.iconButton} onPress={() => handleEdit(snippet.id)}>
+                      <Edit2 size={16} color={colors.text} />
                     </Pressable>
-                    <Pressable style={styles.deleteButton} onPress={() => handleDelete(snippet.id, snippet.label)}>
-                      <AppText variant="caps" style={styles.deleteButtonText}>Delete</AppText>
+                    <Pressable style={[styles.iconButton, { backgroundColor: withAlpha(colors.red, 0.1) }]} onPress={() => handleDelete(snippet.id, snippet.label)}>
+                      <Trash2 size={16} color={colors.red} />
                     </Pressable>
                   </View>
-                </View>
+                </GlassCard>
               </FadeIn>
             ))}
           </View>
@@ -172,118 +183,135 @@ export function SnippetsWindow() {
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
     padding: theme.spacing.md,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: theme.spacing.md,
+    marginBottom: 20,
+    marginTop: 8,
   },
   addButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  addButtonText: {
-    color: colors.accentText,
-    fontSize: 20,
-    marginTop: -2,
+    shadowColor: colors.accent,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
   },
   scrollContent: {
     paddingBottom: theme.spacing.xxl,
     gap: theme.spacing.md,
   },
   formCard: {
-    padding: theme.spacing.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.separator,
+    padding: 20,
+    marginBottom: 16,
+  },
+  formHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 20,
   },
   formTitle: {
-    marginBottom: theme.spacing.sm,
+    fontSize: 18,
+    fontWeight: '600',
   },
   formActions: {
     flexDirection: 'row',
-    gap: theme.spacing.sm,
-    marginTop: theme.spacing.sm,
+    gap: 12,
+    marginTop: 24,
   },
   cancelButton: {
     flex: 1,
-    backgroundColor: colors.cardPressed,
-    paddingVertical: 12,
-    borderRadius: theme.radii.md,
+    backgroundColor: withAlpha(colors.text, 0.05),
+    paddingVertical: 14,
+    borderRadius: 12,
     alignItems: 'center',
   },
   saveButton: {
     flex: 1,
     backgroundColor: colors.accent,
-    paddingVertical: 12,
-    borderRadius: theme.radii.md,
+    paddingVertical: 14,
+    borderRadius: 12,
     alignItems: 'center',
   },
   saveButtonDisabled: {
-    backgroundColor: colors.separator,
+    opacity: 0.5,
   },
   saveButtonText: {
     color: colors.accentText,
+    fontWeight: '600',
   },
   empty: {
-    padding: theme.spacing.lg,
+    padding: 32,
     alignItems: 'center',
+    backgroundColor: withAlpha(colors.text, 0.02),
+    borderRadius: 20,
+    marginTop: 20,
+  },
+  emptyIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: withAlpha(colors.text, 0.05),
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
   },
   emptyBody: {
     textAlign: 'center',
-    marginTop: theme.spacing.xs,
-    marginBottom: theme.spacing.md,
+    marginTop: 8,
+    marginBottom: 24,
   },
   cta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
     backgroundColor: colors.accent,
-    borderRadius: theme.radii.md,
+    borderRadius: 100,
     paddingVertical: 12,
     paddingHorizontal: 24,
   },
   ctaText: {
     color: colors.accentText,
+    fontWeight: '600',
   },
   snippetsList: {
-    gap: theme.spacing.sm,
+    gap: 12,
   },
   snippetCard: {
     flexDirection: 'row',
-    alignItems: 'center',
-    padding: theme.spacing.md,
-    gap: theme.spacing.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.separator,
+    alignItems: 'flex-start',
+    padding: 16,
+    gap: 16,
   },
   snippetInfo: {
     flex: 1,
-    gap: 4,
+    gap: 8,
+  },
+  codeBlock: {
+    backgroundColor: withAlpha(colors.text, 0.03),
+    padding: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: withAlpha(colors.text, 0.05),
   },
   snippetActions: {
     flexDirection: 'row',
-    gap: theme.spacing.xs,
+    gap: 8,
   },
-  editButton: {
-    backgroundColor: withAlpha(colors.accent, 0.14),
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: theme.radii.sm,
-  },
-  editButtonText: {
-    color: colors.accent,
-  },
-  deleteButton: {
-    backgroundColor: withAlpha(colors.red, 0.14),
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: theme.radii.sm,
-  },
-  deleteButtonText: {
-    color: colors.red,
+  iconButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: withAlpha(colors.text, 0.05),
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

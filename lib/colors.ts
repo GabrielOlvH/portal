@@ -77,7 +77,8 @@ export const statusColors = {
  * @param alpha - Alpha value between 0 and 1
  * @returns rgba color string
  */
-export function withAlpha(hex: string, alpha: number): string {
+export function withAlpha(hex: string | undefined | null, alpha: number): string {
+  if (!hex || typeof hex !== "string") return "transparent";
   const clean = hex.replace('#', '');
   if (clean.length !== 6) return hex;
   const r = parseInt(clean.slice(0, 2), 16);
