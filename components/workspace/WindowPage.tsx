@@ -8,6 +8,7 @@ import { SnippetsWindow } from './windows/SnippetsWindow';
 import { GitHubWindow } from './windows/GitHubWindow';
 import { PortsWindow } from './windows/PortsWindow';
 import { HostDetailWindow } from './windows/HostDetailWindow';
+import { ProjectFilesWindow } from './windows/ProjectFilesWindow';
 import type { Window } from '@/lib/workspace-types';
 
 const routeComponents: Record<string, React.ComponentType> = {
@@ -18,6 +19,7 @@ const routeComponents: Record<string, React.ComponentType> = {
   github: GitHubWindow,
   ports: PortsWindow,
   'host-detail': HostDetailWindow,
+  'project-files': ProjectFilesWindow,
 };
 
 export function WindowPage({

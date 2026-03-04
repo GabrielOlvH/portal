@@ -17,6 +17,7 @@ type TerminalWebViewProps = {
   onLayout?: (event: LayoutChangeEvent) => void;
   keyboardEnabled?: boolean;
   autoFit?: boolean;
+  autoRequestFocus?: boolean;
 };
 
 export function TerminalWebView({
@@ -28,6 +29,7 @@ export function TerminalWebView({
   onLayout,
   keyboardEnabled = true,
   autoFit = false,
+  autoRequestFocus = false,
 }: TerminalWebViewProps) {
   const webRef = useRef<WebView | null>(null);
   const layoutRef = useRef<{ width: number; height: number } | null>(null);
@@ -119,6 +121,12 @@ export function TerminalWebView({
     );
   }, []);
 
+  const requestNativeFocus = useCallback(() => {
+    if (Platform.OS !== 'android' || !webRef.current) return;
+    const ref = webRef.current as unknown as { requestFocus?: () => void };
+    ref.requestFocus?.();
+  }, []);
+
   const handleRef = useCallback((ref: WebView | null) => {
     webRef.current = ref;
     setRef?.(ref);
@@ -128,8 +136,12 @@ export function TerminalWebView({
     loadedRef.current = true;
     onLoadEnd?.();
     notifyAppState(appStateRef.current);
+    if (autoRequestFocus) {
+      requestNativeFocus();
+      setTimeout(requestNativeFocus, 80);
+    }
     triggerFitBurst([0, 80, 220]);
-  }, [notifyAppState, onLoadEnd, triggerFitBurst]);
+  }, [notifyAppState, onLoadEnd, autoRequestFocus, requestNativeFocus, triggerFitBurst]);
 
   const handleLayout = useCallback((event: LayoutChangeEvent) => {
     const prevLayout = layoutRef.current;
@@ -159,13 +171,17 @@ export function TerminalWebView({
       appStateRef.current = nextState;
       notifyAppState(nextState);
       if (nextState === 'active') {
+        if (autoRequestFocus) {
+          requestNativeFocus();
+          setTimeout(requestNativeFocus, 60);
+        }
         triggerFitBurst([0, 80, 220, 450]);
       }
     });
     return () => {
       subscription.remove();
     };
-  }, [notifyAppState, triggerFitBurst]);
+  }, [notifyAppState, autoRequestFocus, requestNativeFocus, triggerFitBurst]);
 
   return (
     <View style={containerStyle} onLayout={handleLayout}>
@@ -178,8 +194,8 @@ export function TerminalWebView({
         nestedScrollEnabled={true}
         scalesPageToFit={false}
         renderToHardwareTextureAndroid={Platform.OS === 'android'}
-        keyboardDisplayRequiresUserAction={keyboardEnabled ? false : undefined}
-        hideKeyboardAccessoryView={keyboardEnabled ? true : undefined}
+        keyboardDisplayRequiresUserAction={Platform.OS === 'ios' && keyboardEnabled ? false : undefined}
+        hideKeyboardAccessoryView={Platform.OS === 'ios' && keyboardEnabled ? true : undefined}
         style={webViewStyle}
         javaScriptEnabled
         domStorageEnabled

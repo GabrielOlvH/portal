@@ -6,6 +6,7 @@ import {
   Pressable,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { FileText } from 'lucide-react-native';
 
 import { Screen } from '@/components/Screen';
 import { AppText } from '@/components/AppText';
@@ -99,6 +100,13 @@ export default function ProjectsScreen() {
                             {project.path}
                           </AppText>
                         </View>
+                        <Pressable
+                          style={styles.filesButton}
+                          onPress={() => router.push({ pathname: '/projects/files', params: { projectId: project.id } })}
+                        >
+                          <FileText size={14} color={colors.text} />
+                          <AppText variant="caps" style={styles.filesButtonText}>Files</AppText>
+                        </Pressable>
                       </View>
                     ))}
                   </View>
@@ -198,8 +206,25 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   projectCard: {
     padding: theme.spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
   },
   projectInfo: {
+    flex: 1,
     gap: 4,
+  },
+  filesButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: colors.cardPressed,
+    borderRadius: theme.radii.sm,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  filesButtonText: {
+    color: colors.textSecondary,
+    fontSize: 10,
   },
 });

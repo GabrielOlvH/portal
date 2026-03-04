@@ -1,6 +1,10 @@
 import {
   CursorInfo,
   DirectoryListing,
+  FileListing,
+  FileReadResult,
+  FileStatResult,
+  FileWriteResult,
   Host,
   PackageJsonScripts,
   PortInfo,
@@ -316,12 +320,58 @@ export async function removeRemoteProject(
 
 export async function fetchDirectoryListing(
   host: Host,
-  path?: string
+  path?: string,
+  options?: { includeFiles?: boolean }
 ): Promise<DirectoryListing> {
   const params = new URLSearchParams();
   if (path) params.set('path', path);
+  if (options?.includeFiles) params.set('includeFiles', '1');
   const query = params.toString();
   return request(host, `/fs/list${query ? `?${query}` : ''}`, { method: 'GET' });
+}
+
+export async function fetchFileListing(
+  host: Host,
+  path: string
+): Promise<FileListing> {
+  const params = new URLSearchParams();
+  params.set('path', path);
+  params.set('includeFiles', '1');
+  return request(host, `/fs/list?${params.toString()}`, { method: 'GET' });
+}
+
+export async function readRemoteFile(
+  host: Host,
+  path: string
+): Promise<FileReadResult> {
+  const params = new URLSearchParams();
+  params.set('path', path);
+  return request(host, `/fs/read?${params.toString()}`, { method: 'GET' }, 15000);
+}
+
+export async function writeRemoteFile(
+  host: Host,
+  path: string,
+  content: string,
+  expectedMtimeMs?: number
+): Promise<FileWriteResult> {
+  return request(host, '/fs/write', {
+    method: 'POST',
+    body: JSON.stringify({
+      path,
+      content,
+      expectedMtimeMs,
+    }),
+  }, 15000);
+}
+
+export async function statRemoteFile(
+  host: Host,
+  path: string
+): Promise<FileStatResult> {
+  const params = new URLSearchParams();
+  params.set('path', path);
+  return request(host, `/fs/stat?${params.toString()}`, { method: 'GET' });
 }
 
 export async function getPorts(host: Host): Promise<{ ports: PortInfo[] }> {

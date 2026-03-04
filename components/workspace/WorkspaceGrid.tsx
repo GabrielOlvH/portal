@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Keyboard, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { Keyboard, Platform, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { Directions, Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   type SharedValue,
@@ -356,7 +356,7 @@ export function WorkspaceGrid({
     workspaces.length,
   ]);
   const exitOverview = useCallback(() => { setIsOverview(false); }, []);
-  const onPinchBegin = useCallback(() => { setIsPinching(true); }, []);
+  const onPinchActivated = useCallback(() => { setIsPinching(true); }, []);
   const onPinchEnd = useCallback(() => { setIsPinching(false); }, []);
 
   const navigateCol = useCallback((rowIdx: number, col: number) => {
@@ -382,13 +382,6 @@ export function WorkspaceGrid({
     navigateRow(next);
   }, [focusedRow, numRows, navigateRow]);
 
-  const isLaunchpadActive = useMemo(() => {
-    const row = activeWorkspaceIndex;
-    if (row >= workspaces.length) return true; // implicit empty workspace row
-    const col = activeWindowIndices.get(row) ?? 0;
-    return col >= workspaces[row].windows.length;
-  }, [activeWorkspaceIndex, activeWindowIndices, workspaces]);
-
   useEffect(() => {
     if (isOverview) return;
     const row = activeWorkspaceIndex;
@@ -404,12 +397,11 @@ export function WorkspaceGrid({
   // Pinch — toggle overview (with deadzone to avoid conflicts with two-finger flings)
   const pinchStartOverview = useSharedValue(0);
   const pinchActivated = useSharedValue(false);
-  const PINCH_DEADZONE = 0.12; // scale must deviate this much from 1.0 before pinch engages
+  const PINCH_DEADZONE = Platform.OS === 'android' ? 0.04 : 0.12;
   const pinchGesture = Gesture.Pinch()
     .simultaneousWithExternalGesture(nativeContentGesture)
     .onBegin(() => {
       pinchActivated.value = false;
-      runOnJS(onPinchBegin)();
       pinchStartOverview.value = overviewProgress.value;
     })
     .onUpdate((e) => {
@@ -417,6 +409,7 @@ export function WorkspaceGrid({
       if (!pinchActivated.value) {
         if (Math.abs(e.scale - 1.0) < PINCH_DEADZONE) return;
         pinchActivated.value = true;
+        runOnJS(onPinchActivated)();
       }
       if (pinchStartOverview.value > 0.5) {
         overviewProgress.value = clamp(
@@ -457,7 +450,7 @@ export function WorkspaceGrid({
     .numberOfPointers(2)
     .direction(Directions.UP)
     .simultaneousWithExternalGesture(nativeContentGesture)
-    .blocksExternalGesture(nativeContentGesture)
+    .requireExternalGestureToFail(pinchGesture)
     .onEnd(() => {
       if (overviewProgress.value > 0.3) return;
       runOnJS(navigateRowDelta)(1);
@@ -469,7 +462,7 @@ export function WorkspaceGrid({
     .numberOfPointers(2)
     .direction(Directions.DOWN)
     .simultaneousWithExternalGesture(nativeContentGesture)
-    .blocksExternalGesture(nativeContentGesture)
+    .requireExternalGestureToFail(pinchGesture)
     .onEnd(() => {
       if (overviewProgress.value > 0.3) return;
       runOnJS(navigateRowDelta)(-1);

@@ -243,12 +243,51 @@ export type DirectoryItem = {
   path: string;
   isDirectory: boolean;
   hasPackageJson: boolean;
+  size?: number;
+  mtimeMs?: number;
 };
 
 export type DirectoryListing = {
   path: string;
   parent: string | null;
   items: DirectoryItem[];
+};
+
+export type FileItem = {
+  name: string;
+  path: string;
+  isDirectory: boolean;
+  hasPackageJson: boolean;
+  size: number;
+  mtimeMs: number;
+};
+
+export type FileListing = {
+  path: string;
+  parent: string | null;
+  items: FileItem[];
+};
+
+export type FileReadResult = {
+  path: string;
+  name: string;
+  content: string;
+  size: number;
+  mtimeMs: number;
+};
+
+export type FileWriteResult = {
+  ok: boolean;
+  path: string;
+  size: number;
+  mtimeMs: number;
+};
+
+export type FileStatResult = {
+  path: string;
+  isDirectory: boolean;
+  size: number;
+  mtimeMs: number;
 };
 
 export type PortInfo = {

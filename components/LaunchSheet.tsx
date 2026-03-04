@@ -795,14 +795,16 @@ export function LaunchSheet({ isOpen, onClose }: LaunchSheetProps) {
     if (hosts.length === 1) return 1; // Skip host step
     return 0;
   }, [hosts.length]);
+  const hostCount = hosts.length;
+  const singleHostId = hostCount === 1 ? hosts[0]?.id ?? null : null;
 
   // Reset state when sheet opens
   useEffect(() => {
     if (isOpen) {
-      const startStep = hosts.length === 1 ? 1 : 0;
+      const startStep = hostCount === 1 ? 1 : 0;
       setStep(startStep);
       setIsBlankSession(false);
-      setSelectedHostId(hosts.length === 1 ? hosts[0].id : null);
+      setSelectedHostId(singleHostId);
       setSelectedProjectId(null);
       setPackageScripts({});
       translateX.value = -startStep * STEP_WIDTH;
@@ -813,7 +815,9 @@ export function LaunchSheet({ isOpen, onClose }: LaunchSheetProps) {
     } else {
       sheetRef.current?.close();
     }
-  }, [isOpen, hosts]);
+    // Only reset when opening/closing or host count changes.
+    // Host metadata refreshes (e.g. lastSeen) should not bounce wizard state.
+  }, [isOpen, hostCount, singleHostId, translateX]);
 
   // Derived state
   const selectedHost = useMemo(

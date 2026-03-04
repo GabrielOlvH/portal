@@ -109,6 +109,7 @@ export function SessionTerminalPage({
   const [isTextInputMode, setIsTextInputMode] = useState(false);
 
   const keyboardVisibleRef = useRef(false);
+  const lastKeyboardShowAtRef = useRef(0);
 
   // Gesture debug toast
   const [gestureToast, setGestureToast] = useState<string | null>(null);
@@ -177,6 +178,15 @@ export function SessionTerminalPage({
     const payload = JSON.stringify(data);
     webRef.current?.injectJavaScript(
       `window.__sendToTerminal && window.__sendToTerminal(${payload}); true;`
+    );
+  }, []);
+
+  const focusTerminal = useCallback((preferSoftKeyboard: boolean) => {
+    if (!webRef.current) return;
+    const ref = webRef.current as unknown as { requestFocus?: () => void };
+    ref.requestFocus?.();
+    webRef.current.injectJavaScript(
+      `window.__focusTerminal && window.__focusTerminal(${preferSoftKeyboard ? 'true' : 'false'}); true;`
     );
   }, []);
 
@@ -259,13 +269,23 @@ export function SessionTerminalPage({
     showGestureToast('3-finger hold: Copy');
   }, [showGestureToast]);
 
-  const handleSendInput = useCallback(() => {
+  const sendComposedInput = useCallback((execute: boolean) => {
     if (!inputText.trim()) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    sendToTerminal(inputText);
+    const payload = execute && !/[\r\n]$/.test(inputText) ? `${inputText}\r` : inputText;
+    sendToTerminal(payload);
     setInputText('');
     setIsTextInputMode(false);
-  }, [inputText, sendToTerminal]);
+    setTimeout(() => focusTerminal(false), 40);
+  }, [inputText, sendToTerminal, focusTerminal]);
+
+  const handleSendInput = useCallback(() => {
+    sendComposedInput(false);
+  }, [sendComposedInput]);
+
+  const handleSubmitInput = useCallback(() => {
+    sendComposedInput(true);
+  }, [sendComposedInput]);
 
   const uploadPickedImage = useCallback(
     async (result: ImagePicker.ImagePickerResult) => {
@@ -346,13 +366,20 @@ export function SessionTerminalPage({
     const frameEvent = Platform.OS === 'ios' ? 'keyboardWillChangeFrame' : 'keyboardDidChangeFrame';
 
     const show = Keyboard.addListener(showEvent, (e) => {
+      lastKeyboardShowAtRef.current = Date.now();
       const inset = getKeyboardInset(e);
       const visible = (e.endCoordinates?.height ?? 0) > 0 || inset > 0;
       updateKeyboardOffset(inset, visible);
     });
     const hide = Keyboard.addListener(hideEvent, () => {
+      if (Platform.OS === 'android') {
+        // Some Android tablets emit a transient hide event right after show.
+        if (Date.now() - lastKeyboardShowAtRef.current < 120) return;
+      }
       updateKeyboardOffset(0, false);
-      webRef.current?.injectJavaScript('window.__blurTerminal && window.__blurTerminal(); true;');
+      if (Platform.OS === 'ios') {
+        webRef.current?.injectJavaScript('window.__blurTerminal && window.__blurTerminal(); true;');
+      }
     });
     const changeFrame = Keyboard.addListener(frameEvent, (e) => {
       const inset = getKeyboardInset(e);
@@ -398,6 +425,19 @@ export function SessionTerminalPage({
     }, 50);
     return () => clearTimeout(timeout);
   }, [isActive, isFocused, keyboardOffset, helperHeight, fitScript]);
+
+  // Keep terminal focused for external keyboards/tablet pointers when active.
+  useEffect(() => {
+    if (!isActive || !isFocused || isTextInputMode) return;
+    const timers = [0, 90, 220].map((delay) =>
+      setTimeout(() => {
+        focusTerminal(false);
+      }, delay)
+    );
+    return () => {
+      timers.forEach((timer) => clearTimeout(timer));
+    };
+  }, [isActive, isFocused, isTextInputMode, terminalSource, focusTerminal]);
 
   const styles = useMemo(() => createStyles(colors), [colors]);
   const isGestureEnabled = isActive && isFocused;
@@ -450,6 +490,11 @@ export function SessionTerminalPage({
             source={terminalSource}
             style={styles.webview}
             autoFit
+            autoRequestFocus={isActive && isFocused && !isTextInputMode}
+            onLoadEnd={() => {
+              if (!isActive || !isFocused || isTextInputMode) return;
+              focusTerminal(false);
+            }}
             onMessage={async (event) => {
               try {
                 const payload = JSON.parse(event.nativeEvent.data) as {
@@ -547,6 +592,7 @@ export function SessionTerminalPage({
                       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                       setIsTextInputMode(false);
                       setInputText('');
+                      setTimeout(() => focusTerminal(false), 40);
                     }}
                   >
                     <X size={16} color={colors.terminalForeground} />
@@ -558,7 +604,7 @@ export function SessionTerminalPage({
                     onChangeText={setInputText}
                     placeholder="Type or dictate..."
                     placeholderTextColor={colors.terminalMuted}
-                    onSubmitEditing={handleSendInput}
+                    onSubmitEditing={handleSubmitInput}
                     returnKeyType="send"
                     autoCapitalize="none"
                     autoCorrect={false}

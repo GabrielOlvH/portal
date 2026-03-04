@@ -62,7 +62,7 @@ type TerminalHtmlConfig = {
 };
 
 // Bump to force WebView HTML refresh when the markup/CSS changes.
-export const TERMINAL_HTML_VERSION = 'xterm-shared-v5';
+export const TERMINAL_HTML_VERSION = 'xterm-shared-v7';
 
 function buildConfig(
   profile: TerminalHtmlProfile,
@@ -186,7 +186,7 @@ export function buildTerminalHtml(
     ? `
       #root { position: absolute; inset: 0; overflow: hidden; }
       #terminal { position: absolute; inset: 0; padding: 0; box-sizing: border-box; }
-      #overlay { position: absolute; inset: 0; z-index: 2; }
+      #overlay { position: absolute; inset: 0; z-index: 2; cursor: text; }
       #terminal, #overlay {
         -webkit-user-select: none;
         user-select: none;
@@ -202,6 +202,7 @@ export function buildTerminalHtml(
         display: none;
         pointer-events: auto;
         touch-action: none;
+        cursor: ew-resize;
         box-shadow: 0 2px 4px rgba(0,0,0,0.3);
       }
       .selection-handle::before {
@@ -891,11 +892,54 @@ export function buildTerminalHtml(
         });
       }
 
+      function focusTerminal(preferSoftKeyboard) {
+        term.focus();
+        if (!preferSoftKeyboard) return;
+        const input = term.textarea;
+        if (!input || typeof input.focus !== 'function') return;
+        try {
+          input.focus();
+          const end = input.value ? input.value.length : 0;
+          if (typeof input.setSelectionRange === 'function') {
+            input.setSelectionRange(end, end);
+          }
+        } catch {}
+      }
+
+      function keyEventToInput(event) {
+        switch (event.key) {
+          case 'Enter': return '\\r';
+          case 'Tab': return '\\t';
+          case 'Backspace': return '\\u007f';
+          case 'Escape': return '\\u001b';
+          case 'ArrowUp': return '\\u001b[A';
+          case 'ArrowDown': return '\\u001b[B';
+          case 'ArrowRight': return '\\u001b[C';
+          case 'ArrowLeft': return '\\u001b[D';
+          default: return event.key && event.key.length === 1 ? event.key : '';
+        }
+      }
+
+      if (config.enableInput) {
+        window.addEventListener('keydown', (event) => {
+          if (event.defaultPrevented || event.isComposing) return;
+          if (event.ctrlKey || event.metaKey || event.altKey) return;
+          if (document.activeElement === term.textarea) return;
+          const mapped = keyEventToInput(event);
+          if (!mapped) return;
+          event.preventDefault();
+          focusTerminal(false);
+          queueInput(mapped);
+        }, true);
+      }
+
       window.__fitTerminal = () => { requestDimensions(); };
       if (config.enableInput) {
         window.__sendToTerminal = (data) => { queueInput(data); };
         window.__sendCtrlC = () => { queueInput('\\u0003'); };
-        window.__focusTerminal = () => term.focus();
+        window.__focusTerminal = (preferSoftKeyboard) => {
+          focusTerminal(Boolean(preferSoftKeyboard));
+        };
         window.__blurTerminal = () => term.blur();
       }
       window.__copySelection = () => {
@@ -1021,6 +1065,7 @@ export function buildTerminalHtml(
         }
 
         const overlay = document.getElementById('overlay');
+        if (overlay) overlay.setAttribute('tabindex', '0');
 
         const WHEEL_PIXELS_PER_LINE = 80;
         const TOUCH_PIXELS_PER_LINE = 40;
@@ -1167,8 +1212,9 @@ export function buildTerminalHtml(
         let touchMoved = false;
         let selectionStartCol = 0;
         let selectionStartRow = 0;
+        const isAndroidWebView = /android/i.test(navigator.userAgent || '');
         const LONG_PRESS_DURATION = 400;
-        const MOVE_THRESHOLD = 10;
+        const MOVE_THRESHOLD = isAndroidWebView ? 14 : 10;
         const DOUBLE_TAP_DELAY = 250;
         const TRIPLE_TAP_DELAY = 300;
         let lastTapTime = 0;
@@ -1282,7 +1328,7 @@ export function buildTerminalHtml(
             const timeSinceLastTap = now - lastTapTime;
             const distance = Math.sqrt(Math.pow(x - lastTapX, 2) + Math.pow(y - lastTapY, 2));
             
-            if (timeSinceLastTap < DOUBLE_TAP_DELAY && distance < 20) {
+            if (!isAndroidWebView && timeSinceLastTap < DOUBLE_TAP_DELAY && distance < 20) {
               // This is a multi-tap
               tapCount++;
               if (tapTimeout) {
@@ -1326,7 +1372,7 @@ export function buildTerminalHtml(
                 term.clearSelection();
               }
               shouldClearSelectionOnTap = false;
-              term.focus();
+              focusTerminal(true);
             }
             
             lastTapTime = now;
@@ -1337,6 +1383,24 @@ export function buildTerminalHtml(
             startMomentum();
           }
         }, { passive: true });
+
+        if (overlay) overlay.addEventListener('click', (e) => {
+          if (e.button !== 0) return;
+          if (shouldClearSelectionOnTap && !isDraggingSelectionHandle) {
+            term.clearSelection();
+          }
+          shouldClearSelectionOnTap = false;
+          focusTerminal(false);
+        });
+
+        if (overlay) overlay.addEventListener('contextmenu', (e) => {
+          e.preventDefault();
+          focusTerminal(false);
+          const text = term.getSelection();
+          if (!text || !text.trim()) return;
+          sendToRN({ type: 'copy', text });
+          sendToRN({ type: 'hapticLight' });
+        });
 
         // Selection handles - follow xterm's native selection
         const handleStart = document.getElementById('selection-handle-start');

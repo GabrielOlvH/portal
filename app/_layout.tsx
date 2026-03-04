@@ -95,6 +95,7 @@ function NavigationRoot() {
               <Stack.Screen name="hosts/[id]/edit" />
               <Stack.Screen name="projects/index" />
               <Stack.Screen name="projects/new" />
+              <Stack.Screen name="projects/files" />
             </Stack>
             <GlobalLaunchSheet />
           </ThemeProvider>

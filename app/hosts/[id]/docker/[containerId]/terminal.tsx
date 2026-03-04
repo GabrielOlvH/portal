@@ -122,8 +122,9 @@ export default function DockerTerminalScreen() {
           source={source}
           style={styles.webview}
           autoFit
+          autoRequestFocus
           onLoadEnd={() => {
-            webRef.current?.injectJavaScript('window.__fitTerminal && window.__fitTerminal(); true;');
+            webRef.current?.injectJavaScript('window.__fitTerminal && window.__fitTerminal(); window.__focusTerminal && window.__focusTerminal(false); true;');
           }}
           onMessage={async (event) => {
             try {

@@ -7,7 +7,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Play, Clock, Folder, Plus } from 'lucide-react-native';
+import { Play, Clock, Folder, Plus, FileText } from 'lucide-react-native';
 
 import { Screen } from '@/components/Screen';
 import { AppText } from '@/components/AppText';
@@ -21,6 +21,7 @@ import { hostColors, systemColors } from '@/lib/colors';
 import { ThemeColors, useTheme } from '@/lib/useTheme';
 import { formatTimeAgo } from '@/lib/formatters';
 import { TIMING, LIMITS } from '@/lib/constants';
+import { useWindowActionsIfAvailable } from '@/lib/useWindowActions';
 
 export default function ProjectsTabScreen() {
   const router = useRouter();
@@ -28,6 +29,7 @@ export default function ProjectsTabScreen() {
   const { hosts, ready } = useStore();
   const { projects, recentLaunches } = useProjects();
   const { open: openLaunchSheet } = useLaunchSheet();
+  const windowActions = useWindowActionsIfAvailable();
   const [isManualRefresh, setIsManualRefresh] = useState(false);
 
   const projectsByHost = useMemo(() => {
@@ -53,6 +55,25 @@ export default function ProjectsTabScreen() {
       openLaunchSheet();
     },
     [openLaunchSheet]
+  );
+
+  const openProjectFiles = useCallback(
+    (project: { id: string; hostId: string; name: string; path: string }) => {
+      if (windowActions) {
+        windowActions.openWindow('project-files', {
+          hostId: project.hostId,
+          projectId: project.id,
+          projectName: project.name,
+          projectPath: project.path,
+        });
+        return;
+      }
+      router.push({
+        pathname: '/projects/files',
+        params: { projectId: project.id },
+      });
+    },
+    [router, windowActions]
   );
 
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -192,7 +213,7 @@ export default function ProjectsTabScreen() {
                               <Pressable
                                 key={project.id}
                                 style={[styles.projectRow, !isLast && styles.listRowBorder]}
-                                onPress={() => openLaunchSheet()}
+                                onPress={() => openProjectFiles(project)}
                               >
                                 <View style={styles.projectInfo}>
                                   <AppText variant="body" numberOfLines={1}>
@@ -202,16 +223,28 @@ export default function ProjectsTabScreen() {
                                     {project.path}
                                   </AppText>
                                 </View>
-                                <Pressable
-                                  style={styles.quickLaunchButton}
-                                  onPress={(e) => {
-                                    e.stopPropagation();
-                                    openLaunchSheet();
-                                  }}
-                                  hitSlop={8}
-                                >
-                                  <Play size={14} color={colors.accent} />
-                                </Pressable>
+                                <View style={styles.projectActions}>
+                                  <Pressable
+                                    style={styles.filesButton}
+                                    onPress={(e) => {
+                                      e.stopPropagation();
+                                      openProjectFiles(project);
+                                    }}
+                                    hitSlop={8}
+                                  >
+                                    <FileText size={14} color={colors.text} />
+                                  </Pressable>
+                                  <Pressable
+                                    style={styles.quickLaunchButton}
+                                    onPress={(e) => {
+                                      e.stopPropagation();
+                                      openLaunchSheet();
+                                    }}
+                                    hitSlop={8}
+                                  >
+                                    <Play size={14} color={colors.accent} />
+                                  </Pressable>
+                                </View>
                               </Pressable>
                             );
                           })}
@@ -367,6 +400,15 @@ const createStyles = (colors: ThemeColors) =>
       fontSize: 11,
     },
     quickLaunchButton: {
+      padding: 8,
+      backgroundColor: colors.cardPressed,
+      borderRadius: theme.radii.sm,
+    },
+    projectActions: {
+      flexDirection: 'row',
+      gap: 8,
+    },
+    filesButton: {
       padding: 8,
       backgroundColor: colors.cardPressed,
       borderRadius: theme.radii.sm,
